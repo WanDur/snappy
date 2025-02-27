@@ -1,26 +1,97 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#0a7ea4'
+const tintColorDark = '#fff'
 
 export const Colors = {
   light: {
     text: '#11181C',
+    placeholder: '#9CA3AF',
     background: '#fff',
+    secondaryBg: '#F2F2F2',
     tint: tintColorLight,
     icon: '#687076',
     tabIconDefault: '#687076',
     tabIconSelected: tintColorLight,
+
+    headerBorderColor: '#dcdcdc',
+    white: '#f4f4f4',
+    gray: '#4b4b4b',
+    smallHeader: '#666666',
+    borderColor: '#D1D1D1',
+    blue: '#007AFF',
+
+    chat: {
+      wrapper: {
+        left: {
+          backgroundColor: '#E8E8EA'
+        },
+        right: {
+          backgroundColor: '#309FFD'
+        }
+      },
+      text: {
+        left: {
+          color: '#11181C'
+        },
+        right: {
+          color: '#f4f4f4'
+        }
+      },
+      file: {
+        left: {
+          backgroundColor: '#B5B5B5',
+          textColor: '#111111'
+        },
+        right: {
+          backgroundColor: '#3067fd',
+          textColor: '#EEEEEE'
+        }
+      }
+    }
   },
   dark: {
     text: '#ECEDEE',
+    placeholder: '#6B7280',
     background: '#151718',
+    secondaryBg: '#1C1C1E',
     tint: tintColorDark,
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorDark,
-  },
-};
+
+    headerBorderColor: '#555555',
+    white: '#121212',
+    gray: '#eaeaea',
+    smallHeader: '#eaeaea',
+    borderColor: '#333333',
+    blue: '#007AFF',
+
+    chat: {
+      wrapper: {
+        left: {
+          backgroundColor: '#262629'
+        },
+        right: {
+          backgroundColor: '#309FFD'
+        }
+      },
+      text: {
+        left: {
+          color: '#F4F4F4'
+        },
+        right: {
+          color: '#F4F4F4'
+        }
+      },
+      file: {
+        left: {
+          backgroundColor: '#68686e',
+          textColor: '#F4F4F4'
+        },
+        right: {
+          backgroundColor: '#228ae3',
+          textColor: '#EEEEEE'
+        }
+      }
+    }
+  }
+}
