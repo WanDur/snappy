@@ -58,18 +58,17 @@ export default function SettingScreen() {
           onPress={() => router.push('/settingscreen/PermissionScreen')}
           showArrow
         />
-        <SettingsGroup.Button title="Currency" showArrow isLast />
       </SettingsGroup>
 
       <SettingsGroup
         title={() => (
           <Themed.Text style={{ fontSize: 16 }}>
-            About <Themed.Text style={{ fontSize: 16, fontWeight: '500' }}>Panda Service</Themed.Text>
+            About <Themed.Text style={{ fontSize: 16, fontWeight: '500' }}>Snappy</Themed.Text>
           </Themed.Text>
         )}
       >
-        <SettingsGroup.Button title="Rate Panda Service" />
-        <SettingsGroup.Button title="Share Panda Service" onPress={onShare} />
+        <SettingsGroup.Button title="Rate Snappy" />
+        <SettingsGroup.Button title="Share Snappy" onPress={onShare} />
         <SettingsGroup.Button
           title="Feedback & Suggestion"
           onPress={() => Linking.openURL('mailto:support@example.com?subject=Feedback%20and%20Suggestion')}

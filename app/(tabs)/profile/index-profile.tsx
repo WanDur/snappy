@@ -136,23 +136,6 @@ const ProfileScreen = () => {
           />
         </SettingsGroup>
       </Themed.ScrollView>
-
-      {/*  Floating Button  */}
-      <TouchableOpacity
-        style={[
-          styles.balanceContainer,
-          { borderColor: colors.borderColor, bottom: overflow! * 2 + (Constants.isIOS ? 0 : 10) }
-        ]}
-        activeOpacity={1}
-        onPress={() => router.push('/screens/BalanceScreen')}
-      >
-        <BlurView intensity={Constants.isIOS ? 20 : 100} tint={theme} style={StyleSheet.absoluteFill} />
-
-        <View style={styles.balanceContent}>
-          <Ionicons name="wallet-outline" size={28} color={colors.text} style={{ marginBottom: 6 }} />
-          <Themed.Text style={styles.balanceText}>Balance</Themed.Text>
-        </View>
-      </TouchableOpacity>
     </View>
   )
 }

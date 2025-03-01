@@ -13,27 +13,6 @@ import { Constants } from '@/constants'
 import { formatTag } from '@/utils'
 // import { useSync } from '@/hooks/useSync'
 
-const DEFAULT_TAGS = [
-  { tagId: 'design', iconUrl: 'https://cdn-icons-png.flaticon.com/512/11141/11141797.png' },
-  { tagId: 'software', iconUrl: 'https://cdn-icons-png.flaticon.com/512/5217/5217368.png' },
-  {
-    tagId: 'marketing',
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/2314/2314257.png'
-  },
-  {
-    tagId: 'photography',
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/8774/8774296.png'
-  },
-  {
-    tagId: 'translation',
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/484/484531.png'
-  },
-  { tagId: 'finance', iconUrl: 'https://cdn-icons-png.flaticon.com/512/18733/18733808.png' },
-
-  { tagId: 'logistics', iconUrl: 'https://cdn-icons-png.freepik.com/512/9402/9402064.png' },
-  { tagId: 'promotion', iconUrl: 'https://cdn-icons-png.flaticon.com/512/8674/8674462.png' }
-]
-
 const DEFAULT_GUIDES = [
   { emoji: '🙎🏻‍♂️', text: 'Complete your profile 1/5' },
   { emoji: '🤝🏽', text: 'Connect with top employers' },
@@ -194,10 +173,6 @@ export default function HomeScreen() {
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshData} />}
       showsVerticalScrollIndicator={false}
     >
-      <SectionHeader title="Top categories" />
-
-      <SectionHeader title="Featured Jobs" />
-
       <SectionHeader style={{ marginTop: 10 }} title="Guides" />
       <Guides />
     </Themed.ScrollView>

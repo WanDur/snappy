@@ -37,6 +37,7 @@ export default function RootLayout() {
         <SettingsProvider>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="settingscreen" options={{ headerShown: false }} />
             <Stack.Screen name="+not-found" />
           </Stack>
           <StatusBar backgroundColor={colors.background} animated />

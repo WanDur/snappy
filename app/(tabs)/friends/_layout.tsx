@@ -5,11 +5,11 @@ const Layout = () => {
   return (
     <Stack
       screenOptions={{
-        headerTitle: 'Search',
+        headerTitle: 'Friends',
         ...Constants.stackLargeTitleProps
       }}
     >
-      <Stack.Screen name="index-search" />
+      <Stack.Screen name="index-friends" />
     </Stack>
   )
 }

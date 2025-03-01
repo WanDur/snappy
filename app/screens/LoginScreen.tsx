@@ -107,7 +107,7 @@ const LoginScreen = () => {
             <Themed.Text style={[styles.btnText]}>Continue with Google</Themed.Text>
           </Bounceable>
           <Text style={styles.description}>
-            By continuing you agree to Panda Service's <Text style={styles.link}>Terms of Service</Text> and{' '}
+            By continuing you agree to Snappy's <Text style={styles.link}>Terms of Service</Text> and{' '}
             <Themed.Text style={styles.link}>Privacy Policy</Themed.Text>.
           </Text>
         </View>

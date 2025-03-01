@@ -1,5 +1,4 @@
 import { Redirect, Tabs } from 'expo-router'
-import React from 'react'
 import { Platform } from 'react-native'
 
 import { useTheme } from '@/hooks'
@@ -31,10 +30,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="search"
+        name="friends"
         options={{
-          title: 'Search',
-          tabBarIcon: ({ color, focused }) => <TabBarIcon name={focused ? 'search' : 'search-outline'} color={color} />
+          title: 'Friends',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name={focused ? 'people' : 'people-outline'} color={color} />
+        }}
+      />
+      <Tabs.Screen
+        name="album"
+        options={{
+          title: 'Albums',
+          tabBarIcon: ({ color, focused }) => <TabBarIcon name={focused ? 'book' : 'book-outline'} color={color} />
         }}
       />
       <Tabs.Screen
