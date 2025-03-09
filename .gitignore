@@ -38,5 +38,6 @@ yarn-error.*
 # vscode
 .vscode/settings.json
 
-# python venv
+# python related
 .venv/
+__pycache__/

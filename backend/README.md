@@ -4,7 +4,7 @@ This is a FastAPI application developed in Python version 3.13.2
 
 All code of this project must follow the rules of Black Formatter (25.1.0)
 
-# Installation
+# Development
 
 1. Create a Python virtual environment in `/backend`
 
@@ -34,9 +34,9 @@ pip install -r requirements.txt
 
 # Running
 
-```
-fastapi dev main.py
-```
+If you run `docker-compose up`, the FastAPI server will be started in production mode automatically
+
+If you wish to run the FastAPI server in development mode, run `fastapi dev main.py`
 
 # Update Dependencies
 

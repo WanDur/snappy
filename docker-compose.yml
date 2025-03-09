@@ -1,0 +1,40 @@
+services:
+  api-server:
+    build: './backend'
+    ports:
+    - '8000:8000'
+  mongodb:
+    image: 'mongodb/mongodb-community-server:latest'
+    ports:
+      - '27017:27017'
+    environment:
+      - 'MONGO_INITDB_ROOT_USERNAME=root'
+      - 'MONGO_INITDB_ROOT_PASSWORD=UnJeDUoekbApK74MZ066X7rBLdRWDcZI'
+  minio:
+    image: 'minio/minio'
+    hostname: 'minio'
+    volumes:
+      - 'minio_data:/data'
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - 'MINIO_ROOT_USER=root'
+      - 'MINIO_ROOT_PASSWORD=wIb8nv85LorMvMLgXrj1IjSonWhmoeIO'
+    command: 'server /data --console-address ":9001"'
+  
+  minio_createbucket:
+    image: 'minio/mc'
+    depends_on:
+      - 'minio'
+    environment:
+      - 'MC_HOST_minio=http://ltX0fh99TwfdHYSVg1ff:Kh5FgbtOd04CIEklre79PVEwm5SSY9Hb7iroQobL@minio:9000'
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc mb minio/snappy;
+      exit 0;
+      "
+
+
+volumes:
+  minio_data:
