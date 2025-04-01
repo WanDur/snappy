@@ -16,12 +16,13 @@ if __name__ == "__main__":
 from enum import Enum
 from typing import Annotated, Optional
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, Security
+from fastapi import APIRouter, Depends, File, HTTPException, Security
 from fastapi.responses import ORJSONResponse
 from fastapi_jwt import JwtAuthorizationCredentials
 from odmantic import ObjectId
 from pydantic import BaseModel, StringConstraints
 
+from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from routers.auth import get_user, access_auth
 from utils.mongo import engine, serialize_mongo_object
@@ -74,6 +75,20 @@ async def edit_user_profile(body: UserEditProfileBody, user: User = Depends(get_
                 user.bcryptPassword = bcrypt.hashpw(
                     body.password.encode("utf-8"), bcrypt.gensalt()
                 ).decode("utf-8")
-            user.__setattr__(k, v)
+            else:
+                user.__setattr__(k, v)
     await engine.save(user)
     return HTTPException(status_code=200, detail="Profile updated")
+
+
+@user_router.post("/profile/icon/upload")
+async def upload_user_icon(
+    file: Annotated[bytes, File()], user: User = Depends(get_user)
+):
+    if not user:
+        return HTTPException(status_code=401, detail="Unauthorized")
+    optimized_img = optimize_image(file)  # also performed checks here
+    file_public_path = upload_file_stream(f"users/{user.id}/icon.jpg", optimized_img)
+    user.iconUrl = file_public_path
+    await engine.save(user)
+    return ORJSONResponse({"file_path": file_public_path})

@@ -35,10 +35,10 @@ settings = get_settings()
 
 # region authjwt
 
-ACCESS_EXPIRE_TIME = settings.access_token_expire_time
-REFRESH_EXPIRE_TIME = settings.refresh_token_expire_time
+ACCESS_EXPIRE_TIME = settings.ACCESS_TOKEN_EXPIRE_TIME
+REFRESH_EXPIRE_TIME = settings.REFRESH_TOKEN_EXPIRE_TIME
 access_auth = JwtAccessBearer(
-    secret_key=settings.authjwt_secret_key,
+    secret_key=settings.AUTHJWT_SECRET_KEY,
     auto_error=True,
     access_expires_delta=timedelta(seconds=ACCESS_EXPIRE_TIME),
     refresh_expires_delta=timedelta(seconds=REFRESH_EXPIRE_TIME),
@@ -125,7 +125,7 @@ async def user_login(body: AuthLoginBody) -> AuthLoginResponse:
                 + REFRESH_EXPIRE_TIME,
             }
         )
-    return HTTPException(status_code=401, detail="Invalid credentials")
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 
 class AuthRegisterBody(BaseModel):
