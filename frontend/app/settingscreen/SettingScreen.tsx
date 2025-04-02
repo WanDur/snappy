@@ -1,10 +1,12 @@
 import { useRouter, Stack } from 'expo-router'
 import { Linking, Share, Alert, TouchableOpacity } from 'react-native'
+import { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
 
 import { useTheme } from '@/hooks'
-import { SettingsGroup, Themed } from '@/components'
+import { Themed } from '@/components'
+import { Form } from '@/components/router-form'
 //import { useSession } from '@/contexts/auth'
 //import { useSync } from '@/hooks/useSync'
 
@@ -14,6 +16,8 @@ export default function SettingScreen() {
   const router = useRouter()
   const { colors } = useTheme()
   const { t } = useTranslation()
+
+  const [loading, setLoading] = useState(false)
 
   const onShare = async () => {
     try {
@@ -25,8 +29,16 @@ export default function SettingScreen() {
     }
   }
 
+  const onEmail = () => {
+    setLoading(true)
+    Linking.openURL('mailto:support@example.com?subject=Feedback%20and%20Suggestion')
+    setTimeout(() => {
+      setLoading(false)
+    }, 2000)
+  }
+
   return (
-    <Themed.ScrollView style={{ padding: 16 }}>
+    <Themed.ScrollView>
       <Stack.Screen
         options={{
           headerTitle: t('settings'),
@@ -42,55 +54,57 @@ export default function SettingScreen() {
           )
         }}
       />
-      <SettingsGroup title="general">
-        <SettingsGroup.Button
-          title="notifications"
-          onPress={() => router.push('/settingscreen/NotificationScreen')}
-          showArrow
-        />
-        <SettingsGroup.Button
-          title="languages"
-          onPress={() => router.push('/settingscreen/SelectLanguageScreen')}
-          showArrow
-        />
-        <SettingsGroup.Button
-          title="permissions.title"
-          onPress={() => router.push('/settingscreen/PermissionScreen')}
-          showArrow
-        />
-      </SettingsGroup>
+      <Form.List>
+        <Form.Section title="general">
+          <Form.Link href="/settingscreen/NotificationScreen" systemImage="bell">
+            {t('notifications')}
+          </Form.Link>
+          <Form.Link href="/settingscreen/SelectLanguageScreen" systemImage="globe">
+            {t('languages')}
+          </Form.Link>
+          <Form.Link href="/settingscreen/PermissionScreen" systemImage="hand.raised">
+            {t('permissions.title')}
+          </Form.Link>
+        </Form.Section>
 
-      <SettingsGroup
-        title={() => (
-          <Themed.Text style={{ fontSize: 16 }}>
-            About <Themed.Text style={{ fontSize: 16, fontWeight: '500' }}>Snappy</Themed.Text>
-          </Themed.Text>
-        )}
-      >
-        <SettingsGroup.Button title="Rate Snappy" />
-        <SettingsGroup.Button title="Share Snappy" onPress={onShare} />
-        <SettingsGroup.Button
-          title="Feedback & Suggestion"
-          onPress={() => Linking.openURL('mailto:support@example.com?subject=Feedback%20and%20Suggestion')}
-          isLast
-        />
-      </SettingsGroup>
+        <Form.Section title="Account">
+          <Form.Text systemImage="phone">Phone</Form.Text>
+          <Form.Text systemImage="trash">Delete Account</Form.Text>
+          <Form.Text systemImage="rectangle.portrait.and.arrow.right">Sign Out</Form.Text>
+        </Form.Section>
 
-      <SettingsGroup title="Debug">
-        <SettingsGroup.Button title="Dev data" onPress={() => router.push('/settingscreen/DevScreen')} showArrow />
-        <SettingsGroup.Button
-          title="Sign out"
-          isLast
-          onPress={() => {
-            return
-            sync.cleanUp()
-            session.signOut().then(() => {
-              router.back()
-              router.replace('/screens/LoginScreen')
-            })
-          }}
-        />
-      </SettingsGroup>
+        <Form.Section title="About Snappy">
+          <Form.Text systemImage="star" onPress={() => {}}>
+            Rate Snappy
+          </Form.Text>
+          <Form.Text onPress={onShare} systemImage="arrowshape.turn.up.right">
+            Share Snappy
+          </Form.Text>
+          <Form.Text onPress={onEmail} systemImage="text.bubble" loading={loading}>
+            Feedback & Suggestion
+          </Form.Text>
+        </Form.Section>
+
+        <Form.Section title="Debug">
+          <Form.Link href="/settingscreen/DevScreen" systemImage="wrench.and.screwdriver">
+            Dev data
+          </Form.Link>
+          <Form.Link
+            href="/#"
+            onPress={() => {
+              /*
+              session.signOut().then(() => {
+                router.back()
+                router.replace('/screens/LoginScreen')
+              })
+            */
+            }}
+            systemImage="rectangle.portrait.and.arrow.right"
+          >
+            Sign out
+          </Form.Link>
+        </Form.Section>
+      </Form.List>
     </Themed.ScrollView>
   )
 }

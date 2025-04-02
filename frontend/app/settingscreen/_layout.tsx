@@ -1,13 +1,9 @@
-import { Stack } from 'expo-router'
-import { Constants } from '@/constants'
+import { Stack } from '@/components/router-form'
+import { STACK_LARGE_HEADER } from '@/components/router-form/Stack'
 
 const Layout = () => {
   return (
-    <Stack
-      screenOptions={{
-        ...Constants.stackLargeTitleProps
-      }}
-    >
+    <Stack screenOptions={STACK_LARGE_HEADER}>
       <Stack.Screen name="DevScreen" options={{ headerLargeTitle: false }} />
       <Stack.Screen name="Dev_localstorage" options={{ headerLargeTitle: false }} />
       <Stack.Screen name="ZustandDevScreen" options={{ headerLargeTitle: false }} />

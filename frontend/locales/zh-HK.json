@@ -1,0 +1,18 @@
+{
+  "settings": "設定",
+  "home": "主頁",
+  "apps": "應用",
+  "profile": "個人",
+  "languages": "語言",
+  "general": "一般",
+  "notifications": "通知",
+  "permissions": {
+    "camera": "相機",
+    "title": "權限",
+    "contacts": "聯絡人",
+    "location": "位置",
+    "microphone": "麥克風",
+    "notifications": "通知",
+    "media": "媒體"
+  }
+}

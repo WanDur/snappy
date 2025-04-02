@@ -1,17 +1,11 @@
-import { Stack } from 'expo-router'
-import { Constants } from '@/constants'
+import { Stack } from '@/components/router-form'
 
 const Layout = () => {
   return (
-    <Stack
-      screenOptions={{
-        title: 'Profile',
-        ...Constants.stackLargeTitleProps
-      }}
-    >
-      <Stack.Screen name="index-profile" />
-      <Stack.Screen name="ProfileDetailScreen" options={{ headerTitle: 'Edit profile' }} />
-      <Stack.Screen name="AccountDetailScreen" options={{ headerTitle: 'Account' }} />
+    <Stack screenOptions={{ title: 'Profile' }}>
+      <Stack.Screen name="index-profile" largeTitle />
+      <Stack.Screen name="ProfileDetailScreen" options={{ headerTitle: 'Edit profile' }} largeTitle />
+      <Stack.Screen name="AccountDetailScreen" options={{ headerTitle: 'Account' }} largeTitle />
       <Stack.Screen
         name="EditProfileScreen"
         options={{
@@ -21,6 +15,7 @@ const Layout = () => {
           sheetExpandsWhenScrolledToEdge: false,
           sheetCornerRadius: 16
         }}
+        largeTitle
       />
     </Stack>
   )

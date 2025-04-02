@@ -8,6 +8,7 @@ import SwipeableRow from './SwipeableRow'
 import ExpandableRow from './ExpandibleRow'
 import Dot from './Dot'
 import FilterSortButton from './FliterSortButton'
+import TouchableBounce from './TouchableBounce'
 
 import JobCard from './cards/JobCard'
 
@@ -32,6 +33,7 @@ export {
   ExpandableRow,
   Dot,
   FilterSortButton,
+  TouchableBounce,
   JobCard,
   SegmentedControl,
   SettingsGroup,

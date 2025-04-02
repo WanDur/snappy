@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { View, ScrollView, TouchableOpacity, StyleSheet } from 'react-native'
-import { Stack, router } from 'expo-router'
+import { router } from 'expo-router'
 import { FlashList } from '@shopify/flash-list'
-import { useHeaderHeight } from '@react-navigation/elements'
 
 import { Constants } from '@/constants'
 import { useStorageStore, useTheme } from '@/hooks'
 import { Themed, SectionHeader, InterestCard } from '@/components'
+import { Stack } from '@/components/router-form'
 
 const interestsData = [
   { id: 1, title: 'Social media content' },
@@ -34,7 +34,6 @@ const interestsData = [
 const SelectInterestScreen = () => {
   const { colors } = useTheme()
   const { savedInterests, saveInterests } = useStorageStore()
-  const headerHeight = useHeaderHeight()
 
   const [selectedInterests, setSelectedInterests] = useState<number[]>(savedInterests)
 
@@ -58,16 +57,12 @@ const SelectInterestScreen = () => {
       <Stack.Screen
         options={{
           headerTitle: 'Interests',
-          ...Constants.stackHeaderShadowProps,
           ...(!Constants.isIOS && { headerStyle: { backgroundColor: colors.background } })
         }}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} contentInsetAdjustmentBehavior="automatic">
-        <SectionHeader
-          title="Choose your interests"
-          style={{ paddingTop: Constants.isIOS ? 0 : Math.ceil(headerHeight) }}
-        />
+        <SectionHeader title="Choose your interests" />
         <Themed.Text style={styles.infoText}>
           Please select the following fields, so we can tailor job recommendations for you.
         </Themed.Text>

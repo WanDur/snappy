@@ -1,76 +1,53 @@
 import { View, TouchableOpacity, StyleSheet } from 'react-native'
-import { useEffect, useState } from 'react'
-import { BlurView } from 'expo-blur'
-import { useRouter, Stack } from 'expo-router'
-import { Ionicons, Feather } from '@expo/vector-icons'
+import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { Image } from 'expo-image'
+import * as AC from '@bacons/apple-colors'
+import Animated, { interpolate, useAnimatedRef, useAnimatedStyle, useScrollViewOffset } from 'react-native-reanimated'
 
-import { useTheme, useProfileStore } from '@/hooks'
-import { useBottomTabOverflow } from '@/components/ui/TabBarBackground'
-import { Themed, SettingsGroup } from '@/components'
-// import { useSession } from '@/contexts/auth'
+import { useTheme } from '@/hooks'
+import { Themed } from '@/components'
+import { Form, Stack } from '@/components/router-form'
 import { RealName } from '@/types/profile.type'
-import { Constants } from '@/constants'
 
 const ProfileScreen = () => {
   const router = useRouter()
-  // const session = useSession()
 
-  const { profile } = useProfileStore()
+  const ref = useAnimatedRef()
+  // @ts-ignore
+  const scroll = useScrollViewOffset(ref)
+  const style = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(scroll.value, [0, 30], [0, 1], 'clamp'),
+      transform: [{ translateY: interpolate(scroll.value, [0, 30], [5, 0], 'clamp') }]
+    }
+  })
+
   const { theme, colors } = useTheme()
-  const overflow = useBottomTabOverflow()
 
   const formatName = (realName: RealName) => {
     return `${realName.firstName} ${realName.lastName}`
   }
 
-  const [name, setName] = useState(formatName(profile.user.realName!))
-
-  const actions = [
-    {
-      name: 'View all',
-      icon: 'archive',
-      onPress: () => router.push({ pathname: '/screens/OrderScreen', params: { paramFilter: 'all' } })
-    },
-    {
-      name: 'In Progress',
-      icon: 'clock',
-      onPress: () => router.push({ pathname: '/screens/OrderScreen', params: { paramFilter: 'in-progress' } })
-    },
-    {
-      name: 'Pending',
-      icon: 'activity',
-      onPress: () => router.push({ pathname: '/screens/OrderScreen', params: { paramFilter: 'Pending' } })
-    },
-    {
-      name: 'Finished',
-      icon: 'check-circle',
-      onPress: () => router.push({ pathname: '/screens/OrderScreen', params: { paramFilter: 'finished' } })
-    }
-  ]
-
-  const fetchUserProfile = async () => {
-    return
-    if (!session.session) return
-    const userInfoRes = await session.apiWithToken.get('/panda/user/info')
-    profile.user.realName = userInfoRes.data.realName
-    profile.user.username = userInfoRes.data.username
-    profile.user._id = userInfoRes.data.userId
-    setName(formatName(profile.user.realName!))
-  }
-
-  useEffect(() => {
-    fetchUserProfile()
-  }, [])
-
   return (
     <View style={{ flex: 1 }}>
-      <Themed.ScrollView style={{ padding: 16 }}>
+      <Themed.ScrollView ref={ref as any}>
         <Stack.Screen
           options={{
             headerTitle: () => (
-              <Themed.Text style={{ fontWeight: '700', fontSize: 16 }}>{`@${
-                profile.user.username || 'guest'
-              }`}</Themed.Text>
+              <Animated.Image
+                source={{ uri: 'https://randomuser.me/api/portraits/women/32.jpg' }}
+                style={[
+                  style,
+                  {
+                    aspectRatio: 1,
+                    height: 30,
+                    borderRadius: 8,
+                    borderWidth: 0.5,
+                    borderColor: AC.separator
+                  }
+                ]}
+              />
             ),
             headerRight: () => (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -81,83 +58,78 @@ const ProfileScreen = () => {
             )
           }}
         />
-
-        <SettingsGroup title="">
-          <SettingsGroup.Avatar
-            name={name.trim() || 'Guest'}
-            descirption="Edit profile"
-            onPress={() => router.push('/(tabs)/profile/ProfileDetailScreen')}
-          />
-          <SettingsGroup.Button
-            title="Account"
-            onPress={() => router.push('/(tabs)/profile/AccountDetailScreen')}
-            showArrow
-            isLast
-          />
-        </SettingsGroup>
-
-        <SettingsGroup title="Collections">
-          <SettingsGroup.Button title="Saved jobs" onPress={() => router.push('/screens/SavedJobScreen')} showArrow />
-          <SettingsGroup.Button
-            title="My interests"
-            onPress={() => router.push('/screens/SelectInterestScreen')}
-            showArrow
-            isLast
-          />
-        </SettingsGroup>
-
-        <SettingsGroup title="Manage orders">
-          <SettingsGroup.Custom isLast>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-around', gap: 10 }}>
-              {actions.map((action, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={{ alignItems: 'center' }}
-                  activeOpacity={0.7}
-                  onPress={action.onPress}
-                >
-                  <Feather name={action.icon as any} size={24} color={colors.text} />
-
-                  <Themed.Text style={{ marginTop: 8, fontSize: 13, textAlign: 'center' }}>{action.name}</Themed.Text>
-                </TouchableOpacity>
-              ))}
+        <View style={{ gap: 24, paddingVertical: 16 }}>
+          <Form.Section>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Image
+                source={{ uri: 'https://randomuser.me/api/portraits/women/32.jpg' }}
+                style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: '#f0f0f0' }}
+              />
+              <View style={{ marginLeft: 16, flex: 1 }}>
+                <Form.Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 4, color: '#333' }}>
+                  Sarah Johnson
+                </Form.Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="location-outline" size={14} color="#666" />
+                  <Form.Text style={{ fontSize: 14, color: '#666', marginLeft: 4 }}>New York, USA</Form.Text>
+                </View>
+              </View>
             </View>
-          </SettingsGroup.Custom>
-        </SettingsGroup>
 
-        <SettingsGroup title="Development screens">
-          <SettingsGroup.Button title="Dev data" onPress={() => router.push('/settingscreen/DevScreen')} showArrow />
-          <SettingsGroup.Button title="PostJobScreen" onPress={() => router.push('/postJob')} showArrow />
-          <SettingsGroup.Button
-            title="Login screen"
-            onPress={() => router.push('/screens/LoginScreen')}
-            showArrow
-            isLast
-          />
-        </SettingsGroup>
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                paddingVertical: 4,
+                borderTopWidth: 1,
+                borderTopColor: '#f0f0f0'
+              }}
+            >
+              <View style={styles.statItem}>
+                <Form.Text style={styles.statNumber}>127</Form.Text>
+                <Form.Text style={styles.statLabel}>Posts</Form.Text>
+              </View>
+
+              <Themed.View type="divider" />
+
+              <View style={styles.statItem}>
+                <Form.Text style={styles.statNumber}>4.8k</Form.Text>
+                <Form.Text style={styles.statLabel}>Followers</Form.Text>
+              </View>
+
+              <Themed.View type="divider" />
+
+              <View style={styles.statItem}>
+                <Form.Text style={styles.statNumber}>3</Form.Text>
+                <Form.Text style={styles.statLabel}>Weeks active</Form.Text>
+              </View>
+            </View>
+          </Form.Section>
+
+          <Form.Section title="Development screens">
+            <Form.Text onPress={() => router.push('/settingscreen/DevScreen')}>Dev data</Form.Text>
+            <Form.Text onPress={() => router.push('/screens/LoginScreen')}>Login screen</Form.Text>
+          </Form.Section>
+        </View>
       </Themed.ScrollView>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  balanceContainer: {
-    position: 'absolute',
-    right: 16,
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden'
-  },
-  balanceContent: {
+  statItem: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
+    alignItems: 'center'
   },
-  balanceText: {
-    fontSize: 13,
-    textAlign: 'center'
+  statNumber: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 2
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#666'
   }
 })
 
