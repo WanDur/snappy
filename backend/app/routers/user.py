@@ -13,6 +13,7 @@ if __name__ == "__main__":
     sys.path.append(_proj_path)
     __package__ = "routers.user"
 
+from datetime import datetime
 from enum import Enum
 from typing import Annotated, Optional
 import bcrypt
@@ -26,7 +27,7 @@ from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from routers.auth import get_user, access_auth
 from utils.mongo import engine, serialize_mongo_object
-from internal.models import User, UserTier
+from internal.models import Friendship, User, UserTier
 
 # region routes
 
@@ -66,7 +67,9 @@ class UserEditProfileBody(BaseModel):
 
 
 @user_router.post("/profile/edit")
-async def edit_user_profile(body: UserEditProfileBody, user: User = Depends(get_user)):
+async def edit_user_profile(
+    body: UserEditProfileBody, user: User | None = Depends(get_user)
+):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
     for k, v in body.model_dump().items():
@@ -78,12 +81,12 @@ async def edit_user_profile(body: UserEditProfileBody, user: User = Depends(get_
             else:
                 user.__setattr__(k, v)
     await engine.save(user)
-    return HTTPException(status_code=200, detail="Profile updated")
+    return ORJSONResponse({"status": "success"})
 
 
 @user_router.post("/profile/icon/upload")
 async def upload_user_icon(
-    file: Annotated[bytes, File()], user: User = Depends(get_user)
+    file: Annotated[bytes, File()], user: User | None = Depends(get_user)
 ):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
@@ -91,4 +94,109 @@ async def upload_user_icon(
     file_public_path = upload_file_stream(f"users/{user.id}/icon.jpg", optimized_img)
     user.iconUrl = file_public_path
     await engine.save(user)
-    return ORJSONResponse({"file_path": file_public_path})
+    return ORJSONResponse({"status": "success", "file_path": file_public_path})
+
+
+# region friendship
+
+
+@user_router.post("/friends/invite/{target_user_id}")
+async def invite_friend(target_user_id: str, user: User | None = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    target_user = await engine.find_one(User, User.id == ObjectId(target_user_id))
+    if not target_user:
+        raise HTTPException(status_code=400, detail="Target user not found")
+    if target_user.id == user.id:
+        raise HTTPException(status_code=400, detail="Cannot invite yourself")
+    log_debug(target_user.id)
+    existing_friendship = await Friendship.get_friendship(user, target_user)
+    if existing_friendship:
+        if existing_friendship.accepted:
+            raise HTTPException(status_code=400, detail="Already friends")
+        else:
+            raise HTTPException(status_code=400, detail="Already invited")
+    friendship = Friendship(
+        user1=user, user2=target_user, inviteTimestamp=datetime.now()
+    )
+    await engine.save(friendship)
+    return ORJSONResponse({"status": "success", "friendship_id": str(friendship.id)})
+
+
+@user_router.post("/friends/accept/{target_user_id}")
+async def accept_friend(target_user_id: str, user: User | None = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    target_user = await engine.find_one(User, User.id == ObjectId(target_user_id))
+    if not target_user:
+        raise HTTPException(status_code=400, detail="Target user not found")
+    friendship = await Friendship.get_friendship(user, target_user)
+    if not friendship:
+        raise HTTPException(status_code=400, detail="Invitation not found")
+    if friendship.accepted:
+        raise HTTPException(status_code=400, detail="Already friends")
+    if friendship.user1 == user:
+        raise HTTPException(
+            status_code=400, detail="Cannot accept invitation of yourself"
+        )
+    await friendship.accept()
+    return ORJSONResponse({"status": "success"})
+
+
+@user_router.post("/friends/remove/{target_user_id}")
+async def remove_friend(target_user_id: str, user: User | None = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    target_user = await engine.find_one(User, User.id == ObjectId(target_user_id))
+    if not target_user:
+        raise HTTPException(status_code=400, detail="Target user not found")
+    friendship = await Friendship.get_friendship(user, target_user)
+    if not friendship:
+        raise HTTPException(status_code=400, detail="Not friends")
+    await engine.delete(friendship)
+    return ORJSONResponse({"status": "success"})
+
+
+@user_router.get("/friends/list")
+async def list_friends(user: User | None = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    log_debug(user.id)
+    friendships = await engine.find(
+        Friendship, (Friendship.user1 == user.id) | (Friendship.user2 == user.id)
+    )
+    friends = []
+    incoming_invitations = []
+    outgoing_invitations = []
+    for friendship in friendships:
+        if friendship.accepted:
+            friends.append(
+                friendship.user2 if friendship.user1 == user.id else friendship.user1
+            )
+        else:
+            log_debug(friendship)
+            if friendship.user1 == user:
+                outgoing_invitations.append(friendship.user2)
+            else:
+                incoming_invitations.append(friendship.user2)
+    return ORJSONResponse(
+        {
+            "status": "success",
+            "friends": [
+                serialize_mongo_object(friend, ["username", "name", "iconUrl", "id"])
+                for friend in friends
+            ],
+            "incoming_invitations": [
+                serialize_mongo_object(
+                    invitation, ["username", "name", "iconUrl", "id"]
+                )
+                for invitation in incoming_invitations
+            ],
+            "outgoing_invitations": [
+                serialize_mongo_object(
+                    invitation, ["username", "name", "iconUrl", "id"]
+                )
+                for invitation in outgoing_invitations
+            ],
+        }
+    )

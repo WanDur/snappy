@@ -25,7 +25,7 @@ def serialize_mongo_object(obj: any, project: list[str] = []):
             obj["id"] = obj.pop("_id")
         newobj = {}
         for k, v in obj.items():
-            if k in project:
+            if k in project or project == []:
                 newobj[k] = serialize_mongo_object(v)
         obj = newobj
     elif isinstance(obj, list):
