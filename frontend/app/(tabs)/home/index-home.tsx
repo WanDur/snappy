@@ -85,7 +85,7 @@ const HomeScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <Image source={{ uri: item.imageUrl }} style={styles.postImage} resizeMode="cover" />
+      <Image source={{ uri: item.imageUrl }} style={styles.postImage} contentFit="cover" />
 
       <View style={styles.postActions}>
         <View style={styles.leftActions}>
