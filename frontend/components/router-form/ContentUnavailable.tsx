@@ -23,7 +23,7 @@ export function ContentUnavailable({
       search: boolean | string
     } & Partial<Props>)
   | ({
-      internet: boolean
+      internet?: boolean
     } & Partial<Props>)) {
   let resolvedTitle = title
   let resolvedSystemImage = systemImage

@@ -1,164 +1,86 @@
 import React, { useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
+import { useRouter } from 'expo-router'
 
-import { Stack } from '@/components/router-form'
-import { Themed } from '@/components'
-
-// Mock data for demonstration
-const PERSONAL_ALBUMS = [
-  {
-    id: 'a1',
-    title: 'Summer Trip',
-    coverImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e',
-    photoCount: 24,
-    isShared: false
-  },
-  {
-    id: 'a2',
-    title: 'Family',
-    coverImage: 'https://images.unsplash.com/photo-1511895426328-dc8714191300',
-    photoCount: 56,
-    isShared: false
-  },
-  {
-    id: 'a3',
-    title: 'Food Adventures',
-    coverImage: 'https://images.unsplash.com/photo-1484723091739-30a097e8f929',
-    photoCount: 18,
-    isShared: false
-  },
-  {
-    id: 'a4',
-    title: 'Pets',
-    coverImage: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e',
-    photoCount: 15,
-    isShared: false
-  }
-]
-
-const SHARED_ALBUMS = [
-  {
-    id: 's1',
-    title: 'Group Trip 2024',
-    coverImage: 'https://images.unsplash.com/photo-1527631746610-bca00a040d60',
-    photoCount: 87,
-    contributors: 5,
-    isShared: true
-  },
-  {
-    id: 's2',
-    title: 'Concert Night',
-    coverImage: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4',
-    photoCount: 32,
-    contributors: 3,
-    isShared: true
-  },
-  {
-    id: 's3',
-    title: 'Office Party',
-    coverImage: 'https://images.unsplash.com/photo-1516992654410-9309d4587e94',
-    photoCount: 41,
-    contributors: 8,
-    isShared: true
-  }
-]
+import { useAlbumStore, useTheme } from '@/hooks'
+import { Themed, SectionHeader } from '@/components'
+import { Album } from '@/types'
+import { Form, Stack, ContentUnavailable } from '@/components/router-form'
 
 const AlbumScreen = () => {
+  const router = useRouter()
+  const { albumList, addAlbum } = useAlbumStore()
+  const { colors } = useTheme()
+
+  const personalAlbums = albumList.filter((album) => !album.isShared)
+  const sharedAlbums = albumList.filter((album) => album.isShared)
+
   const [viewMode, setViewMode] = useState('grid')
-  const [createModalVisible, setCreateModalVisible] = useState(false)
   const [newAlbumTitle, setNewAlbumTitle] = useState('')
-  const [personalAlbums, setPersonalAlbums] = useState(PERSONAL_ALBUMS)
-  const [sharedAlbums, setSharedAlbums] = useState(SHARED_ALBUMS)
 
-  const handleCreateAlbum = () => {
-    if (newAlbumTitle.trim()) {
-      const newAlbum = {
-        id: `a${Date.now()}`, // Simple unique ID for demo
-        title: newAlbumTitle,
-        coverImage: 'https://images.unsplash.com/photo-1599420186946-7b6fb4e297f0', // Default cover
-        photoCount: 0,
-        isShared: false
-      }
-
-      setPersonalAlbums([newAlbum, ...personalAlbums])
-      setNewAlbumTitle('')
-      setCreateModalVisible(false)
-    }
-  }
-
-  const renderGridAlbum = ({ item }) => (
-    <TouchableOpacity style={styles.gridAlbumItem}>
+  const renderGridAlbum = ({ item }: { item: Album }) => (
+    <TouchableOpacity
+      style={styles.gridAlbumItem}
+      activeOpacity={1}
+      onPress={() => router.push({ pathname: '/screens/AlbumScreen', params: { albumId: item.id } })}
+    >
       <View style={styles.albumCoverContainer}>
-        <Image source={{ uri: item.coverImage }} style={styles.gridAlbumCover} />
+        {item.coverImage === '' ? (
+          <Themed.View
+            type="secondary"
+            style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="image" size={64} color={colors.borderColor} />
+          </Themed.View>
+        ) : (
+          <Image source={{ uri: item.coverImage }} style={styles.gridAlbumCover} />
+        )}
+
         {item.isShared && (
           <View style={styles.contributorsBadge}>
             <Ionicons name="people" size={14} color="#FFFFFF" />
-            <Text style={styles.contributorsText}>{item.contributors}</Text>
+            <Text style={styles.contributorsText}>{item.contributors ?? 0}</Text>
           </View>
         )}
       </View>
       <Text style={styles.albumTitle} numberOfLines={1}>
         {item.title}
       </Text>
-      <Text style={styles.photoCount}>{item.photoCount} photos</Text>
+      <Text style={styles.photoCount}>{item.images.length} photos</Text>
     </TouchableOpacity>
   )
 
-  const renderListAlbum = ({ item }) => (
-    <TouchableOpacity style={styles.listAlbumItem}>
-      <Image source={{ uri: item.coverImage }} style={styles.listAlbumCover} />
+  const renderListAlbum = ({ item }: { item: Album }) => (
+    <TouchableOpacity
+      style={styles.listAlbumItem}
+      activeOpacity={1}
+      onPress={() => router.push({ pathname: '/screens/AlbumScreen', params: { albumId: item.id } })}
+    >
+      {item.coverImage === '' ? (
+        <Themed.View
+          type="secondary"
+          style={{ width: 64, height: 64, borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="image" size={30} color={colors.borderColor} />
+        </Themed.View>
+      ) : (
+        <Image source={{ uri: item.coverImage }} style={styles.listAlbumCover} />
+      )}
+
       <View style={styles.listAlbumInfo}>
         <Text style={styles.albumTitle}>{item.title}</Text>
-        <Text style={styles.listPhotoCount}>{item.photoCount} photos</Text>
+        <Text style={styles.listPhotoCount}>{item.images.length} photos</Text>
       </View>
       {item.isShared && (
         <View style={styles.listContributorsBadge}>
           <Ionicons name="people" size={16} color="#5271FF" />
-          <Text style={styles.listContributorsText}>{item.contributors}</Text>
+          <Text style={styles.listContributorsText}>{item.contributors ?? 0}</Text>
         </View>
       )}
       <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
     </TouchableOpacity>
-  )
-
-  const renderSectionHeader = (title) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  )
-
-  const renderCreateAlbumModal = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={createModalVisible}
-      onRequestClose={() => setCreateModalVisible(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Create New Album</Text>
-            <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#333" />
-            </TouchableOpacity>
-          </View>
-
-          <TextInput
-            style={styles.albumTitleInput}
-            placeholder="Album Title"
-            value={newAlbumTitle}
-            onChangeText={setNewAlbumTitle}
-            autoFocus
-          />
-
-          <TouchableOpacity style={styles.createButton} onPress={handleCreateAlbum}>
-            <Text style={styles.createButtonText}>Create Album</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
   )
 
   return (
@@ -169,80 +91,122 @@ const AlbumScreen = () => {
             <TouchableOpacity
               style={styles.viewToggle}
               onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+              activeOpacity={0.7}
             >
-              <Ionicons name={viewMode === 'grid' ? 'list' : 'grid'} size={24} color="#333" />
+              <Ionicons name={viewMode === 'grid' ? 'list' : 'grid'} size={24} color={colors.text} />
             </TouchableOpacity>
           )
         }}
       />
-      <Themed.ScrollView style={{ padding: 16 }}>
-        <FlatList
-          data={[]}
-          ListHeaderComponent={() => (
-            <>
-              <View>
-                <TouchableOpacity style={styles.createAlbumButton} onPress={() => setCreateModalVisible(true)}>
-                  <Ionicons name="add-circle" size={24} color="#5271FF" />
-                  <Text style={styles.createAlbumText}>Create New Album</Text>
-                </TouchableOpacity>
-              </View>
+      <Themed.ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 100 }}>
+        <View style={{ paddingBottom: 12 }}>
+          <TouchableOpacity
+            style={[styles.createAlbumButton, { borderColor: colors.borderColor, backgroundColor: colors.secondaryBg }]}
+            onPress={() => router.push('/(modal)/CreateAlbumModal')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add-circle" size={24} color={colors.blue} />
+            <Text style={styles.createAlbumText}>Create New Album</Text>
+          </TouchableOpacity>
+        </View>
 
-              {renderSectionHeader('Your Albums')}
+        <SectionHeader title="Your Albums" />
 
-              {viewMode === 'grid' ? (
-                <FlatList
-                  data={personalAlbums}
-                  renderItem={renderGridAlbum}
-                  keyExtractor={(item) => item.id}
-                  numColumns={2}
-                  scrollEnabled={false}
-                  contentContainerStyle={styles.gridContainer}
+        {viewMode === 'grid' ? (
+          <FlatList
+            key={'__uniqueList'}
+            data={personalAlbums}
+            renderItem={renderGridAlbum}
+            ListEmptyComponent={() => (
+              <Form.Section style={{ marginHorizontal: -16 }}>
+                <ContentUnavailable
+                  title="No Albums"
+                  systemImage="photo.stack"
+                  actions={
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/CreateAlbumModal')}>
+                      <Themed.Text type="link">Create new album</Themed.Text>
+                    </TouchableOpacity>
+                  }
                 />
-              ) : (
-                <FlatList
-                  data={personalAlbums}
-                  renderItem={renderListAlbum}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
+              </Form.Section>
+            )}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+          />
+        ) : (
+          <FlatList
+            data={personalAlbums}
+            renderItem={renderListAlbum}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ListEmptyComponent={() => (
+              <Form.Section style={{ marginHorizontal: -16 }}>
+                <ContentUnavailable
+                  title="No Albums"
+                  systemImage="photo.stack"
+                  actions={
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/CreateAlbumModal')}>
+                      <Themed.Text type="link">Create new album</Themed.Text>
+                    </TouchableOpacity>
+                  }
                 />
-              )}
+              </Form.Section>
+            )}
+          />
+        )}
 
-              {renderSectionHeader('Shared With You')}
+        <SectionHeader title="Shared With You" style={{ marginTop: 10 }} />
 
-              {viewMode === 'grid' ? (
-                <FlatList
-                  data={sharedAlbums}
-                  renderItem={renderGridAlbum}
-                  keyExtractor={(item) => item.id}
-                  numColumns={2}
-                  scrollEnabled={false}
-                  contentContainerStyle={styles.gridContainer}
+        {viewMode === 'grid' ? (
+          <FlatList
+            key={'_uniqueList'}
+            data={sharedAlbums}
+            renderItem={renderGridAlbum}
+            keyExtractor={(item) => item.id}
+            numColumns={2}
+            scrollEnabled={false}
+            ListEmptyComponent={() => (
+              <Form.Section style={{ marginHorizontal: -16 }}>
+                <ContentUnavailable
+                  title="No Shared Albums"
+                  systemImage="rectangle.stack.person.crop"
+                  actions={
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/CreateAlbumModal')}>
+                      <Themed.Text type="link">Share one with your friends</Themed.Text>
+                    </TouchableOpacity>
+                  }
                 />
-              ) : (
-                <FlatList
-                  data={sharedAlbums}
-                  renderItem={renderListAlbum}
-                  keyExtractor={(item) => item.id}
-                  scrollEnabled={false}
+              </Form.Section>
+            )}
+          />
+        ) : (
+          <FlatList
+            data={sharedAlbums}
+            renderItem={renderListAlbum}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ListEmptyComponent={() => (
+              <Form.Section style={{ marginHorizontal: -16 }}>
+                <ContentUnavailable
+                  title="No Shared Albums"
+                  systemImage="rectangle.stack.person.crop"
+                  actions={
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/CreateAlbumModal')}>
+                      <Themed.Text type="link">Share one with your friends</Themed.Text>
+                    </TouchableOpacity>
+                  }
                 />
-              )}
-            </>
-          )}
-          contentContainerStyle={styles.listContainer}
-          contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}
-        />
-
-        {renderCreateAlbumModal()}
+              </Form.Section>
+            )}
+          />
+        )}
       </Themed.ScrollView>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -253,37 +217,17 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EFEFEF',
     backgroundColor: '#FFFFFF'
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333'
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
   viewToggle: {
     padding: 8
   },
   listContainer: {
     paddingBottom: 100
   },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 12
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#333'
-  },
   createAlbumButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
     borderStyle: 'dashed',
     borderRadius: 12,
     paddingVertical: 16
@@ -291,11 +235,8 @@ const styles = StyleSheet.create({
   createAlbumText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#5271FF',
+    color: '#007AFF',
     marginLeft: 8
-  },
-  gridContainer: {
-    paddingHorizontal: 12
   },
   gridAlbumItem: {
     flex: 1,

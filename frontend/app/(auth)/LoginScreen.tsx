@@ -1,0 +1,167 @@
+import { View, Text, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView } from 'react-native'
+import { useState } from 'react'
+import { Stack, useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import { isAxiosError } from 'axios'
+
+import { Constants } from '@/constants'
+import { Themed, Bounceable } from '@/components'
+import { useTheme } from '@/hooks'
+// import { useSession } from '@/contexts/auth'
+
+const LoginScreen = () => {
+  const router = useRouter()
+  const { colors } = useTheme()
+  // const auth = useSession()
+  // const { signInWithCredential } = auth
+
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  const onSignIn = async () => {
+    try {
+      console.log('Logging in with', email)
+      // await signInWithCredential(email, password)
+      router.replace('/(tabs)/home')
+    } catch (err) {
+      if (isAxiosError(err)) {
+        Alert.alert('Error', err.response?.data.detail || 'An error occurred')
+      } else {
+        Alert.alert('Error', 'An error occurred. Please try again.')
+      }
+    }
+  }
+
+  return (
+    <KeyboardAvoidingView style={styles.container} behavior={Constants.isIOS ? undefined : 'height'}>
+      <Stack.Screen
+        options={{
+          headerTitle: 'Login',
+          headerLeft: () =>
+            router.canGoBack() && (
+              <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+                <Ionicons name="close" size={26} color={colors.text} style={{ marginRight: 20 }} />
+              </TouchableOpacity>
+            )
+        }}
+      />
+
+      <View style={{ marginHorizontal: 20 }}>
+        <Themed.TextInput
+          label="Email"
+          placeholder="user@example.com"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          onChangeText={setEmail}
+          value={email}
+        />
+        <Themed.TextInput
+          label="Password"
+          placeholder="Password"
+          secureTextEntry
+          autoCapitalize="none"
+          onChangeText={setPassword}
+          value={password}
+          onSubmitEditing={onSignIn}
+        />
+        <Bounceable
+          style={[styles.btn, { backgroundColor: colors.secondaryBg, justifyContent: 'center' }]}
+          onPress={onSignIn}
+        >
+          <Themed.Text style={[styles.btnText, { marginLeft: 0 }]}>Login</Themed.Text>
+        </Bounceable>
+        <View style={styles.seperatorView}>
+          <View
+            style={{
+              flex: 1,
+              borderBottomColor: colors.borderColor,
+              borderBottomWidth: StyleSheet.hairlineWidth
+            }}
+          />
+          <Text style={styles.seperator}>or</Text>
+          <View
+            style={{
+              flex: 1,
+              borderBottomColor: colors.borderColor,
+              borderBottomWidth: StyleSheet.hairlineWidth
+            }}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Bounceable
+            style={[styles.btn, { backgroundColor: colors.borderColor }]}
+            onPress={() => router.push('/(auth)/SignUpScreen')}
+          >
+            <Ionicons name="mail-outline" size={24} style={{ position: 'absolute', left: 20 }} color={colors.text} />
+            <Themed.Text style={[styles.btnText]}>Signup with Email</Themed.Text>
+          </Bounceable>
+
+          {Constants.isIOS && (
+            <Bounceable style={[styles.btn, { backgroundColor: colors.borderColor }]}>
+              <Ionicons name="logo-apple" size={24} style={{ position: 'absolute', left: 20 }} color={colors.text} />
+              <Themed.Text style={[styles.btnText]}>Continue with Apple</Themed.Text>
+            </Bounceable>
+          )}
+
+          <Bounceable style={[styles.btn, { backgroundColor: colors.borderColor }]}>
+            <Ionicons name="logo-google" size={24} style={{ position: 'absolute', left: 20 }} color={colors.text} />
+            <Themed.Text style={[styles.btnText]}>Continue with Google</Themed.Text>
+          </Bounceable>
+          <Text style={styles.description}>
+            By continuing you agree to Panda Service's <Text style={styles.link}>Terms of Service</Text> and{' '}
+            <Themed.Text style={styles.link}>Privacy Policy</Themed.Text>.
+          </Text>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    flexDirection: 'column-reverse',
+    gap: 40,
+    padding: 16,
+    paddingBottom: 32
+  },
+  buttonContainer: {
+    gap: 20
+  },
+  btn: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 16,
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth * 2
+  },
+  btnText: {
+    fontSize: 20,
+    marginLeft: 50,
+    fontWeight: '500'
+  },
+  description: {
+    fontSize: 12,
+    textAlign: 'center',
+    color: 'grey'
+  },
+  link: {
+    color: 'grey',
+    fontSize: 12,
+    textAlign: 'center',
+    textDecorationLine: 'underline'
+  },
+  seperatorView: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+    marginVertical: 26
+  },
+  seperator: {
+    fontFamily: 'mon-sb',
+    color: 'grey',
+    fontSize: 16
+  }
+})
+
+export default LoginScreen

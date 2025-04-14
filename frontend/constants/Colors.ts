@@ -17,36 +17,7 @@ export const Colors = {
     gray: '#4b4b4b',
     smallHeader: '#666666',
     borderColor: '#D1D1D1',
-    blue: '#007AFF',
-
-    chat: {
-      wrapper: {
-        left: {
-          backgroundColor: '#E8E8EA'
-        },
-        right: {
-          backgroundColor: '#309FFD'
-        }
-      },
-      text: {
-        left: {
-          color: '#11181C'
-        },
-        right: {
-          color: '#f4f4f4'
-        }
-      },
-      file: {
-        left: {
-          backgroundColor: '#B5B5B5',
-          textColor: '#111111'
-        },
-        right: {
-          backgroundColor: '#3067fd',
-          textColor: '#EEEEEE'
-        }
-      }
-    }
+    blue: '#007AFF'
   },
   dark: {
     text: '#ECEDEE',
@@ -63,35 +34,6 @@ export const Colors = {
     gray: '#eaeaea',
     smallHeader: '#eaeaea',
     borderColor: '#333333',
-    blue: '#007AFF',
-
-    chat: {
-      wrapper: {
-        left: {
-          backgroundColor: '#262629'
-        },
-        right: {
-          backgroundColor: '#309FFD'
-        }
-      },
-      text: {
-        left: {
-          color: '#F4F4F4'
-        },
-        right: {
-          color: '#F4F4F4'
-        }
-      },
-      file: {
-        left: {
-          backgroundColor: '#68686e',
-          textColor: '#F4F4F4'
-        },
-        right: {
-          backgroundColor: '#228ae3',
-          textColor: '#EEEEEE'
-        }
-      }
-    }
+    blue: '#007AFF'
   }
 }

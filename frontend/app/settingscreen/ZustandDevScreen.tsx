@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
+import { DevSettings } from 'react-native'
 import { Stack } from 'expo-router'
 import { useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import JSONTree from 'react-native-json-tree'
 
 import { Themed } from '@/components'
+import { HeaderText } from '@/components/ui'
 
 const ZustandDevScreen = () => {
   const { _key } = useLocalSearchParams()
@@ -33,9 +35,23 @@ const ZustandDevScreen = () => {
     fetchStorage()
   }, [storageKey])
 
+  const clearData = async () => {
+    try {
+      await AsyncStorage.removeItem(storageKey, () => DevSettings.reload())
+      setData([]) // Clear the data in the state
+    } catch (error) {
+      console.warn('Error clearing async storage:', error)
+    }
+  }
+
   return (
     <Themed.ScrollView style={{ flex: 1 }}>
-      <Stack.Screen options={{ headerTitle: storageKey }} />
+      <Stack.Screen
+        options={{
+          headerTitle: storageKey,
+          headerRight: () => <HeaderText text="Clear" textProps={{ state: true }} onPress={clearData} />
+        }}
+      />
       <JSONTree
         data={data[0]}
         hideRoot

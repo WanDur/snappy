@@ -46,6 +46,8 @@ export default function RootLayout() {
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="settingscreen" options={{ presentation: 'containedModal', headerShown: false }} />
               <Stack.Screen name="+not-found" />
+
+              <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
             </Stack>
           </BottomSheetModalProvider>
           <StatusBar backgroundColor={colors.background} animated />

@@ -1,8 +1,9 @@
 import { useStorage } from './useStorage'
 import { useTheme } from './useTheme'
 
-import { useProfileStore } from './useProfileStore'
-import { useChatStore } from './useChatStore'
-import { useStorageStore } from './useStorageStore'
+import { useProfileStore } from './stores/useProfileStore'
+import { useChatStore } from './stores/useChatStore'
+import { useStorageStore } from './stores/useStorageStore'
+import { useAlbumStore } from './stores/useAlbumStore'
 
-export { useStorage, useTheme, useProfileStore, useChatStore, useStorageStore }
+export { useStorage, useTheme, useProfileStore, useChatStore, useStorageStore, useAlbumStore }

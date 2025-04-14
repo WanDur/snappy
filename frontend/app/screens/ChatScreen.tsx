@@ -18,7 +18,7 @@ import { formatBytes } from '@/utils'
 const ChatScreen = () => {
   // const session = useSession()
   const headerHeight = useHeaderHeight()
-  const { theme, colors } = useTheme()
+  const { theme, colors, chatColors } = useTheme()
 
   const { _chatID } = useLocalSearchParams()
   const chatID = _chatID.toString()
@@ -298,8 +298,8 @@ const ChatScreen = () => {
             <View>
               <Bubble
                 {...props}
-                wrapperStyle={colors.chat.wrapper}
-                textStyle={colors.chat.text}
+                wrapperStyle={chatColors.wrapper}
+                textStyle={chatColors.text}
                 renderCustomView={(prop) => {
                   return (
                     <View style={{ flexDirection: 'column' }}>
