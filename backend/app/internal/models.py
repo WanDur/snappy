@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Annotated, Optional
-from odmantic import Field, Model, Reference
+from odmantic import Field, Model, ObjectId, Reference
 from pydantic import EmailStr, StringConstraints
 
 from utils.mongo import engine
@@ -25,11 +25,27 @@ class User(Model):
     notificationTokens: list[str] = []
     tier: UserTier = UserTier.FREEMIUM
     premiumExpireTime: Optional[datetime] = None
+    isAdmin: bool = False
 
-    def redeemPremium(self, days: int):
-        self.tier = UserTier.PREMIUM
-        self.premiumExpireTime = datetime.now() + timedelta(days=days)
-        engine.save(self)
+    async def is_premium(self) -> bool:
+        if self.tier == UserTier.PREMIUM:
+            if self.premiumExpireTime and self.premiumExpireTime > datetime.now():
+                return True
+            else:
+                self.tier = UserTier.FREEMIUM
+                self.premiumExpireTime = None
+                await engine.save(self)
+                return False
+        else:
+            return False
+
+    async def redeemPremium(self, days: int):
+        if self.tier == UserTier.FREEMIUM:
+            self.tier = UserTier.PREMIUM
+            self.premiumExpireTime = datetime.now() + timedelta(days=days)
+        else:
+            self.premiumExpireTime += timedelta(days=days)
+        await engine.save(self)
 
 
 class Friendship(Model):
@@ -59,3 +75,23 @@ class Friendship(Model):
         if fdship:
             return fdship.accepted
         return False
+
+
+class License(Model):
+    key: str = Field(primary_field=True, unique=True)
+    days: int
+    redeemed: bool = False
+    redeemedAt: Optional[datetime] = None
+    redeemedBy: Optional[ObjectId] = None
+
+    @classmethod
+    async def get_license(cls, key: str) -> License | None:
+        license = await engine.find_one(License, License.key == key)
+        return license
+
+    async def redeem(self, user: User):
+        self.redeemed = True
+        self.redeemedAt = datetime.now()
+        self.redeemedBy = user.id
+        await user.redeemPremium(self.days)
+        await engine.save(self)
