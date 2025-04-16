@@ -2,7 +2,7 @@ import time
 from bson import ObjectId
 from fastapi import Security
 from fastapi.responses import ORJSONResponse
-from starlette import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import timedelta
 from fastapi_jwt import JwtAccessBearer, JwtAuthorizationCredentials, JwtRefreshBearer
 

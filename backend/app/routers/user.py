@@ -25,7 +25,7 @@ from pydantic import BaseModel, StringConstraints
 
 from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
-from routers.auth import get_user, access_auth
+from utils.auth import get_user
 from utils.mongo import engine, serialize_mongo_object
 from internal.models import Friendship, User, UserTier
 
