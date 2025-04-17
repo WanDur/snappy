@@ -35,7 +35,7 @@ from utils.auth import (
     ACCESS_EXPIRE_TIME,
     REFRESH_EXPIRE_TIME,
 )
-from internal.models import User
+from internal.models import User, UserTier
 
 settings = get_settings()
 
@@ -50,10 +50,11 @@ class AuthLoginBody(BaseModel):
 
 
 class AuthLoginResponse(BaseModel):
-    access_token: str
-    access_token_expire_time: int
-    refresh_token: str
-    refresh_token_expire_time: int
+    accessToken: str
+    accessTokenExpireTime: int
+    refreshToken: str
+    refreshTokenExpireTime: int
+    userTier: UserTier
 
 
 @auth_router.post("/login")
@@ -72,12 +73,11 @@ async def user_login(body: AuthLoginBody) -> AuthLoginResponse:
         refresh_token = refresh_auth.create_refresh_token(subject=sub)
         return ORJSONResponse(
             {
-                "access_token": access_token,
-                "access_token_expire_time": math.floor(time.time())
-                + ACCESS_EXPIRE_TIME,
-                "refresh_token": refresh_token,
-                "refresh_token_expire_time": math.floor(time.time())
-                + REFRESH_EXPIRE_TIME,
+                "accessToken": access_token,
+                "accessTokenExpireTime": math.floor(time.time()) + ACCESS_EXPIRE_TIME,
+                "refreshToken": refresh_token,
+                "refreshTokenExpireTime": math.floor(time.time()) + REFRESH_EXPIRE_TIME,
+                "userTier": user.tier,
             }
         )
     raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -144,8 +144,8 @@ async def refresh_token(
     access_token = access_auth.create_access_token(subject=cred.subject)
     return ORJSONResponse(
         {
-            "access_token": access_token,
-            "access_token_expire_time": math.floor(time.time()) + ACCESS_EXPIRE_TIME,
+            "accessToken": access_token,
+            "accessTokenExpireTime": math.floor(time.time()) + ACCESS_EXPIRE_TIME,
         }
     )
 
