@@ -74,9 +74,9 @@ async def user_login(body: AuthLoginBody) -> AuthLoginResponse:
         return ORJSONResponse(
             {
                 "accessToken": access_token,
-                "accessTokenExpireTime": math.floor(time.time()) + ACCESS_EXPIRE_TIME,
+                "accessExpireTime": math.floor(time.time()) + ACCESS_EXPIRE_TIME,
                 "refreshToken": refresh_token,
-                "refreshTokenExpireTime": math.floor(time.time()) + REFRESH_EXPIRE_TIME,
+                "refreshExpireTime": math.floor(time.time()) + REFRESH_EXPIRE_TIME,
                 "userTier": user.tier,
             }
         )
@@ -145,9 +145,25 @@ async def refresh_token(
     return ORJSONResponse(
         {
             "accessToken": access_token,
-            "accessTokenExpireTime": math.floor(time.time()) + ACCESS_EXPIRE_TIME,
+            "accessExpireTime": math.floor(time.time()) + ACCESS_EXPIRE_TIME,
         }
     )
+
+
+class RevokeTokenResponse(BaseModel):
+    success: bool = True
+
+
+@auth_router.post("/token/revoke")
+async def revoke_token(
+    cred: JwtAuthorizationCredentials = Security(refresh_auth),
+) -> RevokeTokenResponse:
+    """
+    This route is used to revoke a refresh token.
+    It invalidates the provided refresh token and ensures it cannot be used again.
+    (To be implemented)
+    """
+    return ORJSONResponse({"success": True})
 
 
 # endregion
