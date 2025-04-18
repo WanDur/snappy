@@ -4,9 +4,9 @@ import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 
 import { Stack } from '@/components/router-form'
-import { Themed } from '@/components'
+import { Themed, TouchableBounce } from '@/components'
+import { useTheme, useFriendStore } from '@/hooks'
 
-// Mock data for demonstration
 const FRIENDS_DATA = [
   {
     id: 'f1',
@@ -77,6 +77,9 @@ const SUGGESTED_FRIENDS = [
 ]
 
 const FriendsScreen = () => {
+  const { colors } = useTheme()
+  const {} = useFriendStore()
+
   const [query, setQuery] = useState('')
   const [pendingRequests, setPendingRequests] = useState(PENDING_REQUESTS)
   const [suggestedFriends, setSuggestedFriends] = useState(SUGGESTED_FRIENDS)
@@ -114,60 +117,68 @@ const FriendsScreen = () => {
   }
 
   const renderFriendItem = ({ item }) => (
-    <TouchableOpacity style={styles.friendItem}>
+    <TouchableOpacity style={[styles.friendItem, { backgroundColor: colors.background }]} activeOpacity={0.7}>
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={styles.friendInfo}>
-        <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.lastActive}>{item.lastActive}</Text>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+        <Themed.Text style={{ fontSize: 13 }} text70>
+          {item.lastActive}
+        </Themed.Text>
       </View>
-      <TouchableOpacity style={styles.messageButton}>
-        <Ionicons name="chatbubble-outline" size={20} color="#5271FF" />
+      <TouchableOpacity style={{ padding: 8 }} activeOpacity={0.7}>
+        <Ionicons name="chatbubble-outline" size={24} color="#5271FF" />
       </TouchableOpacity>
     </TouchableOpacity>
   )
 
   const renderPendingRequestItem = ({ item }) => (
-    <View style={styles.requestItem}>
+    <Themed.View style={styles.requestItem}>
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={styles.requestInfo}>
-        <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.mutualFriends}>{item.mutualFriends} mutual friends</Text>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+        <Themed.Text style={{ fontSize: 13 }} text70>
+          {item.mutualFriends} mutual friends
+        </Themed.Text>
       </View>
-      <View style={styles.requestActions}>
+      <View style={{ flexDirection: 'row' }}>
         <TouchableOpacity
           style={[styles.actionButton, styles.acceptButton]}
           onPress={() => handleAcceptRequest(item.id)}
+          activeOpacity={0.7}
         >
           <Text style={styles.acceptButtonText}>Accept</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.declineButton]}
           onPress={() => handleDeclineRequest(item.id)}
+          activeOpacity={0.7}
         >
           <Text style={styles.declineButtonText}>Decline</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </Themed.View>
   )
 
   const renderSuggestedFriendItem = ({ item }) => (
-    <View style={styles.suggestedItem}>
+    <Themed.View style={styles.suggestedItem} shadow>
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
       <View style={styles.suggestedInfo}>
-        <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.mutualFriends}>{item.mutualFriends} mutual friends</Text>
+        <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+        <Themed.Text style={{ fontSize: 13 }} text70>
+          {item.mutualFriends} mutual friends
+        </Themed.Text>
       </View>
-      <TouchableOpacity style={styles.addButton} onPress={() => handleAddSuggested(item.id)}>
+      <TouchableBounce style={styles.addButton} onPress={() => handleAddSuggested(item.id)}>
         <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
+      </TouchableBounce>
+    </Themed.View>
   )
 
   const renderSectionHeader = ({ section }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
+    <Themed.View style={styles.sectionHeader} type="secondary">
+      <Themed.Text style={styles.sectionTitle}>{section.title}</Themed.Text>
       {section.count > 0 && <Text style={styles.sectionCount}>{section.count}</Text>}
-    </View>
+    </Themed.View>
   )
 
   const onSearch = () => {}
@@ -183,6 +194,7 @@ const FriendsScreen = () => {
           renderItem={renderPendingRequestItem}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}
+          ItemSeparatorComponent={() => <Themed.View type="divider" />}
         />
       )
     },
@@ -190,7 +202,13 @@ const FriendsScreen = () => {
       title: 'Your Friends',
       data: [{ type: 'friends' }],
       renderItem: () => (
-        <FlatList data={friends} renderItem={renderFriendItem} keyExtractor={(item) => item.id} scrollEnabled={false} />
+        <FlatList
+          data={friends}
+          renderItem={renderFriendItem}
+          keyExtractor={(item) => item.id}
+          scrollEnabled={false}
+          ItemSeparatorComponent={() => <Themed.View type="divider" />}
+        />
       )
     },
     {
@@ -210,9 +228,11 @@ const FriendsScreen = () => {
   ]
 
   return (
-    <>
+    <Themed.View style={{ flex: 1 }}>
       <Stack.Screen
         options={{
+          headerLargeTitle: false,
+          headerTransparent: false,
           headerSearchBarOptions: {
             placeholder: 'Search',
             autoFocus: true,
@@ -235,50 +255,11 @@ const FriendsScreen = () => {
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
       />
-    </>
+    </Themed.View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#F8F8F8'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
-    backgroundColor: '#FFFFFF'
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333'
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFEFEF',
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12
-  },
-  searchIcon: {
-    marginRight: 8
-  },
-  searchInput: {
-    flex: 1,
-    height: 42,
-    fontSize: 16,
-    color: '#333'
-  },
-  clearButton: {
-    padding: 4
-  },
   listContainer: {
     paddingBottom: 100
   },
@@ -286,13 +267,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F8F8F8'
+    paddingVertical: 12
   },
   sectionTitle: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#333'
+    fontWeight: '600'
   },
   sectionCount: {
     marginLeft: 8,
@@ -304,52 +283,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0'
+    paddingVertical: 12
   },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25
   },
-  friendInfo: {
-    flex: 1,
-    marginLeft: 12
-  },
   friendName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
     marginBottom: 2
-  },
-  lastActive: {
-    fontSize: 13,
-    color: '#888'
-  },
-  messageButton: {
-    padding: 8
   },
   requestItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0'
-  },
-  requestInfo: {
-    flex: 1,
-    marginLeft: 12
-  },
-  mutualFriends: {
-    fontSize: 13,
-    color: '#666'
-  },
-  requestActions: {
-    flexDirection: 'row'
+    paddingVertical: 12
   },
   actionButton: {
     paddingHorizontal: 12,
@@ -376,17 +326,15 @@ const styles = StyleSheet.create({
   suggestedList: {
     paddingLeft: 16,
     paddingRight: 8,
-    paddingVertical: 8
+    paddingVertical: 12
   },
   suggestedItem: {
     width: 150,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
-    marginRight: 8,
+    marginRight: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1
@@ -398,9 +346,9 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#5271FF',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center'
   }
