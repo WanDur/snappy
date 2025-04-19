@@ -1,27 +1,32 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, FlatList } from 'react-native'
-import { MaterialIcons, Feather } from '@expo/vector-icons'
+import { useRef } from 'react'
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native'
+import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import * as Crypto from 'expo-crypto'
+import { BottomSheetView, BottomSheetModal } from '@gorhom/bottom-sheet'
 
 import { Themed } from '@/components'
+import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
 import { IconSymbol } from '@/components/ui/IconSymbol'
-import { Stack } from '@/components/router-form'
-import { useAlbumStore } from '@/hooks'
+import { Stack, ContentUnavailable } from '@/components/router-form'
+import { useTheme, useAlbumStore } from '@/hooks'
+import { Constants } from '@/constants'
 
-// Get screen dimensions for responsive grid
-const { width } = Dimensions.get('window')
 const numColumns = 4
-const gap = 2 // Gap between images
-const itemSize = (width - gap * (numColumns - 1)) / numColumns // Adjusted for gaps
+const gap = 2
+const itemSize = (Constants.screenWidth - gap * (numColumns - 1)) / numColumns
 
 const AlbumScreen = () => {
   const router = useRouter()
   const { albumId } = useLocalSearchParams<{ albumId: string }>()
+
   const album = useAlbumStore((state) => state.getAlbum(albumId))!
   const { addImage } = useAlbumStore()
+  const { isDark, colors } = useTheme()
 
-  // Format date - you may want to use a proper date formatting library
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null)
+
   const formattedDate = new Date(album.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -45,55 +50,51 @@ const AlbumScreen = () => {
   }
 
   const handleImagePress = (index: number) => {
-    router.push({ pathname: '/screens/ViewImageScreen', params: { photoIndex: String(index), id: album.id } })
+    router.push({ pathname: '/(modal)/ViewImageModal', params: { photoIndex: String(index), id: album.id } })
   }
 
-  const AlbumHeader = () => (
-    <View>
-      <View style={styles.coverImageContainer}>
-        <Image source={{ uri: album.coverImage }} style={styles.coverImage} />
+  const AlbumHeader = () => {
+    const sharedBadge = { backgroundColor: isDark ? '#2a3555' : '#eef3ff' }
+    const sharedText = { color: isDark ? '#7da2ff' : '#4a80f5' }
+    const personalBadge = { backgroundColor: isDark ? '#2a2a2a' : '#f5f5f5' }
+    const personalText = { color: isDark ? '#bbbbbb' : '#555' }
 
-        <View style={[styles.albumStatusBadge, album.isShared ? styles.sharedBadge : styles.personalBadge]}>
-          <MaterialIcons
-            name={album.isShared ? 'group' : 'person'}
-            size={16}
-            color={album.isShared ? '#4a80f5' : '#555'}
-          />
-          <Text style={[styles.albumStatusText, album.isShared ? styles.sharedText : styles.personalText]}>
-            {album.isShared ? 'Shared Album' : 'Personal Album'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Album Info Area */}
-      <View style={styles.albumInfoContainer}>
-        {album.description && <Text style={styles.description}>{album.description}</Text>}
-
-        <View style={styles.metaContainer}>
-          <View style={styles.metaItem}>
-            <Feather name="calendar" size={14} color="#888" />
-            <Text style={styles.metaText}>{formattedDate}</Text>
-          </View>
-
-          {album.contributors && album.contributors > 0 && (
-            <View style={styles.metaItem}>
-              <MaterialIcons name="people" size={14} color="#888" />
-              <Text style={styles.metaText}>
-                {album.contributors} {album.contributors === 1 ? 'contributor' : 'contributors'}
-              </Text>
-            </View>
+    return (
+      <View>
+        <View style={styles.coverImageContainer}>
+          {album.coverImage === '' ? (
+            <Themed.View style={{ width: '100%', height: '80%', justifyContent: 'center', alignItems: 'center' }}>
+              <ContentUnavailable
+                title="No photos in this album"
+                description='Add photos by tapping the "+" button below'
+                systemImage="photo.on.rectangle.angled"
+              />
+            </Themed.View>
+          ) : (
+            <Image source={{ uri: album.coverImage }} style={styles.coverImage} />
           )}
 
-          <View style={styles.metaItem}>
-            <Feather name="image" size={14} color="#888" />
-            <Text style={styles.metaText}>
-              {album.images.length} {album.images.length === 1 ? 'photo' : 'photos'}
+          <TouchableOpacity
+            style={[styles.albumStatusBadge, album.isShared ? sharedBadge : personalBadge]}
+            activeOpacity={0.8}
+            onPress={() => bottomSheetModalRef.current?.present()}
+          >
+            <MaterialIcons
+              name={album.isShared ? 'group' : 'person'}
+              size={16}
+              color={album.isShared ? (isDark ? '#7da2ff' : '#4a80f5') : isDark ? '#bbbbbb' : '#555'}
+            />
+            <Text style={[styles.albumStatusText, album.isShared ? sharedText : personalText]}>
+              {album.isShared ? 'Shared Album' : 'Personal Album'}
             </Text>
-          </View>
+            <Ionicons style={{ marginLeft: 4 }} name="chevron-forward" color={personalText.color} />
+          </TouchableOpacity>
         </View>
+
+        <View style={{ padding: 1 }} />
       </View>
-    </View>
-  )
+    )
+  }
 
   // Calculate the margin based on the item's position in the grid
   const getImageContainerStyle = (index: number) => {
@@ -114,7 +115,7 @@ const AlbumScreen = () => {
       numColumns={numColumns}
       showsVerticalScrollIndicator={false}
       keyExtractor={(item, index) => index.toString()}
-      contentContainerStyle={styles.gridContainer}
+      contentContainerStyle={{ paddingBottom: 16 }}
       renderItem={({ item, index }) => (
         <TouchableOpacity
           style={[styles.imageContainer, getImageContainerStyle(index)]}
@@ -124,16 +125,6 @@ const AlbumScreen = () => {
           <Image source={{ uri: item.uri }} style={styles.image} />
         </TouchableOpacity>
       )}
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <MaterialIcons name="photo-library" size={60} color="#cccccc" />
-          <Text style={styles.emptyText}>No photos in this album yet</Text>
-          <TouchableOpacity style={styles.addPhotoButton} onPress={handleAddPhotos} activeOpacity={0.8}>
-            <MaterialIcons name="add-photo-alternate" size={18} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.addPhotoButtonText}>Add Photos</Text>
-          </TouchableOpacity>
-        </View>
-      }
       ListHeaderComponent={<AlbumHeader />}
       contentInsetAdjustmentBehavior="automatic"
     />
@@ -148,28 +139,59 @@ const AlbumScreen = () => {
       />
 
       <GridView />
-      <TouchableOpacity style={styles.fab} onPress={handleAddPhotos} activeOpacity={0.9}>
-        <MaterialIcons name="add-photo-alternate" size={26} color="#fff" />
+
+      <TouchableOpacity
+        style={[styles.fab, { shadowColor: colors.text }]}
+        onPress={handleAddPhotos}
+        activeOpacity={0.9}
+      >
+        <IconSymbol name="plus" color="#fff" />
       </TouchableOpacity>
+
+      <BottomSheetModal
+        index={1}
+        ref={bottomSheetModalRef}
+        snapPoints={['30%']}
+        handleComponent={BlurredHandle}
+        backgroundComponent={BlurredBackground}
+        backdropComponent={() => (
+          <View onTouchEnd={() => bottomSheetModalRef.current?.close()} style={[StyleSheet.absoluteFill]} />
+        )}
+      >
+        <BottomSheetView style={{ flex: 1, padding: 16 }}>
+          <Themed.Text style={{ fontSize: 24, fontWeight: '700', marginBottom: 16 }}>{album.title}</Themed.Text>
+
+          <View style={{ marginBottom: 16 }}>
+            {album.description && <Text style={styles.description}>{album.description}</Text>}
+
+            <View style={styles.metaItem}>
+              <Feather name="calendar" size={24} color={colors.blue} />
+              <Themed.Text style={styles.metaText}>{formattedDate}</Themed.Text>
+            </View>
+
+            {album.contributors && album.contributors > 0 && (
+              <View style={styles.metaItem}>
+                <MaterialIcons name="people" size={24} color={colors.blue} />
+                <Themed.Text style={styles.metaText}>
+                  {album.contributors} {album.contributors === 1 ? 'contributor' : 'contributors'}
+                </Themed.Text>
+              </View>
+            )}
+
+            <View style={styles.metaItem}>
+              <Feather name="image" size={24} color={colors.blue} />
+              <Themed.Text style={styles.metaText}>
+                {album.images.length} {album.images.length === 1 ? 'photo' : 'photos'}
+              </Themed.Text>
+            </View>
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </Themed.View>
   )
 }
 
 const styles = StyleSheet.create({
-  gridContainer: {
-    paddingBottom: 16 // Add padding at bottom for the FAB
-  },
-  headerRightButtons: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  headerButton: {
-    padding: 8,
-    marginLeft: 4
-  },
-  albumHeader: {
-    marginBottom: 16
-  },
   coverImageContainer: {
     width: '100%',
     height: 200,
@@ -195,36 +217,16 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2
   },
-  sharedBadge: {
-    backgroundColor: '#eef3ff'
-  },
-  personalBadge: {
-    backgroundColor: '#f5f5f5'
-  },
   albumStatusText: {
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 6
-  },
-  sharedText: {
-    color: '#4a80f5'
-  },
-  personalText: {
-    color: '#555'
-  },
-  albumInfoContainer: {
-    padding: 16
   },
   description: {
     fontSize: 16,
     color: '#444',
     marginBottom: 16,
     lineHeight: 22
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8
   },
   metaItem: {
     flexDirection: 'row',
@@ -233,9 +235,8 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   metaText: {
-    fontSize: 13,
-    color: '#888',
-    marginLeft: 5
+    fontSize: 16,
+    marginLeft: 6
   },
   imageContainer: {
     // Base styles only - dynamic margins are applied in getImageContainerStyle
@@ -274,39 +275,22 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 30,
     right: 24,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: 30,
     backgroundColor: '#4a80f5',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.25,
     shadowRadius: 4
-  },
-  fullImageContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center'
   },
   fullImage: {
     width: '100%',
     height: '100%'
-  },
-  backButton: {
-    position: 'absolute',
-    top: 16,
-    left: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center'
   }
 })
 
