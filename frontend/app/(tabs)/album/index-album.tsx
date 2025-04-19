@@ -206,7 +206,7 @@ const AlbumScreen = () => {
                 title="No Shared Albums"
                 systemImage="rectangle.stack.person.crop"
                 actionText="Share one with your friends"
-                onAction={() => router.push('/(modal)/CreateAlbumModal')}
+                onAction={() => router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: 'true' } })}
               />
             }
           />
@@ -221,7 +221,7 @@ const AlbumScreen = () => {
                 title="No Shared Albums"
                 systemImage="rectangle.stack.person.crop"
                 actionText="Share one with your friends"
-                onAction={() => router.push('/(modal)/CreateAlbumModal')}
+                onAction={() => router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: 'true' } })}
               />
             }
             ItemSeparatorComponent={() => <Themed.View type="divider" />}

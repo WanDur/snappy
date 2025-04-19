@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import * as Crypto from 'expo-crypto'
-import { router } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
 
 import { Themed } from '@/components'
@@ -21,13 +21,15 @@ import { Stack } from '@/components/router-form'
 import { useTheme, useAlbumStore } from '@/hooks'
 
 const CreateAlbumModal = () => {
+  const router = useRouter()
   const { addAlbum } = useAlbumStore()
   const { colors } = useTheme()
+  const { isShared } = useLocalSearchParams<{ isShared?: string }>()
 
   const [albumName, setAlbumName] = useState('')
   const [description, setDescription] = useState('')
   const [coverImage, setCoverImage] = useState('')
-  const [isCollaborative, setIsCollaborative] = useState(false)
+  const [isCollaborative, setIsCollaborative] = useState(isShared === 'true')
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -62,6 +64,7 @@ const CreateAlbumModal = () => {
       <Stack.Screen
         options={{
           headerTitle: 'New Album',
+          headerLeft: () => <HeaderText text="Cancel" textProps={{ state: true }} onPress={() => router.back()} />,
           headerRight: () => (
             <HeaderText text="Create" textProps={{ state: albumName.trim() !== '' }} onPress={handleCreateAlbum} />
           )
@@ -119,13 +122,7 @@ const CreateAlbumModal = () => {
         <Themed.View style={styles.switchContainer} type="secondary">
           <View style={styles.switchRow}>
             <Themed.Text style={styles.switchLabel}>Collaborative Album</Themed.Text>
-            <Switch
-              trackColor={{ false: '#e0e0e0', true: '#b3cdf8' }}
-              thumbColor={isCollaborative ? '#4a80f5' : '#f4f3f4'}
-              ios_backgroundColor="#e0e0e0"
-              onValueChange={setIsCollaborative}
-              value={isCollaborative}
-            />
+            <Switch onValueChange={setIsCollaborative} value={isCollaborative} />
           </View>
           <Themed.Text style={{ fontSize: 14 }} text50>
             {isCollaborative ? 'Friends can add photos to this album' : 'Only you can add photos to this album'}
@@ -148,7 +145,7 @@ const styles = StyleSheet.create({
   coverImageContainer: {
     width: 180,
     height: 180,
-    borderRadius: 24, // Rounded square
+    borderRadius: 24,
     marginBottom: 16,
     overflow: 'hidden'
   },
@@ -222,9 +219,6 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginTop: 20
-  },
-  createButtonDisabled: {
-    backgroundColor: '#cccccc'
   },
   createButtonText: {
     color: '#ffffff',

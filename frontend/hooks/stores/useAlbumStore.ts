@@ -46,7 +46,12 @@ export const useAlbumStore = create<AlbumStore>()(
         set((state) => {
           const index = state.albumList.findIndex((album) => album.id === id)
           if (index !== -1) {
-            state.albumList[index].images.push(...images)
+            const album = state.albumList[index]
+            album.images.push(...images)
+
+            if (album.coverImage === '') {
+              album.coverImage = images[0].uri
+            }
           }
         })
       }
