@@ -1,123 +1,74 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SectionList } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
+import * as Crypto from 'expo-crypto'
+import { router } from 'expo-router'
 
 import { Stack } from '@/components/router-form'
 import { Themed, TouchableBounce } from '@/components'
 import { useTheme, useFriendStore } from '@/hooks'
+import { Friend } from '@/types'
 
-const FRIENDS_DATA = [
-  {
-    id: 'f1',
-    name: 'Sara Johnson',
-    avatar: 'https://randomuser.me/api/portraits/women/12.jpg',
-    lastActive: '2h ago'
-  },
-  {
-    id: 'f2',
-    name: 'Mike Chen',
-    avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
-    lastActive: '4h ago'
-  },
-  {
-    id: 'f3',
-    name: 'Emma Wilson',
-    avatar: 'https://randomuser.me/api/portraits/women/33.jpg',
-    lastActive: '1d ago'
-  },
-  {
-    id: 'f4',
-    name: 'David Park',
-    avatar: 'https://randomuser.me/api/portraits/men/45.jpg',
-    lastActive: '3d ago'
-  },
-  {
-    id: 'f5',
-    name: 'Olivia Martinez',
-    avatar: 'https://randomuser.me/api/portraits/women/55.jpg',
-    lastActive: 'Just now'
-  }
-]
+const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
+  const names = [
+    'Sara Johnson',
+    'Mike Chen',
+    'Emma Wilson',
+    'David Park',
+    'Olivia Martinez',
+    'James Wilson',
+    'Lily Chen',
+    'Alex Thompson',
+    'Sophie Miller',
+    'Ryan Garcia',
+    'Chris Lee',
+    'Zoe Kim',
+    'Ethan Nguyen',
+    'Ava Patel',
+    'Leo Jackson'
+  ]
 
-const PENDING_REQUESTS = [
-  {
-    id: 'p1',
-    name: 'James Wilson',
-    avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-    mutualFriends: 3
-  },
-  {
-    id: 'p2',
-    name: 'Lily Chen',
-    avatar: 'https://randomuser.me/api/portraits/women/72.jpg',
-    mutualFriends: 5
-  }
-]
+  const gender = Math.random() < 0.5 ? 'men' : 'women'
+  const avatarId = Math.floor(Math.random() * 99) + 1
+  const avatar = `https://randomuser.me/api/portraits/${gender}/${avatarId}.jpg`
+  const id = Crypto.randomUUID()
+  const name = names[Math.floor(Math.random() * names.length)]
 
-const SUGGESTED_FRIENDS = [
-  {
-    id: 's1',
-    name: 'Alex Thompson',
-    avatar: 'https://randomuser.me/api/portraits/men/67.jpg',
-    mutualFriends: 8
-  },
-  {
-    id: 's2',
-    name: 'Sophie Miller',
-    avatar: 'https://randomuser.me/api/portraits/women/62.jpg',
-    mutualFriends: 4
-  },
-  {
-    id: 's3',
-    name: 'Ryan Garcia',
-    avatar: 'https://randomuser.me/api/portraits/men/77.jpg',
-    mutualFriends: 2
-  }
-]
+  const item = { id, name, avatar, type } as Friend
+  const lastActiveOptions = ['Just now', '2h ago', '4h ago', '1d ago', '3d ago']
+  item.lastActive = lastActiveOptions[Math.floor(Math.random() * lastActiveOptions.length)]
+  item.mutualFriends = Math.floor(Math.random() * 10)
+
+  return item
+}
 
 const FriendsScreen = () => {
   const { colors } = useTheme()
-  const {} = useFriendStore()
+  const { friends, addFriend, handleRequest } = useFriendStore()
 
   const [query, setQuery] = useState('')
-  const [pendingRequests, setPendingRequests] = useState(PENDING_REQUESTS)
-  const [suggestedFriends, setSuggestedFriends] = useState(SUGGESTED_FRIENDS)
-  const [friends, setFriends] = useState(FRIENDS_DATA)
 
-  const handleAcceptRequest = (id: string) => {
-    // Find the request
-    const requestToAccept = pendingRequests.find((request) => request.id === id)
-
-    if (requestToAccept) {
-      // Remove from pending
-      setPendingRequests(pendingRequests.filter((request) => request.id !== id))
-
-      // Add to friends
-      setFriends([
-        ...friends,
-        {
-          id: requestToAccept.id,
-          name: requestToAccept.name,
-          avatar: requestToAccept.avatar,
-          lastActive: 'Just now'
-        }
-      ])
-    }
-  }
-
-  const handleDeclineRequest = (id: string) => {
-    setPendingRequests(pendingRequests.filter((request) => request.id !== id))
-  }
+  const myFriend = friends.filter((f) => f.type === 'friend')
+  const pendingRequests = friends.filter((f) => f.type === 'pending')
+  const suggestedFriends = friends.filter((f) => f.type === 'suggested')
 
   const handleAddSuggested = (id: string) => {
     // In a real app, this would send a friend request
     // For demo, just remove from suggestions
-    setSuggestedFriends(suggestedFriends.filter((friend) => friend.id !== id))
+    // setSuggestedFriends(suggestedFriends.filter((friend) => friend.id !== id))
   }
 
-  const renderFriendItem = ({ item }) => (
-    <TouchableOpacity style={[styles.friendItem, { backgroundColor: colors.background }]} activeOpacity={0.7}>
+  const openUserProfile = (id: string) => {
+    router.push({ pathname: '/(modal)/FriendProfileModal', params: { friendID: id } })
+  }
+
+  const renderFriendItem = ({ item }: { item: Friend }) => (
+    <TouchableOpacity
+      style={[styles.friendItem, { backgroundColor: colors.background }]}
+      activeOpacity={0.7}
+      onPress={() => openUserProfile(item.id)}
+    >
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
@@ -131,26 +82,32 @@ const FriendsScreen = () => {
     </TouchableOpacity>
   )
 
-  const renderPendingRequestItem = ({ item }) => (
+  const renderPendingRequestItem = ({ item }: { item: Friend }) => (
     <Themed.View style={styles.requestItem}>
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={{ flex: 1, marginLeft: 12 }}>
-        <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
-        <Themed.Text style={{ fontSize: 13 }} text70>
-          {item.mutualFriends} mutual friends
-        </Themed.Text>
-      </View>
+      <TouchableOpacity
+        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+        activeOpacity={0.7}
+        onPress={() => openUserProfile(item.id)}
+      >
+        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+          <Themed.Text style={{ fontSize: 13 }} text70>
+            {item.mutualFriends} mutual friends
+          </Themed.Text>
+        </View>
+      </TouchableOpacity>
       <View style={{ flexDirection: 'row' }}>
         <TouchableOpacity
           style={[styles.actionButton, styles.acceptButton]}
-          onPress={() => handleAcceptRequest(item.id)}
+          onPress={() => handleRequest(item.id, true)}
           activeOpacity={0.7}
         >
           <Text style={styles.acceptButtonText}>Accept</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.declineButton]}
-          onPress={() => handleDeclineRequest(item.id)}
+          onPress={() => handleRequest(item.id, false)}
           activeOpacity={0.7}
         >
           <Text style={styles.declineButtonText}>Decline</Text>
@@ -159,15 +116,17 @@ const FriendsScreen = () => {
     </Themed.View>
   )
 
-  const renderSuggestedFriendItem = ({ item }) => (
+  const renderSuggestedFriendItem = ({ item }: { item: Friend }) => (
     <Themed.View style={styles.suggestedItem} shadow>
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={styles.suggestedInfo}>
-        <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
-        <Themed.Text style={{ fontSize: 13 }} text70>
-          {item.mutualFriends} mutual friends
-        </Themed.Text>
-      </View>
+      <TouchableOpacity style={{ alignItems: 'center' }} activeOpacity={0.7} onPress={() => openUserProfile(item.id)}>
+        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        <View style={styles.suggestedInfo}>
+          <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+          <Themed.Text style={{ fontSize: 13 }} text70>
+            {item.mutualFriends} mutual friends
+          </Themed.Text>
+        </View>
+      </TouchableOpacity>
       <TouchableBounce style={styles.addButton} onPress={() => handleAddSuggested(item.id)}>
         <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
       </TouchableBounce>
@@ -178,6 +137,21 @@ const FriendsScreen = () => {
     <Themed.View style={styles.sectionHeader} type="secondary">
       <Themed.Text style={styles.sectionTitle}>{section.title}</Themed.Text>
       {section.count > 0 && <Text style={styles.sectionCount}>{section.count}</Text>}
+      <TouchableOpacity
+        style={{ marginLeft: 10 }}
+        onPress={() => {
+          const sectionTitle: string = section.title.toLowerCase()
+          if (sectionTitle.includes('requests')) {
+            addFriend(generateUser('pending'))
+          } else if (sectionTitle.includes('your')) {
+            addFriend(generateUser('friend'))
+          } else if (sectionTitle.includes('suggested')) {
+            addFriend(generateUser('suggested'))
+          }
+        }}
+      >
+        <Text>$add</Text>
+      </TouchableOpacity>
     </Themed.View>
   )
 
@@ -203,7 +177,7 @@ const FriendsScreen = () => {
       data: [{ type: 'friends' }],
       renderItem: () => (
         <FlatList
-          data={friends}
+          data={myFriend}
           renderItem={renderFriendItem}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}
