@@ -14,8 +14,9 @@ import * as Haptics from 'expo-haptics'
 
 interface SwipeableRowProps {
   children: React.ReactNode
-  id: string
+  id?: string
   title: string
+  description?: string
   onDelete?: () => void
 }
 
@@ -64,7 +65,7 @@ const RightAction = (prog: SharedValue<number>, drag: SharedValue<number>) => {
   )
 }
 
-const SwipeableRow = ({ children, id, title, onDelete }: SwipeableRowProps) => {
+const SwipeableRow = ({ children, id, title, description, onDelete }: SwipeableRowProps) => {
   const reanimatedRef = useRef<SwipeableMethods>(null)
 
   const deleteChat = async () => {
@@ -73,7 +74,7 @@ const SwipeableRow = ({ children, id, title, onDelete }: SwipeableRowProps) => {
   }
 
   const onSwipeableOpen = () => {
-    Alert.alert(`${title}`, 'Are you sure to delete this chat? This action cannot be undone.', [
+    Alert.alert(`${title}`, description || 'Are you sure to delete this chat? This action cannot be undone.', [
       { text: 'Cancel', onPress: () => reanimatedRef.current?.close(), style: 'cancel' },
       { text: 'Delete', onPress: deleteChat, style: 'destructive' }
     ])

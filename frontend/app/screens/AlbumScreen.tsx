@@ -65,8 +65,8 @@ const AlbumScreen = () => {
           {album.coverImage === '' ? (
             <Themed.View style={{ width: '100%', height: '80%', justifyContent: 'center', alignItems: 'center' }}>
               <ContentUnavailable
-                title="No photos in this album"
-                description='Add photos by tapping the "+" button below'
+                title="Your Album is Empty"
+                description="Start filling this album with memories! Tap the '+' button to add photos."
                 systemImage="photo.on.rectangle.angled"
               />
             </Themed.View>
@@ -126,6 +126,15 @@ const AlbumScreen = () => {
         </TouchableOpacity>
       )}
       ListHeaderComponent={<AlbumHeader />}
+      ListEmptyComponent={
+        <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+          <ContentUnavailable
+            title="Your Album is Empty"
+            description="Start filling this album with memories! Tap the '+' button to add photos."
+            systemImage="photo.on.rectangle.angled"
+          />
+        </View>
+      }
       contentInsetAdjustmentBehavior="automatic"
     />
   )
