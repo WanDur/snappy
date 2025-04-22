@@ -3,15 +3,43 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
+import { Friend } from '@/types'
+
 interface FriendStore {
-  removeAlbum: (id: string) => void
+  friends: Friend[]
+  addFriend: (friend: Friend) => void
+  removeFriend: (id: string) => void
+  handleRequest: (id: string, accept: boolean) => void
 }
 
 export const useFriendStore = create<FriendStore>()(
   persist(
     immer<FriendStore>((set, get) => ({
-      removeAlbum: (id) => {
-        set((state) => {})
+      friends: [],
+      addFriend: (friend) => {
+        set((state) => {
+          const existingFriend = state.friends.find((f) => f.id === friend.id)
+          if (!existingFriend) {
+            state.friends.push(friend)
+          }
+        })
+      },
+      removeFriend: (id) => {
+        set((state) => {
+          state.friends = state.friends.filter((friend) => friend.id !== id)
+        })
+      },
+      handleRequest: (id, accept) => {
+        set((state) => {
+          const friend = state.friends.find((f) => f.id === id)
+          if (friend) {
+            if (accept) {
+              friend.type = 'friend'
+            } else {
+              state.friends = state.friends.filter((f) => f.id !== id)
+            }
+          }
+        })
       }
     })),
     { name: 'zustand-friend', storage: createJSONStorage(() => AsyncStorage) }

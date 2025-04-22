@@ -1,5 +1,5 @@
 import { TextInput, Alert, Modal, TouchableOpacity, View, Image, Keyboard } from 'react-native'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState, useRef } from 'react'
 import { GiftedChat, Bubble, InputToolbar, BubbleProps } from 'react-native-gifted-chat'
 import { useHeaderHeight } from '@react-navigation/elements'
@@ -19,6 +19,7 @@ const ChatScreen = () => {
   // const session = useSession()
   const headerHeight = useHeaderHeight()
   const { theme, colors, chatColors } = useTheme()
+  const router = useRouter()
 
   const { _chatID } = useLocalSearchParams()
   const chatID = _chatID.toString()
@@ -243,7 +244,7 @@ const ChatScreen = () => {
       <Stack.Screen
         options={{
           headerTitle: () => (
-            <View
+            <TouchableOpacity
               style={{
                 flexDirection: 'row',
                 gap: 10,
@@ -251,13 +252,15 @@ const ChatScreen = () => {
                 alignItems: 'center',
                 width: Constants.screenWidth / 1.5
               }}
+              activeOpacity={0.7}
+              onPress={() => router.push({ pathname: '/screens/ChatProfileScreen', params: { chatID } })}
             >
               <Image source={{ uri: iconUrl }} style={{ width: 36, height: 36, borderRadius: 40 }} />
               <View>
                 <Themed.Text style={{ fontSize: 16, fontWeight: '500' }}>{chatTitle}</Themed.Text>
                 <Themed.Text style={{ fontSize: 12 }}>{chatCompany}</Themed.Text>
               </View>
-            </View>
+            </TouchableOpacity>
           ),
           headerRight: () => (
             <TouchableOpacity

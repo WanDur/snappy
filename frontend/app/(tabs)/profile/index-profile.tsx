@@ -109,6 +109,7 @@ const ProfileScreen = () => {
           <Form.Section title="Development screens">
             <Form.Text onPress={() => router.push('/settingscreen/DevScreen')}>Dev data</Form.Text>
             <Form.Text onPress={() => router.push('/screens/LoginScreen')}>Login screen</Form.Text>
+            <Form.Text onPress={() => router.push('/(modal)/PremiumInfoModal')}>Premium Modal</Form.Text>
           </Form.Section>
         </View>
       </Themed.ScrollView>
