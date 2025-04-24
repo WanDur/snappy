@@ -7,21 +7,22 @@ import { isAxiosError } from 'axios'
 import { Constants } from '@/constants'
 import { Themed, Bounceable } from '@/components'
 import { useTheme } from '@/hooks'
+import { useSession } from '@/contexts/auth'
 // import { useSession } from '@/contexts/auth'
 
 const LoginScreen = () => {
   const router = useRouter()
   const { colors } = useTheme()
-  // const auth = useSession()
-  // const { signInWithCredential } = auth
+  const auth = useSession()
+  const { signInWithCredential } = auth
 
-  const [email, setEmail] = useState('')
+  const [emailUsernamePhone, setEmailUsernamePhone] = useState('')
   const [password, setPassword] = useState('')
 
   const onSignIn = async () => {
     try {
-      console.log('Logging in with', email)
-      // await signInWithCredential(email, password)
+      console.log('Logging in with', emailUsernamePhone)
+      await signInWithCredential(emailUsernamePhone, password)
       router.replace('/(tabs)/home')
     } catch (err) {
       if (isAxiosError(err)) {
@@ -48,12 +49,11 @@ const LoginScreen = () => {
 
       <View style={{ marginHorizontal: 20 }}>
         <Themed.TextInput
-          label="Email"
+          label="Email / Username / Phone"
           placeholder="user@example.com"
           autoCapitalize="none"
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          value={email}
+          onChangeText={setEmailUsernamePhone}
+          value={emailUsernamePhone}
         />
         <Themed.TextInput
           label="Password"
@@ -89,26 +89,14 @@ const LoginScreen = () => {
         </View>
         <View style={styles.buttonContainer}>
           <Bounceable
-            style={[styles.btn, { backgroundColor: colors.borderColor }]}
+            style={[styles.btn, { backgroundColor: colors.borderColor, justifyContent: 'center' }]}
             onPress={() => router.push('/(auth)/SignUpScreen')}
           >
-            <Ionicons name="mail-outline" size={24} style={{ position: 'absolute', left: 20 }} color={colors.text} />
-            <Themed.Text style={[styles.btnText]}>Signup with Email</Themed.Text>
+            <Themed.Text style={[styles.btnText, { marginLeft: 0 }]}>Signup</Themed.Text>
           </Bounceable>
 
-          {Constants.isIOS && (
-            <Bounceable style={[styles.btn, { backgroundColor: colors.borderColor }]}>
-              <Ionicons name="logo-apple" size={24} style={{ position: 'absolute', left: 20 }} color={colors.text} />
-              <Themed.Text style={[styles.btnText]}>Continue with Apple</Themed.Text>
-            </Bounceable>
-          )}
-
-          <Bounceable style={[styles.btn, { backgroundColor: colors.borderColor }]}>
-            <Ionicons name="logo-google" size={24} style={{ position: 'absolute', left: 20 }} color={colors.text} />
-            <Themed.Text style={[styles.btnText]}>Continue with Google</Themed.Text>
-          </Bounceable>
           <Text style={styles.description}>
-            By continuing you agree to Panda Service's <Text style={styles.link}>Terms of Service</Text> and{' '}
+            By continuing you agree to Snappy's <Text style={styles.link}>Terms of Service</Text> and{' '}
             <Themed.Text style={styles.link}>Privacy Policy</Themed.Text>.
           </Text>
         </View>

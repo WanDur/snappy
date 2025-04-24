@@ -12,6 +12,7 @@ import { SettingsProvider } from '@/contexts'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { Stack } from '@/components/router-form'
 import { initializeI18next } from '@/locales'
+import { SessionProvider } from '@/contexts/auth'
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -38,27 +39,30 @@ export default function RootLayout() {
   })
 
   return (
-    <GestureHandlerRootView>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <SettingsProvider>
-          <BottomSheetModalProvider>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="settingscreen" options={{ presentation: 'containedModal', headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-
-              <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
-              <Stack.Screen name="(modal)/ViewImageModal" sheet />
-              <Stack.Screen name="(modal)/FriendProfileModal" sheet />
-              <Stack.Screen
-                name="(modal)/PremiumInfoModal"
-                options={{ presentation: 'transparentModal', headerShown: false }}
-              />
-            </Stack>
-          </BottomSheetModalProvider>
-          <StatusBar backgroundColor={colors.background} animated />
-        </SettingsProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+    <SessionProvider>
+      <GestureHandlerRootView>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <SettingsProvider>
+            <BottomSheetModalProvider>
+              <Stack>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="settingscreen" options={{ presentation: 'containedModal', headerShown: false }} />
+                <Stack.Screen name="+not-found" />
+                
+                <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
+                <Stack.Screen name="(modal)/ViewImageModal" sheet />
+                <Stack.Screen name="(modal)/FriendProfileModal" sheet />
+                <Stack.Screen
+                  name="(modal)/PremiumInfoModal"
+                  options={{ presentation: 'transparentModal', headerShown: false }}
+                />
+              </Stack>
+            </BottomSheetModalProvider>
+            <StatusBar backgroundColor={colors.background} animated />
+          </SettingsProvider>
+        </ThemeProvider>
+      </GestureHandlerRootView>
+    </SessionProvider>
+>>>>>>> origin/master
   )
 }
