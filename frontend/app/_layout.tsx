@@ -63,6 +63,5 @@ export default function RootLayout() {
         </ThemeProvider>
       </GestureHandlerRootView>
     </SessionProvider>
->>>>>>> origin/master
   )
 }
