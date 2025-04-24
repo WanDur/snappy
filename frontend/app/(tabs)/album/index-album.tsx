@@ -27,6 +27,7 @@ const AlbumCover = memo(
     const { colors } = useTheme()
     const commonPlaceholderStyles = [placeholderStyle, { alignItems: 'center', justifyContent: 'center' }]
 
+    // if the album is at small size, use a smaller icon size
     const iconSize = typeof style.width === 'string' ? 64 : Number(style.width) * 0.4
 
     return (
@@ -95,19 +96,17 @@ const AlbumScreen = () => {
           placeholderStyle={{ width: '100%', height: '100%' }}
         />
       </View>
-      <Text style={styles.albumTitle} numberOfLines={1}>
+      <Themed.Text style={styles.albumTitle} numberOfLines={1}>
         {item.title}
-      </Text>
-      <Text style={styles.photoCount}>{item.images.length} photos</Text>
+      </Themed.Text>
+      <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
+        {item.images.length} photos
+      </Themed.Text>
     </TouchableOpacity>
   )
 
   const renderListAlbum = ({ item }: { item: Album }) => (
-    <TouchableOpacity
-      style={[styles.listAlbumItem, { borderBottomColor: colors.borderColor }]}
-      activeOpacity={1}
-      onPress={() => openAlbum(item.id)}
-    >
+    <TouchableOpacity style={styles.listAlbumItem} activeOpacity={1} onPress={() => openAlbum(item.id)}>
       <AlbumCover
         coverImage={item.coverImage}
         isShared={item.isShared}
@@ -116,9 +115,11 @@ const AlbumScreen = () => {
         placeholderStyle={{ width: 64, height: 64, borderRadius: 8 }}
       />
 
-      <View style={styles.listAlbumInfo}>
-        <Text style={styles.albumTitle}>{item.title}</Text>
-        <Text style={styles.listPhotoCount}>{item.images.length} photos</Text>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Themed.Text style={styles.albumTitle}>{item.title}</Themed.Text>
+        <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
+          {item.images.length} photos
+        </Themed.Text>
       </View>
       {item.isShared && (
         <View style={styles.listContributorsBadge}>
@@ -186,6 +187,7 @@ const AlbumScreen = () => {
                 onAction={() => router.push('/(modal)/CreateAlbumModal')}
               />
             }
+            ItemSeparatorComponent={() => <Themed.View type="divider" />}
           />
         )}
 
@@ -204,7 +206,7 @@ const AlbumScreen = () => {
                 title="No Shared Albums"
                 systemImage="rectangle.stack.person.crop"
                 actionText="Share one with your friends"
-                onAction={() => router.push('/(modal)/CreateAlbumModal')}
+                onAction={() => router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: 'true' } })}
               />
             }
           />
@@ -219,9 +221,10 @@ const AlbumScreen = () => {
                 title="No Shared Albums"
                 systemImage="rectangle.stack.person.crop"
                 actionText="Share one with your friends"
-                onAction={() => router.push('/(modal)/CreateAlbumModal')}
+                onAction={() => router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: 'true' } })}
               />
             }
+            ItemSeparatorComponent={() => <Themed.View type="divider" />}
           />
         )}
       </Themed.ScrollView>
@@ -280,19 +283,12 @@ const styles = StyleSheet.create({
   albumTitle: {
     fontSize: 15,
     fontWeight: '500',
-    color: '#333',
     marginTop: 8
-  },
-  photoCount: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 2
   },
   listAlbumItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth
+    padding: 12
   },
   listAlbumCover: {
     width: 64,
@@ -305,15 +301,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
     overflow: 'hidden'
-  },
-  listAlbumInfo: {
-    flex: 1,
-    marginLeft: 12
-  },
-  listPhotoCount: {
-    fontSize: 13,
-    color: '#888',
-    marginTop: 2
   },
   listContributorsBadge: {
     flexDirection: 'row',

@@ -1,224 +1,343 @@
-import React, { useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, SectionList } from 'react-native'
+import { useState, useEffect } from 'react'
+import { Text, View, TouchableOpacity, TouchableHighlight, ActivityIndicator, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
+import * as Crypto from 'expo-crypto'
+import { router } from 'expo-router'
+import Animated, { LinearTransition } from 'react-native-reanimated'
 
-import { Stack } from '@/components/router-form'
-import { Themed } from '@/components'
+import { Themed, TouchableBounce, SectionHeader, SwipeableRow } from '@/components'
+import { Form, Stack, ContentUnavailable } from '@/components/router-form'
+import { HeaderText } from '@/components/ui'
+import { useTheme, useFriendStore } from '@/hooks'
+import { Friend } from '@/types'
 
-// Mock data for demonstration
-const FRIENDS_DATA = [
-  {
-    id: 'f1',
-    name: 'Sara Johnson',
-    avatar: 'https://randomuser.me/api/portraits/women/12.jpg',
-    lastActive: '2h ago'
-  },
-  {
-    id: 'f2',
-    name: 'Mike Chen',
-    avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
-    lastActive: '4h ago'
-  },
-  {
-    id: 'f3',
-    name: 'Emma Wilson',
-    avatar: 'https://randomuser.me/api/portraits/women/33.jpg',
-    lastActive: '1d ago'
-  },
-  {
-    id: 'f4',
-    name: 'David Park',
-    avatar: 'https://randomuser.me/api/portraits/men/45.jpg',
-    lastActive: '3d ago'
-  },
-  {
-    id: 'f5',
-    name: 'Olivia Martinez',
-    avatar: 'https://randomuser.me/api/portraits/women/55.jpg',
-    lastActive: 'Just now'
-  }
-]
+const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
+  const names = [
+    'Sara Johnson',
+    'Mike Chen',
+    'Emma Wilson',
+    'David Park',
+    'Olivia Martinez',
+    'James Wilson',
+    'Lily Chen',
+    'Alex Thompson',
+    'Sophie Miller',
+    'Ryan Garcia',
+    'Chris Lee',
+    'Zoe Kim',
+    'Ethan Nguyen',
+    'Ava Patel',
+    'Leo Jackson'
+  ]
 
-const PENDING_REQUESTS = [
-  {
-    id: 'p1',
-    name: 'James Wilson',
-    avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-    mutualFriends: 3
-  },
-  {
-    id: 'p2',
-    name: 'Lily Chen',
-    avatar: 'https://randomuser.me/api/portraits/women/72.jpg',
-    mutualFriends: 5
-  }
-]
+  const gender = Math.random() < 0.5 ? 'men' : 'women'
+  const avatarId = Math.floor(Math.random() * 99) + 1
+  const avatar = `https://randomuser.me/api/portraits/${gender}/${avatarId}.jpg`
+  const id = Crypto.randomUUID()
+  const name = names[Math.floor(Math.random() * names.length)]
+  const username = name.toLowerCase().replace(/\s+/g, '').slice(0, 10)
 
-const SUGGESTED_FRIENDS = [
-  {
-    id: 's1',
-    name: 'Alex Thompson',
-    avatar: 'https://randomuser.me/api/portraits/men/67.jpg',
-    mutualFriends: 8
-  },
-  {
-    id: 's2',
-    name: 'Sophie Miller',
-    avatar: 'https://randomuser.me/api/portraits/women/62.jpg',
-    mutualFriends: 4
-  },
-  {
-    id: 's3',
-    name: 'Ryan Garcia',
-    avatar: 'https://randomuser.me/api/portraits/men/77.jpg',
-    mutualFriends: 2
-  }
-]
+  const item: Friend = { id, name, avatar, type, username, albumList: [] }
+  const lastActiveOptions = ['Just now', '2h ago', '4h ago', '1d ago', '3d ago']
+  item.lastActive = lastActiveOptions[Math.floor(Math.random() * lastActiveOptions.length)]
+  item.mutualFriends = Math.floor(Math.random() * 10)
+
+  return item
+}
 
 const FriendsScreen = () => {
+  const { colors, isDark } = useTheme()
+  const { friends, addFriend, removeFriend, handleRequest } = useFriendStore()
+
   const [query, setQuery] = useState('')
-  const [pendingRequests, setPendingRequests] = useState(PENDING_REQUESTS)
-  const [suggestedFriends, setSuggestedFriends] = useState(SUGGESTED_FRIENDS)
-  const [friends, setFriends] = useState(FRIENDS_DATA)
+  const [isFocused, setIsFocused] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [searchResults, setSearchResults] = useState<Friend[]>([])
 
-  const handleAcceptRequest = (id: string) => {
-    // Find the request
-    const requestToAccept = pendingRequests.find((request) => request.id === id)
+  const myFriend = friends.filter((f) => f.type === 'friend')
+  const pendingRequests = friends.filter((f) => f.type === 'pending')
+  const suggestedFriends = friends.filter((f) => f.type === 'suggested')
 
-    if (requestToAccept) {
-      // Remove from pending
-      setPendingRequests(pendingRequests.filter((request) => request.id !== id))
+  const fetchUsers = async (query: string) => {
+    setIsLoading(true)
 
-      // Add to friends
-      setFriends([
-        ...friends,
-        {
-          id: requestToAccept.id,
-          name: requestToAccept.name,
-          avatar: requestToAccept.avatar,
-          lastActive: 'Just now'
-        }
-      ])
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    // this should be fetched from the server
+    const mockUsers: Friend[] = [
+      {
+        id: '1',
+        name: 'Alex Johnson',
+        username: 'alexj',
+        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
+        albumList: [],
+        type: 'suggested',
+        lastActive: 'Just now',
+        mutualFriends: 3
+      },
+      {
+        id: '2',
+        name: 'Sarah Williams',
+        username: 'sarahw',
+        avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+        albumList: [],
+        type: 'suggested',
+        lastActive: 'Just now',
+        mutualFriends: 2
+      },
+      {
+        id: '3',
+        name: 'Michael Brown',
+        username: 'michaelb',
+        avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
+        albumList: [],
+        type: 'suggested',
+        lastActive: 'Just now',
+        mutualFriends: 1
+      },
+      {
+        id: '4',
+        name: 'Jessica Davis',
+        username: 'jessicad',
+        avatar: 'https://randomuser.me/api/portraits/women/17.jpg',
+        albumList: [],
+        type: 'suggested',
+        lastActive: 'Just now',
+        mutualFriends: 5
+      }
+    ]
+
+    const users = [...friends, ...mockUsers]
+
+    const filteredUsers = users.filter((user) => user.name.toLowerCase().includes(query.toLowerCase()))
+
+    setSearchResults(query ? filteredUsers : [])
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    if (query.trim()) {
+      setIsSearching(true)
+      fetchUsers(query)
+      return
+    } else {
+      setIsSearching(false)
+      setSearchResults([])
     }
-  }
-
-  const handleDeclineRequest = (id: string) => {
-    setPendingRequests(pendingRequests.filter((request) => request.id !== id))
-  }
+  }, [query])
 
   const handleAddSuggested = (id: string) => {
-    // In a real app, this would send a friend request
-    // For demo, just remove from suggestions
-    setSuggestedFriends(suggestedFriends.filter((friend) => friend.id !== id))
+    // send a friend request
   }
 
-  const renderFriendItem = ({ item }) => (
-    <TouchableOpacity style={styles.friendItem}>
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={styles.friendInfo}>
-        <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.lastActive}>{item.lastActive}</Text>
+  const openUserProfile = (id: string) => {
+    router.push({ pathname: '/(modal)/FriendProfileModal', params: { friendID: id } })
+  }
+
+  const renderFriendItem = ({ item }: { item: Friend }) => (
+    <SwipeableRow
+      title={item.name}
+      onDelete={() => removeFriend(item.id)}
+      description="Are you sure to remove this friend?"
+    >
+      <TouchableHighlight
+        style={[styles.friendItem, { backgroundColor: colors.background }]}
+        activeOpacity={0.8}
+        onPress={() => openUserProfile(item.id)}
+        underlayColor={isDark ? '#3A3A4A' : '#DCDCE2'}
+      >
+        <>
+          <Image source={{ uri: item.avatar }} style={styles.avatar} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+            <Themed.Text style={{ fontSize: 13 }} text70>
+              {item.lastActive}
+            </Themed.Text>
+          </View>
+          <TouchableOpacity style={{ padding: 8 }} activeOpacity={0.7} onPress={() => console.log('asd')}>
+            <Ionicons name="chatbubble-outline" size={24} color="#5271FF" />
+          </TouchableOpacity>
+        </>
+      </TouchableHighlight>
+    </SwipeableRow>
+  )
+
+  const renderPendingRequestItem = ({ item }: { item: Friend }) => (
+    <Themed.View style={styles.requestItem}>
+      <TouchableOpacity
+        style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+        activeOpacity={0.7}
+        onPress={() => openUserProfile(item.id)}
+      >
+        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+          <Themed.Text style={{ fontSize: 13 }} text70>
+            {item.mutualFriends} mutual friends
+          </Themed.Text>
+        </View>
+      </TouchableOpacity>
+      <View style={{ flexDirection: 'row' }}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.acceptButton]}
+          onPress={() => handleRequest(item.id, true)}
+          activeOpacity={0.7}
+        >
+          <Themed.Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>Accept</Themed.Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.declineButton]}
+          onPress={() => handleRequest(item.id, false)}
+          activeOpacity={0.7}
+        >
+          <Themed.Text style={{ color: '#666', fontSize: 14, fontWeight: '500' }}>Decline</Themed.Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity style={styles.messageButton}>
-        <Ionicons name="chatbubble-outline" size={20} color="#5271FF" />
+    </Themed.View>
+  )
+
+  const renderSuggestedFriendItem = ({ item }: { item: Friend }) => (
+    <Themed.View style={styles.suggestedItem} shadow>
+      <TouchableOpacity style={{ alignItems: 'center' }} activeOpacity={0.7} onPress={() => openUserProfile(item.id)}>
+        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        <View style={styles.suggestedInfo}>
+          <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
+          <Themed.Text style={{ fontSize: 13 }} text70>
+            {item.mutualFriends} mutual friends
+          </Themed.Text>
+        </View>
+      </TouchableOpacity>
+      <TouchableBounce style={styles.addButton} onPress={() => handleAddSuggested(item.id)}>
+        <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
+      </TouchableBounce>
+    </Themed.View>
+  )
+
+  const renderFriendList = () => (
+    <View>
+      {pendingRequests.length > 0 && (
+        <>
+          <SectionHeader
+            title="Friend Requests"
+            style={styles.sectionHeader}
+            buttonText="$add"
+            onPress={() => addFriend(generateUser('pending'))}
+          />
+          <Themed.View type="divider" />
+          <Animated.FlatList
+            data={pendingRequests}
+            renderItem={renderPendingRequestItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <Themed.View type="divider" style={{ marginLeft: 70 }} />}
+            itemLayoutAnimation={LinearTransition.duration(300)}
+          />
+        </>
+      )}
+
+      <SectionHeader
+        title="Your Friends"
+        style={styles.sectionHeader}
+        buttonText="$add"
+        onPress={() => addFriend(generateUser('friend'))}
+      />
+
+      {myFriend.length > 0 ? (
+        <>
+          <Themed.View type="divider" />
+          <Animated.FlatList
+            data={myFriend}
+            renderItem={renderFriendItem}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ItemSeparatorComponent={() => <Themed.View type="divider" style={{ marginLeft: 70 }} />}
+          />
+        </>
+      ) : (
+        <Form.Section>
+          <ContentUnavailable
+            title="Connect with Friends"
+            systemImage="person.2"
+            description="You haven't added any friends yet. Explore suggested friends or search to start connecting!"
+          />
+        </Form.Section>
+      )}
+
+      <SectionHeader
+        title="Suggested Friends"
+        style={styles.sectionHeader}
+        buttonText="$add"
+        onPress={() => addFriend(generateUser('suggested'))}
+      />
+      <Themed.View type="divider" />
+      <Animated.FlatList
+        data={suggestedFriends}
+        renderItem={renderSuggestedFriendItem}
+        keyExtractor={(item) => item.id}
+        horizontal={true}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.suggestedList}
+      />
+    </View>
+  )
+
+  const renderUserItem = ({ item }: { item: Friend }) => (
+    <TouchableOpacity style={styles.userItem} activeOpacity={0.7}>
+      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <View style={styles.userInfo}>
+        <Themed.Text style={styles.userName}>{item.name}</Themed.Text>
+        <Themed.Text style={{ fontSize: 14 }} text50>
+          @{item.username}
+        </Themed.Text>
+      </View>
+      <TouchableOpacity
+        style={{ backgroundColor: '#007AFF', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
+      >
+        <Text style={styles.addButtonText}>Add</Text>
       </TouchableOpacity>
     </TouchableOpacity>
   )
 
-  const renderPendingRequestItem = ({ item }) => (
-    <View style={styles.requestItem}>
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={styles.requestInfo}>
-        <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.mutualFriends}>{item.mutualFriends} mutual friends</Text>
+  const renderEmptyResult = () =>
+    isLoading ? (
+      <View style={styles.emptyContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
       </View>
-      <View style={styles.requestActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.acceptButton]}
-          onPress={() => handleAcceptRequest(item.id)}
-        >
-          <Text style={styles.acceptButtonText}>Accept</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.declineButton]}
-          onPress={() => handleDeclineRequest(item.id)}
-        >
-          <Text style={styles.declineButtonText}>Decline</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  )
-
-  const renderSuggestedFriendItem = ({ item }) => (
-    <View style={styles.suggestedItem}>
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <View style={styles.suggestedInfo}>
-        <Text style={styles.friendName}>{item.name}</Text>
-        <Text style={styles.mutualFriends}>{item.mutualFriends} mutual friends</Text>
-      </View>
-      <TouchableOpacity style={styles.addButton} onPress={() => handleAddSuggested(item.id)}>
-        <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
-      </TouchableOpacity>
-    </View>
-  )
-
-  const renderSectionHeader = ({ section }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
-      {section.count > 0 && <Text style={styles.sectionCount}>{section.count}</Text>}
-    </View>
-  )
+    ) : (
+      <Form.Section style={{ marginTop: 16 }}>
+        <ContentUnavailable
+          title="No Users Found"
+          systemImage="magnifyingglass"
+          description="Check the spelling, or try a different name."
+        />
+      </Form.Section>
+    )
 
   const onSearch = () => {}
 
-  const sections = [
-    {
-      title: 'Friend Requests',
-      data: pendingRequests.length > 0 ? [{ type: 'requests' }] : [],
-      count: pendingRequests.length,
-      renderItem: () => (
-        <FlatList
-          data={pendingRequests}
-          renderItem={renderPendingRequestItem}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-        />
-      )
-    },
-    {
-      title: 'Your Friends',
-      data: [{ type: 'friends' }],
-      renderItem: () => (
-        <FlatList data={friends} renderItem={renderFriendItem} keyExtractor={(item) => item.id} scrollEnabled={false} />
-      )
-    },
-    {
-      title: 'Suggested Friends',
-      data: suggestedFriends.length > 0 ? [{ type: 'suggested' }] : [],
-      renderItem: () => (
-        <FlatList
-          data={suggestedFriends}
-          renderItem={renderSuggestedFriendItem}
-          keyExtractor={(item) => item.id}
-          horizontal={true}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.suggestedList}
-        />
-      )
-    }
-  ]
-
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <Stack.Screen
         options={{
+          headerRight: () => (
+            <HeaderText
+              text="add pending"
+              textProps={{ state: true }}
+              onPress={() => addFriend(generateUser('pending'))}
+            />
+          ),
           headerSearchBarOptions: {
             placeholder: 'Search',
             autoFocus: true,
             hideWhenScrolling: false,
             onChangeText: (e) => {
               setQuery(e.nativeEvent.text)
+            },
+            onFocus: () => setIsFocused(true),
+            onCancelButtonPress: () => {
+              setIsFocused(false)
             },
             onSearchButtonPress: () => {
               onSearch()
@@ -227,72 +346,36 @@ const FriendsScreen = () => {
         }}
       />
 
-      <SectionList
-        sections={sections}
-        keyExtractor={(item, index) => item.type + index}
-        renderSectionHeader={renderSectionHeader}
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        contentInsetAdjustmentBehavior="automatic"
-      />
-    </>
+      <Themed.ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        {isFocused ? (
+          <View style={{ flex: 1 }}>
+            {searchResults.length > 0 ? (
+              <Animated.FlatList
+                data={searchResults}
+                renderItem={renderUserItem}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingTop: 8 }}
+                scrollEnabled={false}
+                ItemSeparatorComponent={() => <Themed.View type="divider" />}
+              />
+            ) : (
+              isSearching && renderEmptyResult()
+            )}
+          </View>
+        ) : (
+          renderFriendList()
+        )}
+      </Themed.ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#F8F8F8'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
-    backgroundColor: '#FFFFFF'
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333'
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFEFEF',
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginVertical: 12,
-    paddingHorizontal: 12
-  },
-  searchIcon: {
-    marginRight: 8
-  },
-  searchInput: {
-    flex: 1,
-    height: 42,
-    fontSize: 16,
-    color: '#333'
-  },
-  clearButton: {
-    padding: 4
-  },
-  listContainer: {
-    paddingBottom: 100
-  },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#F8F8F8'
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#333'
+    paddingTop: 16,
+    fontSize: 17
   },
   sectionCount: {
     marginLeft: 8,
@@ -304,52 +387,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0'
+    paddingVertical: 12
   },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25
   },
-  friendInfo: {
-    flex: 1,
-    marginLeft: 12
-  },
   friendName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
     marginBottom: 2
-  },
-  lastActive: {
-    fontSize: 13,
-    color: '#888'
-  },
-  messageButton: {
-    padding: 8
   },
   requestItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0'
-  },
-  requestInfo: {
-    flex: 1,
-    marginLeft: 12
-  },
-  mutualFriends: {
-    fontSize: 13,
-    color: '#666'
-  },
-  requestActions: {
-    flexDirection: 'row'
+    paddingVertical: 12
   },
   actionButton: {
     paddingHorizontal: 12,
@@ -363,30 +417,18 @@ const styles = StyleSheet.create({
   declineButton: {
     backgroundColor: '#EFEFEF'
   },
-  acceptButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500'
-  },
-  declineButtonText: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '500'
-  },
   suggestedList: {
     paddingLeft: 16,
     paddingRight: 8,
-    paddingVertical: 8
+    paddingVertical: 12
   },
   suggestedItem: {
     width: 150,
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
-    marginRight: 8,
+    marginRight: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1
@@ -398,11 +440,48 @@ const styles = StyleSheet.create({
   },
   addButton: {
     backgroundColor: '#5271FF',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16
+  },
+  userInfo: {
+    flex: 1,
+    marginLeft: 12
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2
+  },
+  addButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#3A3A3C',
+    marginTop: 16
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginTop: 8
   }
 })
 
