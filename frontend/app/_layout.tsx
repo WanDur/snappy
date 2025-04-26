@@ -48,9 +48,10 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="settingscreen" options={{ presentation: 'containedModal', headerShown: false }} />
                 <Stack.Screen name="+not-found" />
-                
+
                 <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
-                <Stack.Screen name="(modal)/ViewImageModal" sheet />
+                <Stack.Screen name="(modal)/ChatSettingModal" sheet />
+                <Stack.Screen name="(modal)/ViewImageModal" options={{ headerShown: false }} sheet />
                 <Stack.Screen name="(modal)/FriendProfileModal" sheet />
                 <Stack.Screen
                   name="(modal)/PremiumInfoModal"

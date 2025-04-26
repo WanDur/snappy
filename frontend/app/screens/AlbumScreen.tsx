@@ -1,5 +1,9 @@
-import { useRef } from 'react'
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native'
+/**
+ * Screen Params:
+ * albumId: string
+ */
+import { useState, useRef } from 'react'
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native'
 import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
@@ -20,12 +24,13 @@ const itemSize = (Constants.screenWidth - gap * (numColumns - 1)) / numColumns
 const AlbumScreen = () => {
   const router = useRouter()
   const { albumId } = useLocalSearchParams<{ albumId: string }>()
+  const { isDark, colors } = useTheme()
 
   const album = useAlbumStore((state) => state.getAlbum(albumId))!
   const { addImage } = useAlbumStore()
-  const { isDark, colors } = useTheme()
 
   const bottomSheetModalRef = useRef<BottomSheetModal>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const formattedDate = new Date(album.createdAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -34,6 +39,7 @@ const AlbumScreen = () => {
   })
 
   const handleImagePick = async () => {
+    setIsLoading(true)
     const pickerResult = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, quality: 0.3 })
 
     if (!pickerResult.canceled && pickerResult.assets) {
@@ -42,7 +48,9 @@ const AlbumScreen = () => {
         album.id,
         selectedAssets.map((uri) => ({ photoId: Crypto.randomUUID(), uri }))
       )
+      setIsLoading(false)
     }
+    setIsLoading(false)
   }
 
   const handleAddPhotos = () => {
@@ -154,7 +162,7 @@ const AlbumScreen = () => {
         onPress={handleAddPhotos}
         activeOpacity={0.9}
       >
-        <IconSymbol name="plus" color="#fff" />
+        {isLoading ? <ActivityIndicator color="#fff" /> : <IconSymbol name="plus" color="#fff" />}
       </TouchableOpacity>
 
       <BottomSheetModal

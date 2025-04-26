@@ -1,3 +1,8 @@
+/**
+ * Screen Params:
+ * photoIndex: string
+ * id: string
+ */
 import { useRef } from 'react'
 import { View, FlatList, useWindowDimensions, StyleSheet } from 'react-native'
 import { useLocalSearchParams } from 'expo-router'

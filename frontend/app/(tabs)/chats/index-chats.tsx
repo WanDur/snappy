@@ -30,37 +30,34 @@ const avatars = [
   'https://i.pravatar.cc/150?u=lynnetteduke@marketoid.com'
 ]
 
-const companyNames = [
-  'Tech Solutions',
-  'Innovative Systems',
-  'Global Enterprises',
-  'NextGen Technologies',
-  'Creative Minds',
-  'Future Vision',
-  'Dynamic Corp',
-  'Elite Software',
-  'Prime Innovations',
-  'Pioneer Tech',
-  'Bright Future',
-  'Visionary Labs',
-  'Synergy Solutions'
+const usernames = [
+  'AlexStar21',
+  'SunnyVibes_',
+  'JakeOnTheGo',
+  'LunaSparkle',
+  'MaxWaveRider',
+  'ZoeCloud9',
+  'RileyBlaze',
+  'NovaDreamer',
+  'KaiAdventure',
+  'MiaSkybound'
 ]
 
-const jobTitles = [
-  'Marketing Manager',
-  'Software Engineer',
-  'Product Manager',
-  'Sales Executive',
-  'HR Specialist',
-  'Data Analyst',
-  'UX Designer',
-  'Project Coordinator',
-  'Business Analyst',
-  'Operations Manager',
-  'Financial Analyst',
-  'Customer Support',
-  'IT Specialist'
-]
+const getRandomLastOnline = () => {
+  const random = Math.random()
+
+  if (random < 0.1) {
+    return 'Active now'
+  } else if (random < 0.4) {
+    const minutes = Math.floor(Math.random() * 59) + 1
+    return `Active ${minutes} minute${minutes === 1 ? '' : 's'} ago`
+  } else if (random < 0.7) {
+    const hours = Math.floor(Math.random() * 23) + 1
+    return `Active ${hours} hour${hours === 1 ? '' : 's'} ago`
+  } else {
+    return 'Active recently'
+  }
+}
 
 const getRandomItem = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
 const getRandomDate = () => new Date(Date.now() - Math.floor(Math.random() * 10000000000))
@@ -153,8 +150,8 @@ export const ChatScreen = () => {
               activeOpacity={0.7}
               onPress={() =>
                 addChat({
-                  chatSubtitle: getRandomItem(companyNames),
-                  chatTitle: getRandomItem(jobTitles),
+                  chatTitle: getRandomItem(usernames),
+                  chatSubtitle: getRandomLastOnline(),
                   initialDate: getRandomDate(),
                   unreadCount: Math.floor(Math.random() * 6),
                   iconUrl: avatars[Math.floor(Math.random() * avatars.length)],

@@ -8,6 +8,7 @@ import { Friend } from '@/types'
 interface FriendStore {
   friends: Friend[]
   addFriend: (friend: Friend) => void
+  getFriend: (id: string) => Friend | undefined
   removeFriend: (id: string) => void
   handleRequest: (id: string, accept: boolean) => void
 }
@@ -23,6 +24,9 @@ export const useFriendStore = create<FriendStore>()(
             state.friends.push(friend)
           }
         })
+      },
+      getFriend: (id) => {
+        return get().friends.find((friend) => friend.id === id)
       },
       removeFriend: (id) => {
         set((state) => {
