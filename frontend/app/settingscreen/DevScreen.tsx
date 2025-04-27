@@ -6,7 +6,7 @@ import { Platform, Alert } from 'react-native'
 import { Stack, useRouter } from 'expo-router'
 import * as Device from 'expo-device'
 import i18next from 'i18next'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 
 import { SettingsGroup, Themed } from '@/components'
 import { useSettings } from '@/contexts'
@@ -21,8 +21,8 @@ const DevScreen = () => {
 
   const deleteAllRecords = async () => {
     try {
-      const keys = await AsyncStorage.getAllKeys()
-      await AsyncStorage.multiRemove(keys)
+      const keys = await Storage.getAllKeys()
+      await Storage.multiRemove(keys)
     } catch (error) {
       console.error('Error clearing record:', error)
     }
@@ -38,7 +38,7 @@ const DevScreen = () => {
 
   useEffect(() => {
     const fetchStorage = async () => {
-      const keys = await AsyncStorage.getAllKeys()
+      const keys = await Storage.getAllKeys()
       setZustandKey(keys.filter((key) => key.startsWith('zustand')))
     }
     fetchStorage()

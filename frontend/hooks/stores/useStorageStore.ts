@@ -1,11 +1,11 @@
 /**
  * This hook can be used to store any ungrouped data in local storage.
- * It can be used like AsyncStorage, but with a more convenient API managed by Zustand.
+ * It can be used like Storage, but with a more convenient API managed by Zustand.
  */
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 
 interface StorageStore {
   savedInterests: number[]
@@ -46,6 +46,6 @@ export const useStorageStore = create<StorageStore>()(
         })
       }
     })),
-    { name: 'zustand-storage', storage: createJSONStorage(() => AsyncStorage) }
+    { name: 'zustand-storage', storage: createJSONStorage(() => Storage) }
   )
 )

@@ -135,13 +135,15 @@ const AlbumScreen = () => {
       )}
       ListHeaderComponent={<AlbumHeader />}
       ListEmptyComponent={
-        <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
-          <ContentUnavailable
-            title="Your Album is Empty"
-            description="Start filling this album with memories! Tap the '+' button to add photos."
-            systemImage="photo.on.rectangle.angled"
-          />
-        </View>
+        album.coverImage ? (
+          <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+            <ContentUnavailable
+              title="Your Album is Empty"
+              description="Start filling this album with memories! Tap the '+' button to add photos."
+              systemImage="photo.on.rectangle.angled"
+            />
+          </View>
+        ) : undefined
       }
       contentInsetAdjustmentBehavior="automatic"
     />

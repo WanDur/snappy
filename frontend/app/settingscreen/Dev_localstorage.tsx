@@ -1,7 +1,7 @@
 import { Alert } from 'react-native'
 import { Stack } from 'expo-router'
 import React, { useState, useEffect } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 
 import { SettingsGroup, Themed } from '../../components'
 
@@ -10,7 +10,7 @@ const LocalStorageVisualizer = ({ query = '' }) => {
 
   const clearRecordByKey = async (key: string) => {
     try {
-      await AsyncStorage.removeItem(key)
+      await Storage.removeItem(key)
       // @ts-ignore
       setStorageData((prevData) => prevData.filter((item) => item.key !== key))
     } catch (error) {
@@ -20,10 +20,10 @@ const LocalStorageVisualizer = ({ query = '' }) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const keys = await AsyncStorage.getAllKeys()
+      const keys = await Storage.getAllKeys()
       const data = await Promise.all(
         keys.map(async (key) => {
-          const value = await AsyncStorage.getItem(key)
+          const value = await Storage.getItem(key)
           if (value) {
             const parsedValue = JSON.parse(value)
 
