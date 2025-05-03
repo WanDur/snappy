@@ -1,259 +1,339 @@
-import React, { useState, useEffect } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native'
+import { useState, useCallback, useRef } from 'react'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, ListRenderItem } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
+import { useHeaderHeight } from '@react-navigation/elements'
 
+import { useTheme } from '@/hooks'
+import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
+import { Constants } from '@/constants'
 
-// Mock data for demonstration
-const MOCK_POSTS = [
-  {
-    id: '1',
-    username: 'Alex Morgan',
-    userAvatar: 'https://randomuser.me/api/portraits/women/32.jpg',
-    imageUrl: 'https://images.unsplash.com/photo-1501854140801-50d01698950b',
-    likes: 42,
-    comments: 5,
-    timestamp: '2h ago'
-  },
-  {
-    id: '2',
-    username: 'Jamie Smith',
-    userAvatar: 'https://randomuser.me/api/portraits/men/44.jpg',
-    imageUrl: 'https://images.unsplash.com/photo-1523531294919-4bcd7c65e216',
-    likes: 26,
-    comments: 3,
-    timestamp: '4h ago'
-  },
-  {
-    id: '3',
-    username: 'Taylor Reed',
-    userAvatar: 'https://randomuser.me/api/portraits/women/65.jpg',
-    imageUrl: 'https://images.unsplash.com/photo-1576506542790-51244b486a6b',
-    likes: 89,
-    comments: 12,
-    timestamp: '6h ago'
-  },
-  {
-    id: '4',
-    username: 'Alex Morgan',
-    userAvatar: 'https://randomuser.me/api/portraits/women/32.jpg',
-    imageUrl: 'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2',
-    likes: 34,
-    comments: 2,
-    timestamp: '1d ago'
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
+
+interface DayTile {
+  id: string
+  label: string
+  date: Date
+  hasMedia: boolean
+  thumbnail?: string
+  isAdd?: boolean
+}
+
+interface FeedItem {
+  id: string
+  user: string
+  avatar: string
+  mediaUri: string
+  seen: boolean
+}
+
+interface WeekBundle {
+  weekNum: number
+  key: string
+  days: DayTile[]
+  feed: FeedItem[]
+}
+
+/**************** ISO‑week helpers ****************/
+const getISOWeek = (d: Date = new Date()): number => {
+  const copy = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  const dayNr = copy.getUTCDay() || 7 // Mon=1 … Sun=7
+  copy.setUTCDate(copy.getUTCDate() + 4 - dayNr)
+  const yearStart = new Date(Date.UTC(copy.getUTCFullYear(), 0, 1))
+  return Math.ceil(((copy.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+const mondayOfISOWeek = (d: Date): Date => {
+  const copy = new Date(d)
+  const day = copy.getDay() || 7 // Sun => 7
+  copy.setDate(copy.getDate() - day + 1) // back to Monday
+  copy.setHours(0, 0, 0, 0)
+  return copy
+}
+const addDays = (d: Date, n: number) => {
+  const dupe = new Date(d)
+  dupe.setDate(dupe.getDate() + n)
+  return dupe
+}
+
+/**************** Mock generators ****************/
+const randomThumb = () => `https://picsum.photos/seed/${Math.floor(Math.random() * 10000)}/800`
+
+const buildDays = (weekOffset: number): DayTile[] => {
+  // Monday of the target week
+  const today = new Date()
+  const currentMon = mondayOfISOWeek(today)
+  const mon = addDays(currentMon, -weekOffset * 7)
+
+  const tiles: DayTile[] = []
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(mon, i)
+    const id = date.toISOString().split('T')[0]
+    const hasMedia = Math.random() < 0.4
+    const label = `${date.toLocaleString('en', { month: 'short' })} ${date.getDate()}\n${date.toLocaleString('en', {
+      weekday: 'short'
+    })}`
+    tiles.push({ id, label, date, hasMedia, thumbnail: hasMedia ? randomThumb() : undefined })
   }
-]
+  // Insert the “+” tile after Monday (index 1) to match screenshot
+  tiles.unshift({ id: `add-${weekOffset}`, label: '+', hasMedia: false, isAdd: true, date: mon })
 
-const HomeScreen = () => {
-  const [hasPostedThisWeek, setHasPostedThisWeek] = useState(false)
-  const [likedPosts, setLikedPosts] = useState({})
+  return tiles
+}
 
-  const toggleLike = (postId: string) => {
-    setLikedPosts((prev) => ({
-      ...prev,
-      [postId]: !prev[postId]
-    }))
-  }
+const buildFeed = (weekOffset: number): FeedItem[] =>
+  Array.from({ length: 5 }).map((_, idx) => ({
+    id: `f-${weekOffset}-${idx}`,
+    user: ['johndoe', 'catmeow', 'hello', 'wandur'][idx % 4],
+    avatar: `https://randomuser.me/api/portraits/${idx % 2 ? 'men' : 'women'}/${30 + idx}.jpg`,
+    mediaUri: randomThumb(),
+    seen: Math.random() < 0.5
+  }))
 
-  const renderUploadReminder = () => {
-    if (!hasPostedThisWeek) {
-      return (
-        <View style={styles.reminderContainer}>
-          <View style={styles.reminderContent}>
-            <Ionicons name="camera" size={24} color="#ffffff" style={styles.reminderIcon} />
-            <Text style={styles.reminderText}>Share a photo this week to see your friends' posts!</Text>
-            <TouchableOpacity style={styles.uploadButton} onPress={() => setHasPostedThisWeek(true)}>
-              <Text style={styles.uploadButtonText}>Upload</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )
-    }
-    return null
-  }
+const buildWeeks = (count = 4): WeekBundle[] => {
+  const currentWeek = getISOWeek()
+  return Array.from({ length: count }).map((_, offset) => ({
+    weekNum: currentWeek - offset,
+    key: `week-${currentWeek - offset}`,
+    days: buildDays(offset),
+    feed: buildFeed(offset)
+  }))
+}
 
-  const renderPostItem = ({ item }) => (
-    <View style={styles.postContainer}>
-      <View style={styles.postHeader}>
-        <View style={styles.userInfo}>
-          <Image source={{ uri: item.userAvatar }} style={styles.avatar} />
-          <Text style={styles.username}>{item.username}</Text>
-        </View>
-        <TouchableOpacity>
-          <Ionicons name="ellipsis-horizontal" size={20} color="#333" />
-        </TouchableOpacity>
-      </View>
-
-      <Image source={{ uri: item.imageUrl }} style={styles.postImage} contentFit="cover" />
-
-      <View style={styles.postActions}>
-        <View style={styles.leftActions}>
-          <TouchableOpacity style={styles.actionButton} onPress={() => toggleLike(item.id)}>
-            <Ionicons
-              name={likedPosts[item.id] ? 'heart' : 'heart-outline'}
-              size={24}
-              color={likedPosts[item.id] ? '#FF3B30' : '#333'}
-            />
-            <Text style={styles.actionText}>{likedPosts[item.id] ? item.likes + 1 : item.likes}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="chatbubble-outline" size={22} color="#333" />
-            <Text style={styles.actionText}>{item.comments}</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.timestamp}>{item.timestamp}</Text>
-      </View>
-    </View>
-  )
-
+/**************** Components ****************/
+const DayCell = ({ day }: { day: DayTile }) => {
+  const { colors } = useTheme()
   return (
-    <View style={{ flex: 1 }}>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <TouchableOpacity activeOpacity={0.7}>
-              <Ionicons name="notifications-outline" size={26} />
-            </TouchableOpacity>
-          )
-        }}
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={[
+        styles.dayCell,
+        {
+          backgroundColor: colors.secondaryBg,
+          shadowColor: colors.text,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.2,
+          shadowRadius: 1,
+          elevation: 2
+        }
+      ]}
+    >
+      {day.hasMedia ? (
+        <Image source={{ uri: day.thumbnail! }} style={styles.dayThumb} contentFit="cover" />
+      ) : (
+        <View style={styles.dayPlaceholder} />
+      )}
+      <View style={styles.dayLabelWrap}>
+        <Text style={[styles.dayLabel, day.isAdd && styles.dayAdd]}>{day.label}</Text>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+const FeedCard = ({ item, onSeen }: { item: FeedItem; onSeen: () => void }) => (
+  <TouchableOpacity activeOpacity={0.9} style={[styles.feedCard, { width: SCREEN_WIDTH * 0.75 }]} onPress={onSeen}>
+    <View style={styles.feedHeader}>
+      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <Themed.Text style={styles.feedUser}>{item.user}</Themed.Text>
+    </View>
+    <Image source={{ uri: item.mediaUri }} style={styles.feedImage} contentFit="cover" />
+    {item.seen && (
+      <View style={styles.seenTag}>
+        <Text style={styles.seenText}>Seen</Text>
+      </View>
+    )}
+  </TouchableOpacity>
+)
+
+const WeekPage = ({ bundle, markSeen }: { bundle: WeekBundle; markSeen: (id: string) => void }) => {
+  const headerHeight = useHeaderHeight()
+  const tabHeight = useBottomTabBarHeight()
+
+  const ADAPTIVE_HEIGHT = Constants.isIOS ? SCREEN_HEIGHT : SCREEN_HEIGHT - headerHeight - tabHeight
+  const ADAPTIVE_MARGIN = Constants.isIOS ? 0 : headerHeight
+  const ADAPTIVE_PADDING = Constants.isIOS ? headerHeight : 0
+
+  const renderDay: ListRenderItem<DayTile> = ({ item }) => <DayCell day={item} />
+  const renderFeed: ListRenderItem<FeedItem> = ({ item }) => <FeedCard item={item} onSeen={() => markSeen(item.id)} />
+  return (
+    <View
+      style={{
+        width: SCREEN_WIDTH,
+        height: ADAPTIVE_HEIGHT,
+        marginTop: ADAPTIVE_MARGIN,
+        paddingTop: ADAPTIVE_PADDING
+        // backgroundColor: bundle.weekNum % 2 === 0 ? 'pink' : 'lightblue'
+      }}
+    >
+      <View style={{ height: 16 }} />
+      <FlatList
+        horizontal
+        data={bundle.days}
+        keyExtractor={(d) => d.id}
+        renderItem={renderDay}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.daysRow}
       />
       <FlatList
-        data={MOCK_POSTS}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPostItem}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.feedContainer}
-        ListHeaderComponent={renderUploadReminder}
-        contentInsetAdjustmentBehavior="automatic"
+        style={{ marginTop: -100 }}
+        horizontal
+        data={bundle.feed}
+        keyExtractor={(f) => f.id}
+        renderItem={renderFeed}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.feedRow}
       />
     </View>
   )
 }
 
+/**************** HomeScreen ****************/
+const HomeScreen = () => {
+  const { colors } = useTheme()
+  const [weeks, setWeeks] = useState(buildWeeks())
+  const [weekListIndex, setWeekListIndex] = useState(0)
+  const listRef = useRef<FlatList>(null)
+
+  const markSeen = useCallback((id: string) => {
+    setWeeks((prev) =>
+      prev.map((w) => ({
+        ...w,
+        feed: w.feed.map((f) => (f.id === id ? { ...f, seen: true } : f))
+      }))
+    )
+  }, [])
+
+  const getItemLayout = (_: any, index: number) => ({ length: SCREEN_HEIGHT, offset: SCREEN_HEIGHT * index, index })
+
+  return (
+    <Themed.View style={styles.container}>
+      <Stack.Screen
+        options={{
+          headerTitle: `Week ${weeks[weekListIndex].weekNum}`,
+          headerRight: () => (
+            <TouchableOpacity>
+              <Ionicons name="notifications-outline" size={24} />
+            </TouchableOpacity>
+          ),
+          headerTransparent: true,
+          ...(!Constants.isIOS && { headerStyle: { backgroundColor: colors.background } })
+        }}
+      />
+
+      <FlatList
+        ref={listRef}
+        data={weeks}
+        pagingEnabled
+        keyExtractor={(w) => w.key}
+        renderItem={({ item }) => <WeekPage bundle={item} markSeen={markSeen} />}
+        getItemLayout={getItemLayout}
+        showsVerticalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          const pageNum = Math.min(
+            Math.max(Math.floor(e.nativeEvent.contentOffset.y / SCREEN_HEIGHT + 0.5), 0),
+            weeks.length
+          )
+          setWeekListIndex(pageNum)
+        }}
+      />
+    </Themed.View>
+  )
+}
+
+/**************** Styles ****************/
+const tileWidth = 100
+const tileHeight = 120
+
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#F8F8F8'
+    flex: 1
   },
-  header: {
+  pageHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFEFEF',
-    backgroundColor: '#FFFFFF'
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333'
-  },
-  feedContainer: {
-    paddingTop: 16,
-    paddingBottom: 100
-  },
-  reminderContainer: {
-    margin: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#5271FF',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2
-  },
-  reminderContent: {
-    flexDirection: 'row',
     alignItems: 'center',
-    padding: 16
+    paddingHorizontal: 20,
+    marginBottom: 12
   },
-  reminderIcon: {
+  pageTitle: {
+    fontSize: 38,
+    fontWeight: '700'
+  },
+  daysRow: {
+    paddingLeft: 16,
+    margin: 4,
+    marginBottom: 20
+  },
+  dayCell: {
+    width: tileWidth,
+    height: tileHeight,
+    borderRadius: 16,
     marginRight: 12
   },
-  reminderText: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '500'
-  },
-  uploadButton: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20
-  },
-  uploadButtonText: {
-    color: '#5271FF',
-    fontWeight: '600',
-    fontSize: 14
-  },
-  postContainer: {
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
-    marginHorizontal: 16
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 12
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 10
-  },
-  username: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333'
-  },
-  postImage: {
+  dayThumb: {
     width: '100%',
-    height: 300,
-    backgroundColor: '#EFEFEF'
+    height: '100%',
+    borderRadius: 16
   },
-  postActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12
+  dayPlaceholder: {
+    flex: 1
   },
-  leftActions: {
-    flexDirection: 'row',
-    alignItems: 'center'
+  dayLabelWrap: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8
   },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  dayLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff'
+  },
+  dayAdd: {
+    fontSize: 40,
+    fontWeight: '300',
+    color: '#000'
+  },
+  feedRow: {
+    paddingLeft: 16
+  },
+  feedCard: {
     marginRight: 16
   },
-  actionText: {
-    marginLeft: 6,
-    fontSize: 14,
-    color: '#333'
+  feedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
   },
-  timestamp: {
-    fontSize: 13,
-    color: '#888'
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: 8
+  },
+  feedUser: {
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  feedImage: {
+    width: '100%',
+    height: SCREEN_WIDTH * 0.75,
+    borderRadius: 20,
+    backgroundColor: '#ccc'
+  },
+  seenText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600'
+  },
+  seenTag: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#000',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12
   }
 })
 
