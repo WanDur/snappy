@@ -1,14 +1,14 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 import * as Crypto from 'expo-crypto'
 
 import { ChatItem, TMessage } from '@/types'
 
 /**
  * ### Data structure in storage:
- * - zustand-chat (key in AsyncStorage)
+ * - zustand-chat (key in Storage)
  *   - chats
  *      - { chatID: ChatItem }
  *      - { chatID: ChatItem }
@@ -231,6 +231,6 @@ export const useChatStore = create<ChatStore>()(
         })
       }
     })),
-    { name: 'zustand-chat', storage: createJSONStorage(() => AsyncStorage) }
+    { name: 'zustand-chat', storage: createJSONStorage(() => Storage) }
   )
 )

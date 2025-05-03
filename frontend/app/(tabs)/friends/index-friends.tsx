@@ -9,7 +9,7 @@ import Animated, { LinearTransition } from 'react-native-reanimated'
 import { Themed, TouchableBounce, SectionHeader, SwipeableRow } from '@/components'
 import { Form, Stack, ContentUnavailable } from '@/components/router-form'
 import { HeaderText } from '@/components/ui'
-import { useTheme, useFriendStore } from '@/hooks'
+import { useTheme, useFriendStore, useChatStore } from '@/hooks'
 import { Friend } from '@/types'
 
 const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
@@ -48,7 +48,8 @@ const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
 
 const FriendsScreen = () => {
   const { colors, isDark } = useTheme()
-  const { friends, addFriend, removeFriend, handleRequest } = useFriendStore()
+  const { friends, addFriend, getFriend, removeFriend, handleRequest } = useFriendStore()
+  const { addChat, hasChat } = useChatStore()
 
   const [query, setQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -59,6 +60,24 @@ const FriendsScreen = () => {
   const myFriend = friends.filter((f) => f.type === 'friend')
   const pendingRequests = friends.filter((f) => f.type === 'pending')
   const suggestedFriends = friends.filter((f) => f.type === 'suggested')
+
+  const onPressMessage = (friendID: string) => {
+    const chatExist = hasChat(friendID)
+    if (!chatExist) {
+      const friend = getFriend(friendID)!
+      addChat({
+        id: friendID,
+        chatTitle: friend.name,
+        chatSubtitle: friend.username,
+        iconUrl: friend.avatar,
+        initialDate: new Date(),
+        lastMessageTime: new Date(),
+        unreadCount: 0,
+        messages: []
+      })
+    }
+    router.push({ pathname: '/screens/ChatScreen', params: { chatID: friendID } })
+  }
 
   const fetchUsers = async (query: string) => {
     setIsLoading(true)
@@ -156,7 +175,7 @@ const FriendsScreen = () => {
               {item.lastActive}
             </Themed.Text>
           </View>
-          <TouchableOpacity style={{ padding: 8 }} activeOpacity={0.7} onPress={() => console.log('asd')}>
+          <TouchableOpacity style={{ padding: 8 }} activeOpacity={0.7} onPress={() => onPressMessage(item.id)}>
             <Ionicons name="chatbubble-outline" size={24} color="#5271FF" />
           </TouchableOpacity>
         </>

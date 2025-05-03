@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 
 import { ProfileData, User } from '@/types'
 
@@ -71,6 +71,6 @@ export const useProfileStore = create<ProfileStore>()(
         })
       }
     })),
-    { name: 'zustand-profile', storage: createJSONStorage(() => AsyncStorage) }
+    { name: 'zustand-profile', storage: createJSONStorage(() => Storage) }
   )
 )

@@ -94,7 +94,7 @@ async def upload_user_icon(
     file_public_path = upload_file_stream(f"users/{user.id}/icon.jpg", optimized_img)
     user.iconUrl = file_public_path
     await engine.save(user)
-    return ORJSONResponse({"status": "success", "file_path": file_public_path})
+    return ORJSONResponse({"status": "success", "filePath": file_public_path})
 
 
 # region friendship
@@ -120,7 +120,7 @@ async def invite_friend(target_user_id: str, user: User | None = Depends(get_use
         user1=user, user2=target_user, inviteTimestamp=datetime.now()
     )
     await engine.save(friendship)
-    return ORJSONResponse({"status": "success", "friendship_id": str(friendship.id)})
+    return ORJSONResponse({"status": "success", "friendshipId": str(friendship.id)})
 
 
 @user_router.post("/friends/accept/{target_user_id}")
@@ -186,13 +186,13 @@ async def list_friends(user: User | None = Depends(get_user)):
                 serialize_mongo_object(friend, ["username", "name", "iconUrl", "id"])
                 for friend in friends
             ],
-            "incoming_invitations": [
+            "incomingInvitations": [
                 serialize_mongo_object(
                     invitation, ["username", "name", "iconUrl", "id"]
                 )
                 for invitation in incoming_invitations
             ],
-            "outgoing_invitations": [
+            "outgoingInvitations": [
                 serialize_mongo_object(
                     invitation, ["username", "name", "iconUrl", "id"]
                 )

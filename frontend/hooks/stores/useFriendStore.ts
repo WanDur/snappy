@@ -1,13 +1,14 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 
 import { Friend } from '@/types'
 
 interface FriendStore {
   friends: Friend[]
   addFriend: (friend: Friend) => void
+  getFriend: (id: string) => Friend | undefined
   removeFriend: (id: string) => void
   handleRequest: (id: string, accept: boolean) => void
 }
@@ -23,6 +24,9 @@ export const useFriendStore = create<FriendStore>()(
             state.friends.push(friend)
           }
         })
+      },
+      getFriend: (id) => {
+        return get().friends.find((friend) => friend.id === id)
       },
       removeFriend: (id) => {
         set((state) => {
@@ -42,6 +46,6 @@ export const useFriendStore = create<FriendStore>()(
         })
       }
     })),
-    { name: 'zustand-friend', storage: createJSONStorage(() => AsyncStorage) }
+    { name: 'zustand-friend', storage: createJSONStorage(() => Storage) }
   )
 )

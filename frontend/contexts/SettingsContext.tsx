@@ -74,7 +74,7 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
     loadSettings()
   }, [])
 
-  // update setting and save it to AsyncStorage
+  // update setting and save it to Storage
   const setSetting = <K extends keyof SettingsProps>(key: K, value: SettingsProps[K]) => {
     setSettings((prevSettings) => {
       const newSettings = { ...prevSettings, [key]: value }

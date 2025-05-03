@@ -1,3 +1,7 @@
+/**
+ * Screen Params:
+ * friendID: string
+ */
 import { useState } from 'react'
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native'
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons'

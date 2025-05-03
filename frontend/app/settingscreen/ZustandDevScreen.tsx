@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { DevSettings } from 'react-native'
 import { Stack } from 'expo-router'
 import { useLocalSearchParams } from 'expo-router'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 import JSONTree from 'react-native-json-tree'
 
 import { Themed } from '@/components'
@@ -16,7 +16,7 @@ const ZustandDevScreen = () => {
   useEffect(() => {
     const fetchStorage = async () => {
       try {
-        const storedItem = await AsyncStorage.getItem(storageKey)
+        const storedItem = await Storage.getItem(storageKey)
         if (!storedItem) return
 
         const parsedData = JSON.parse(storedItem)
@@ -37,7 +37,8 @@ const ZustandDevScreen = () => {
 
   const clearData = async () => {
     try {
-      await AsyncStorage.removeItem(storageKey, () => DevSettings.reload())
+      await Storage.removeItem(storageKey)
+      DevSettings.reload()
       setData([]) // Clear the data in the state
     } catch (error) {
       console.warn('Error clearing async storage:', error)

@@ -28,8 +28,8 @@ class RedeemLicenseSuccessResponse(BaseModel):
 class RedeemLicenseFailureResponse(BaseModel):
     status: str
     message: str
-    invalid_keys: list[str]
-    redeemed_keys: list[str]
+    invalidKeys: list[str]
+    redeemedKeys: list[str]
 
 
 @license_router.post("/redeem")
@@ -56,8 +56,8 @@ async def redeem_license(
             content={
                 "status": "error",
                 "message": "Invalid licenses",
-                "invalid_keys": licenses["invalid"],
-                "redeemed_keys": licenses["redeemed"],
+                "invalidKeys": licenses["invalid"],
+                "redeemedKeys": licenses["redeemed"],
             },
         )
 

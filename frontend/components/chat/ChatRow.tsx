@@ -15,8 +15,7 @@ export interface ChatRowProps {
   chatSubtitle: string
   unreadCount: number
   iconUrl?: string
-  lastMessageTime: Date
-  
+
   isEdit?: boolean
   onSingleDelete?: () => void
   onCheckChat: (chatID: string, checked: boolean) => void
@@ -28,11 +27,9 @@ const ChatRow = ({
   chatSubtitle,
   unreadCount,
   iconUrl,
-  lastMessageTime,
   onCheckChat,
   isEdit = false
 }: ChatRowProps) => {
-
   const { deleteChat, clearUnreadCount } = useChatStore()
 
   const { reverseTheme } = useTheme()
@@ -55,7 +52,7 @@ const ChatRow = ({
             return
           }
           clearUnreadCount(chatId)
-          router.push({ pathname: '/screens/ChatScreen', params: { _chatID: chatId } })
+          router.push({ pathname: '/screens/ChatScreen', params: { chatID: chatId } })
         }}
         activeOpacity={0.8}
         underlayColor="#DCDCE2"
@@ -94,17 +91,9 @@ const ChatRow = ({
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Themed.Text style={{ fontSize: 18, fontWeight: 'bold' }}>{chatTitle}</Themed.Text>
-              {!isEdit && (
-                <Animated.View entering={ZoomIn.delay(100).duration(200)} exiting={ZoomOut.duration(200)} id={chatId}>
-                  <Themed.Text style={{ fontSize: 14, color: '#6E6E73', alignSelf: 'center', right: 14 }}>
-                    {formatChatDate(new Date(lastMessageTime))}
-                  </Themed.Text>
-                </Animated.View>
-              )}
             </View>
-            
-            {chatSubtitle && <Themed.Text style={{ fontSize: 16, color: '#6E6E73' }}>{chatSubtitle}</Themed.Text>}
-            
+
+            {chatSubtitle && <Themed.Text style={{ color: '#6E6E73' }}>{chatSubtitle}</Themed.Text>}
           </View>
         </Themed.View>
       </TouchableHighlight>

@@ -1,10 +1,10 @@
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import Storage from 'expo-sqlite/kv-store'
 
 import type { SettingsProps } from '../contexts/SettingsContext'
 
 /**
  * A hook that provides utilities for retrieving and saving
- * both app-wide settings and other data to AsyncStorage.
+ * both app-wide settings and other data to Storage.
  *
  * @param _key
  * when _key is provided, it will be used as the default key.
@@ -31,7 +31,7 @@ export const useStorage = (_key?: string) => {
    */
   const getSettings = async (): Promise<SettingsProps | null> => {
     try {
-      const settings = await AsyncStorage.getItem('settings')
+      const settings = await Storage.getItem('settings')
       return settings == null ? null : JSON.parse(settings)
     } catch (e) {
       console.error('Failed to load settings:', e)
@@ -45,7 +45,7 @@ export const useStorage = (_key?: string) => {
    */
   const saveSettings = async (settings: SettingsProps): Promise<void> => {
     try {
-      await AsyncStorage.setItem('settings', JSON.stringify(settings))
+      await Storage.setItem('settings', JSON.stringify(settings))
     } catch (e) {
       console.error('Failed to save settings:', e)
     }
@@ -60,7 +60,7 @@ export const useStorage = (_key?: string) => {
     }
 
     try {
-      const value = await AsyncStorage.getItem(finalKey)
+      const value = await Storage.getItem(finalKey)
       if (!value) {
         return null
       }
@@ -89,9 +89,9 @@ export const useStorage = (_key?: string) => {
 
     try {
       if (typeof value !== 'string') {
-        await AsyncStorage.setItem(finalKey, JSON.stringify(value))
+        await Storage.setItem(finalKey, JSON.stringify(value))
       } else {
-        await AsyncStorage.setItem(finalKey, value)
+        await Storage.setItem(finalKey, value)
       }
     } catch (error) {
       console.error('Error saving data:', error)
@@ -106,7 +106,7 @@ export const useStorage = (_key?: string) => {
       return
     }
     try {
-      await AsyncStorage.removeItem(finalKey)
+      await Storage.removeItem(finalKey)
     } catch (error) {
       console.error('Error deleting data:', error)
     }

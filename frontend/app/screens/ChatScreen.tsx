@@ -1,3 +1,7 @@
+/**
+ * Screen Params:
+ * chatID: string
+ */
 import { TextInput, Alert, Modal, TouchableOpacity, View, Image, Keyboard } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState, useRef } from 'react'
@@ -13,7 +17,6 @@ import { Constants } from '@/constants'
 import { useChatStore, useProfileStore, useTheme } from '@/hooks'
 // import { useSession } from '@/contexts/auth'
 import { Attachment, MessageResponse, SYSTEM } from '@/types/chats.type'
-import { formatBytes } from '@/utils'
 
 const ChatScreen = () => {
   // const session = useSession()
@@ -21,8 +24,7 @@ const ChatScreen = () => {
   const { theme, colors, chatColors } = useTheme()
   const router = useRouter()
 
-  const { _chatID } = useLocalSearchParams()
-  const chatID = _chatID.toString()
+  const { chatID } = useLocalSearchParams<{ chatID: string }>()
 
   const { profile } = useProfileStore()
   const { getChat, addMessage, clearUnreadCount } = useChatStore()
@@ -253,12 +255,11 @@ const ChatScreen = () => {
                 width: Constants.screenWidth / 1.5
               }}
               activeOpacity={0.7}
-              onPress={() => router.push({ pathname: '/screens/ChatProfileScreen', params: { chatID } })}
+              onPress={() => router.push({ pathname: '/(modal)/ChatSettingModal', params: { chatID } })}
             >
               <Image source={{ uri: iconUrl }} style={{ width: 36, height: 36, borderRadius: 40 }} />
               <View>
                 <Themed.Text style={{ fontSize: 16, fontWeight: '500' }}>{chatTitle}</Themed.Text>
-                <Themed.Text style={{ fontSize: 12 }}>{chatCompany}</Themed.Text>
               </View>
             </TouchableOpacity>
           ),
