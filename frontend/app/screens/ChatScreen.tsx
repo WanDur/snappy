@@ -274,7 +274,7 @@ const ChatScreen = () => {
               <Ionicons name="reorder-three-outline" size={26} color={colors.text} />
             </TouchableOpacity>
           ),
-          headerBackButtonDisplayMode: 'minimal',
+          headerBackTitle: '',
           headerTransparent: true,
           headerBlurEffect: 'systemChromeMaterial',
           headerLargeTitleShadowVisible: true,

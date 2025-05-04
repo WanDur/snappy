@@ -162,12 +162,11 @@ const FriendsScreen = () => {
       description="Are you sure to remove this friend?"
     >
       <TouchableHighlight
-        style={[styles.friendItem, { backgroundColor: colors.background }]}
         activeOpacity={0.8}
         onPress={() => openUserProfile(item.id)}
         underlayColor={isDark ? '#3A3A4A' : '#DCDCE2'}
       >
-        <>
+        <View style={[styles.friendItem, { backgroundColor: colors.background }]}>
           <Image source={{ uri: item.avatar }} style={styles.avatar} />
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
@@ -176,9 +175,9 @@ const FriendsScreen = () => {
             </Themed.Text>
           </View>
           <TouchableOpacity style={{ padding: 8 }} activeOpacity={0.7} onPress={() => onPressMessage(item.id)}>
-            <Ionicons name="chatbubble-outline" size={24} color="#5271FF" />
+            <Ionicons name="chatbubble-outline" size={24} color="#007AFF" />
           </TouchableOpacity>
-        </>
+        </View>
       </TouchableHighlight>
     </SwipeableRow>
   )
@@ -400,7 +399,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 15,
     fontWeight: '600',
-    color: '#5271FF'
+    color: '#007AFF'
   },
   friendItem: {
     flexDirection: 'row',
@@ -431,7 +430,7 @@ const styles = StyleSheet.create({
     marginLeft: 8
   },
   acceptButton: {
-    backgroundColor: '#5271FF'
+    backgroundColor: '#007AFF'
   },
   declineButton: {
     backgroundColor: '#EFEFEF'
@@ -458,7 +457,7 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   addButton: {
-    backgroundColor: '#5271FF',
+    backgroundColor: '#007AFF',
     width: 40,
     height: 40,
     borderRadius: 20,

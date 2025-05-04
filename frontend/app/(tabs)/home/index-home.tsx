@@ -8,6 +8,7 @@ import { useHeaderHeight } from '@react-navigation/elements'
 import { useTheme } from '@/hooks'
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
+import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Constants } from '@/constants'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -212,8 +213,8 @@ const HomeScreen = () => {
         options={{
           headerTitle: `Week ${weeks[weekListIndex].weekNum}`,
           headerRight: () => (
-            <TouchableOpacity>
-              <Ionicons name="notifications-outline" size={24} />
+            <TouchableOpacity activeOpacity={0.7}>
+              <IconSymbol name="bell" color={colors.text} size={26} />
             </TouchableOpacity>
           ),
           headerTransparent: true,

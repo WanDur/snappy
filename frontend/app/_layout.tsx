@@ -57,6 +57,15 @@ export default function RootLayout() {
                   name="(modal)/PremiumInfoModal"
                   options={{ presentation: 'transparentModal', headerShown: false }}
                 />
+                <Stack.Screen
+                  name="(modal)/ProfileAvatar"
+                  options={{
+                    presentation: 'transparentModal',
+                    headerShown: false,
+                    animation: 'fade',
+                    animationDuration: 300
+                  }}
+                />
               </Stack>
             </BottomSheetModalProvider>
             <StatusBar backgroundColor={colors.background} animated />
