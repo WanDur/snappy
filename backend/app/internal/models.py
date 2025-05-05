@@ -26,6 +26,7 @@ class User(Model):
     tier: UserTier = UserTier.FREEMIUM
     premiumExpireTime: Optional[datetime] = None
     isAdmin: bool = False
+    bio: str = ""
 
     async def is_premium(self) -> bool:
         if self.tier == UserTier.PREMIUM:

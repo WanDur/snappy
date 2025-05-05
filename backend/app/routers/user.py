@@ -42,6 +42,28 @@ class UserFetchProfileResponse(BaseModel):
     tier: UserTier
 
 
+@user_router.get("/profile/myself")
+async def fetch_my_profile(user: User | None = Depends(get_user)):
+    if not user:
+        return HTTPException(status_code=401, detail="Unauthorized")
+    return ORJSONResponse(
+        serialize_mongo_object(
+            user,
+            project=[
+                "id",
+                "username",
+                "name",
+                "email",
+                "phone",
+                "iconUrl",
+                "tier",
+                "premiumExpireTime",
+                "bio",
+            ],
+        )
+    )
+
+
 @user_router.get("/profile/fetch/{user_id}")
 async def fetch_user_profile(user_id: str) -> UserFetchProfileResponse:
     user = await engine.find_one(User, User.id == ObjectId(user_id))

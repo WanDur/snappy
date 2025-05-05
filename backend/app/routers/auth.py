@@ -78,6 +78,7 @@ async def user_login(body: AuthLoginBody) -> AuthLoginResponse:
                 "refreshToken": refresh_token,
                 "refreshExpireTime": math.floor(time.time()) + REFRESH_EXPIRE_TIME,
                 "userTier": user.tier,
+                "userId": str(user.id),
             }
         )
     raise HTTPException(status_code=401, detail="Invalid credentials")
