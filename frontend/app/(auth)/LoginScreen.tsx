@@ -19,11 +19,11 @@ const LoginScreen = () => {
   const [emailUsernamePhone, setEmailUsernamePhone] = useState('')
   const [password, setPassword] = useState('')
 
-  const onSignIn = async () => {
+const onSignIn = async () => {
     try {
       console.log('Logging in with', emailUsernamePhone)
       await signInWithCredential(emailUsernamePhone, password)
-      router.replace('/(tabs)/home')
+      router.replace('/(tabs)/home/index-home')
     } catch (err) {
       if (isAxiosError(err)) {
         Alert.alert('Error', err.response?.data.detail || 'An error occurred')

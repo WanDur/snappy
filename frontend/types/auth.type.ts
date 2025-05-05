@@ -13,6 +13,7 @@ export const LoginInfoResponseSchema = z.object({
   refreshToken: z.string(),
   refreshExpireTime: z.number().int().nonnegative(),
   userTier: z.enum([UserTier.FREEMIUM, UserTier.PREMIUM]),
+  userId: z.string(),
 });
 
 export type LoginInfoResponse = z.infer<typeof LoginInfoResponseSchema>;

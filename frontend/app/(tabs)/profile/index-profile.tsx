@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { Stack } from '@/components/router-form'
 import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { useTheme, useUserStore } from '@/hooks'
+import { isAuthenticated, useSession } from '@/contexts/auth'
 
 const generateMockPhotos = () => {
   const weeks = []
@@ -68,6 +69,7 @@ const photoMargin = 12
 
 const ProfileScreen = () => {
   const router = useRouter()
+  const session = useSession()
   const { user, updateName, updateUsername, updateBio } = useUserStore()
   const { colors } = useTheme()
 
@@ -77,6 +79,13 @@ const ProfileScreen = () => {
   const [lastName, setLastName] = useState(user.name.split(' ')[1])
   const [userName, setUserName] = useState(user.username)
   const [bio, setBio] = useState(user.bio)
+
+  useEffect(() => {
+    if (!isAuthenticated(session)) {
+      router.replace('/(auth)/LoginScreen');
+      return
+    }
+  }, [])
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })

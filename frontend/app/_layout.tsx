@@ -36,6 +36,7 @@ export default function RootLayout() {
         phone: '1234567890',
         notificationTokens: [],
         tier: {},
+        bio: "",
         iconUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
         premiumExpireTime: undefined
       })
@@ -61,6 +62,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="settingscreen" options={{ presentation: 'containedModal', headerShown: false }} />
                 <Stack.Screen name="+not-found" />
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
                 <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
                 <Stack.Screen name="(modal)/ChatSettingModal" sheet />
