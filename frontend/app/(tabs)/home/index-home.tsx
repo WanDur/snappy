@@ -5,7 +5,7 @@ import { Image } from 'expo-image'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useHeaderHeight } from '@react-navigation/elements'
 
-import { useTheme, useUserStore } from '@/hooks'
+import { useTheme, useUserStore, useFriendStore } from '@/hooks'
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
 import { IconSymbol } from '@/components/ui/IconSymbol'
@@ -198,6 +198,8 @@ const HomeScreen = () => {
   const userStore = useUserStore()
 
   const { colors } = useTheme()
+  const { friends } = useFriendStore()
+
   const [weeks, setWeeks] = useState(buildWeeks())
   const [weekListIndex, setWeekListIndex] = useState(0)
   const listRef = useRef<FlatList>(null)
@@ -233,7 +235,8 @@ const HomeScreen = () => {
     }
 
   }, [])
-
+          
+  const myFriends = friends.filter((f) => f.type === 'friend')
 
   const markSeen = useCallback((id: string) => {
     setWeeks((prev) =>
