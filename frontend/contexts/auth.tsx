@@ -12,8 +12,8 @@ import api from '@/utils/api'
 import { useStorageState } from '@/utils/useStorageState'
 import axios, { AxiosInstance } from 'axios'
 import * as SecureStore from 'expo-secure-store'
-import { createContext, PropsWithChildren, useContext, useRef } from 'react'
-import { AppState } from 'react-native'
+import { createContext, PropsWithChildren, useContext, useEffect, useRef } from 'react'
+import { ActivityIndicator, AppState } from 'react-native'
 import { z } from 'zod'
 
 const AuthContext = createContext<AuthContextProps>({
@@ -38,12 +38,6 @@ export function parsePublicUrl(filePath: string) {
 
 export function isAuthenticated(session: AuthContextProps) {
   if (process.env.EXPO_PUBLIC_BYPASS_LOGIN == 'true') return true
-  // const ak = session.refreshAccessTokenRequest()
-  // console.log('ak', ak)
-  // return ak != null
-  // console.log('session', session.session)
-  // console.log('refreshExpireTime', session.session?.refreshExpireTime)
-  // console.log('currentTime', Math.floor(Date.now() / 1000))
   return session.session && session.session.refreshExpireTime > Math.floor(Date.now() / 1000)
 }
 
@@ -305,6 +299,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return ws
     }
     return null
+  }
+
+  if (isLoading) {
+    return (
+      <ActivityIndicator />
+    )
   }
 
   return (
