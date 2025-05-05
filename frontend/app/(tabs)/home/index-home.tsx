@@ -1,15 +1,17 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, ListRenderItem } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useHeaderHeight } from '@react-navigation/elements'
 
-import { useTheme, useFriendStore } from '@/hooks'
+import { useTheme, useUserStore, useFriendStore } from '@/hooks'
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Constants } from '@/constants'
+import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
+import { useRouter } from 'expo-router'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -191,6 +193,10 @@ const WeekPage = ({ bundle, markSeen }: { bundle: WeekBundle; markSeen: (id: str
 
 /**************** HomeScreen ****************/
 const HomeScreen = () => {
+  const session = useSession()
+  const router = useRouter()
+  const userStore = useUserStore()
+
   const { colors } = useTheme()
   const { friends } = useFriendStore()
 
@@ -198,6 +204,38 @@ const HomeScreen = () => {
   const [weekListIndex, setWeekListIndex] = useState(0)
   const listRef = useRef<FlatList>(null)
 
+  useEffect(() => {
+    if (!isAuthenticated(session)) {
+      console.log('User is not authenticated, redirecting to login')
+      router.replace('/(auth)/LoginScreen')
+      return
+    }
+    if (session.session) {
+      session.apiWithToken.get('/user/profile/myself').then((res) => {
+        const userData = res.data
+        userStore.setUser({
+          id: userData.id,
+          email: userData.email,
+          username: userData.username,
+          name: userData.name,
+          phone: userData.phone,
+          iconUrl: userData.iconUrl,
+          bio: userData.bio,
+          notificationTokens: [], // TODO - to be implemented
+          tier: userData.tier,
+          premiumExpireTime: userData.premiumExpireTime
+        })
+        const iconUrl = parsePublicUrl(userData.iconUrl)
+        userStore.updateAvatar(iconUrl)
+        console.log('Icon url:', iconUrl)
+        console.log('User data fetched and stored in userStore:', userData)
+      })
+    } else {
+      console.log('Session is null')
+    }
+
+  }, [])
+          
   const myFriends = friends.filter((f) => f.type === 'friend')
 
   const markSeen = useCallback((id: string) => {

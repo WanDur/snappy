@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   StyleSheet,
   FlatList,
   Dimensions,
-  Keyboard
+  Keyboard,
+  Alert
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -20,6 +21,7 @@ import { Stack } from '@/components/router-form'
 import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { useTheme, useUserStore } from '@/hooks'
+import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 
 const generateMockPhotos = () => {
   const weeks = []
@@ -68,7 +70,8 @@ const photoMargin = 12
 
 const ProfileScreen = () => {
   const router = useRouter()
-  const { user, updateName, updateUsername, updateBio } = useUserStore()
+  const session = useSession()
+  const { user, setUser, updateName, updateUsername, updateBio, updateAvatar } = useUserStore()
   const { colors } = useTheme()
 
   const bottomSheetModalRef = useRef<BottomSheetModal>(null)
@@ -77,6 +80,44 @@ const ProfileScreen = () => {
   const [lastName, setLastName] = useState(user.name.split(' ')[1])
   const [userName, setUserName] = useState(user.username)
   const [bio, setBio] = useState(user.bio)
+  const [photoCount, setPhotoCount] = useState(0)
+  const [lastLocation, setLastLocation] = useState('')
+
+  const fetchProfileData = async () => {
+    if (session.session) {
+      session.apiWithToken.get('/user/profile/myself').then((res) => {
+              const userData = res.data
+              setUser({
+                id: userData.id,
+                email: userData.email,
+                username: userData.username,
+                name: userData.name,
+                phone: userData.phone,
+                iconUrl: userData.iconUrl,
+                bio: userData.bio,
+                notificationTokens: [], // TODO - to be implemented
+                tier: userData.tier,
+                premiumExpireTime: userData.premiumExpireTime
+              })
+              const iconUrl = parsePublicUrl(userData.iconUrl)
+              updateAvatar(iconUrl)
+              setPhotoCount(userData.photoCount)
+              setLastLocation(userData.lastLocation)
+              console.log('Icon url:', iconUrl)
+              console.log('User data fetched and stored in userStore:', userData)
+            })
+    }
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated(session)) {
+      router.replace('/(auth)/LoginScreen');
+      return
+    }
+
+    fetchProfileData()
+
+  }, [])
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -156,6 +197,15 @@ const ProfileScreen = () => {
       updateUsername(username)
 
       updateBio(bio.trim())
+
+      session.apiWithToken.post('/user/profile/edit', {
+        name: name,
+        username: username,
+        bio: bio.trim()
+      }).catch((error) => {
+        console.error('Error updating profile:', error)
+        Alert.alert('Error', 'Failed to update profile. Please try again later.')
+      })
     }
 
     Keyboard.dismiss()
@@ -187,7 +237,7 @@ const ProfileScreen = () => {
                 </Themed.View>
               </TouchableOpacity>
               <Themed.View style={styles.postCountBadge} shadow>
-                <Text style={styles.postCountText}># of</Text>
+                <Text style={styles.postCountText}>{photoCount}</Text>
                 <Text style={styles.postLabel}>Photos</Text>
               </Themed.View>
             </View>
@@ -199,7 +249,7 @@ const ProfileScreen = () => {
               </Themed.Text>
               <View style={styles.locationRow}>
                 <Feather name="map-pin" size={14} color="#fff" />
-                <Themed.Text style={styles.locationText}>user.location</Themed.Text>
+                <Themed.Text style={styles.locationText}>{lastLocation}</Themed.Text>
               </View>
               {user.bio !== '' && <Themed.Text style={styles.bioText}>{user.bio}</Themed.Text>}
             </View>

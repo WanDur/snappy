@@ -7,11 +7,12 @@ import { useTranslation } from 'react-i18next'
 import { useTheme } from '@/hooks'
 import { Themed } from '@/components'
 import { Form } from '@/components/router-form'
+import { useSession } from '@/contexts/auth'
 //import { useSession } from '@/contexts/auth'
 //import { useSync } from '@/hooks/useSync'
 
 export default function SettingScreen() {
-  //const session = useSession()
+  const session = useSession()
   //const sync = useSync()
   const router = useRouter()
   const { colors } = useTheme()
@@ -70,7 +71,11 @@ export default function SettingScreen() {
         <Form.Section title="Account">
           <Form.Text systemImage="phone">Phone</Form.Text>
           <Form.Text systemImage="trash">Delete Account</Form.Text>
-          <Form.Text systemImage="rectangle.portrait.and.arrow.right">Sign Out</Form.Text>
+          <Form.Text systemImage="rectangle.portrait.and.arrow.right" onPress={() => {
+            session.signOut().then(() => {
+              router.replace('/screens/LoginScreen')
+            })
+          }}>Sign Out</Form.Text>
         </Form.Section>
 
         <Form.Section title="About Snappy">

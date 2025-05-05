@@ -6,14 +6,15 @@ import { isAxiosError } from 'axios'
 
 import { Constants } from '@/constants'
 import { Themed, Bounceable } from '@/components'
-import { useTheme } from '@/hooks'
+import { useTheme, useUserStore } from '@/hooks'
+import { useSession } from '@/contexts/auth'
 //import { useSession } from '@/contexts/auth'
 
 const LoginScreen = () => {
   const router = useRouter()
   const { colors } = useTheme()
-  // const auth = useSession()
-  const { signInWithCredential } = auth
+  const { signInWithCredential, apiWithToken } = useSession()
+  const userStore = useUserStore()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -89,7 +90,7 @@ const LoginScreen = () => {
         <View style={styles.buttonContainer}>
           <Bounceable
             style={[styles.btn, { backgroundColor: colors.borderColor }]}
-            onPress={() => router.push('/screens/SignUpScreen')}
+            onPress={() => router.push('/(auth)/SignUpScreen')}
           >
             <Ionicons name="mail-outline" size={24} style={{ position: 'absolute', left: 20 }} color={colors.text} />
             <Themed.Text style={[styles.btnText]}>Signup with Email</Themed.Text>

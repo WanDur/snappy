@@ -24,7 +24,7 @@ app.include_router(license_router)
 app.include_router(chat_router)
 
 
-@app.get("/public/{file_path}")
+@app.get("/public/{file_path:path}")
 def public_file(file_path: str):
     return get_public_file(unquote(file_path))
 
