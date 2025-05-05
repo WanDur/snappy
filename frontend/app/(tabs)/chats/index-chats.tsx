@@ -174,6 +174,7 @@ export const ChatScreen = () => {
                   setIsEdit(!isEdit)
                 }
               }}
+              style={{ marginLeft: -6 }}
             >
               <Themed.Text type="link">
                 {isEdit ? (selectedChats.length > 0 ? `Delete ${selectedChats.length}` : 'Done') : 'Edit'}

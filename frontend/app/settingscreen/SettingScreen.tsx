@@ -3,8 +3,9 @@ import { Linking, Share, Alert, TouchableOpacity } from 'react-native'
 import { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
 import { useTranslation } from 'react-i18next'
+import * as AC from '@bacons/apple-colors'
 
-import { useTheme } from '@/hooks'
+import { useTheme, useUserStore } from '@/hooks'
 import { Themed } from '@/components'
 import { Form } from '@/components/router-form'
 import { useSession } from '@/contexts/auth'
@@ -17,6 +18,7 @@ export default function SettingScreen() {
   const router = useRouter()
   const { colors } = useTheme()
   const { t } = useTranslation()
+  const { user } = useUserStore()
 
   const [loading, setLoading] = useState(false)
 
@@ -60,22 +62,25 @@ export default function SettingScreen() {
           <Form.Link href="/settingscreen/NotificationScreen" systemImage="bell">
             {t('notifications')}
           </Form.Link>
-          <Form.Link href="/settingscreen/SelectLanguageScreen" systemImage="globe">
-            {t('languages')}
-          </Form.Link>
           <Form.Link href="/settingscreen/PermissionScreen" systemImage="hand.raised">
             {t('permissions.title')}
           </Form.Link>
         </Form.Section>
 
         <Form.Section title="Account">
-          <Form.Text systemImage="phone">Phone</Form.Text>
-          <Form.Text systemImage="trash">Delete Account</Form.Text>
-          <Form.Text systemImage="rectangle.portrait.and.arrow.right" onPress={() => {
-            session.signOut().then(() => {
-              router.replace('/screens/LoginScreen')
-            })
-          }}>Sign Out</Form.Text>
+          <Form.Text systemImage="phone" hint={user.phone}>
+            Phone
+          </Form.Text>
+          <Form.Text systemImage="mail" hint={user.email}>
+            Email
+          </Form.Text>
+          <Form.Text
+            systemImage={{ name: 'trash', color: AC.systemRed }}
+            style={{ color: AC.systemRed }}
+            onPress={() => console.log('Delete Account')}
+          >
+            Delete Account
+          </Form.Text>
         </Form.Section>
 
         <Form.Section title="About Snappy">
@@ -88,25 +93,26 @@ export default function SettingScreen() {
           <Form.Text onPress={onEmail} systemImage="text.bubble" loading={loading}>
             Feedback & Suggestion
           </Form.Text>
+          <Form.Text systemImage="doc.text">Terms of Service</Form.Text>
+          <Form.Text systemImage="hand.raised">Privacy Policy</Form.Text>
+        </Form.Section>
+
+        <Form.Section>
+          <Form.Text
+            systemImage="rectangle.portrait.and.arrow.right"
+            onPress={() => {
+              session.signOut().then(() => {
+                router.replace('/screens/LoginScreen')
+              })
+            }}
+          >
+            Sign Out
+          </Form.Text>
         </Form.Section>
 
         <Form.Section title="Debug">
           <Form.Link href="/settingscreen/DevScreen" systemImage="wrench.and.screwdriver">
             Dev data
-          </Form.Link>
-          <Form.Link
-            href="/#"
-            onPress={() => {
-              /*
-              session.signOut().then(() => {
-                router.back()
-                router.replace('/screens/LoginScreen')
-              })
-            */
-            }}
-            systemImage="rectangle.portrait.and.arrow.right"
-          >
-            Sign out
           </Form.Link>
         </Form.Section>
       </Form.List>

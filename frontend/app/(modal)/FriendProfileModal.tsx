@@ -3,13 +3,17 @@
  * friendID: string
  */
 import { useState, useMemo } from 'react'
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native'
-import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons'
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Dimensions } from 'react-native'
+import { Ionicons, Feather, AntDesign } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
+import { LinearGradient } from 'expo-linear-gradient'
 
-import { Themed } from '@/components'
+import { Themed, SectionHeader } from '@/components'
 import { Stack, ContentUnavailable } from '@/components/router-form'
 import { useFriendStore } from '@/hooks'
+
+const { width } = Dimensions.get('window')
+const PHOTO_SIZE = (width - 48) / 3
 
 const FriendProfileModal = () => {
   const { friends } = useFriendStore()
@@ -17,6 +21,7 @@ const FriendProfileModal = () => {
   const friend = friends.find((f) => f.id === friendID)!
 
   const [isFriend, setIsFriend] = useState(true)
+  const [selectedPhoto, setSelectedPhoto] = useState(null)
 
   // Sample data for the profile
   const user = {
@@ -37,35 +42,39 @@ const FriendProfileModal = () => {
       }))
     ],
     sharedAlbums: [
-      { id: '1', name: 'Summer Trip 2024', count: 34 },
-      { id: '2', name: 'Food Adventures', count: 27 }
+      {
+        id: '1',
+        name: 'Summer Trip 2024',
+        count: 34,
+        coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'
+      },
+      {
+        id: '2',
+        name: 'Food Adventures',
+        count: 27,
+        coverUrl: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327'
+      },
+      {
+        id: '3',
+        name: 'City Explorations',
+        count: 42,
+        coverUrl: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b'
+      }
     ]
   }
 
-  // pick a random subset of 2–5 photos once on mount
+  // pick a random subset of 6-9 photos once on mount
   const displayedPhotos = useMemo(() => {
     // shuffle copy
     const shuffled = [...user.recentPhotos].sort(() => Math.random() - 0.5)
-    // pick random count between 2 and 5
-    const count = Math.floor(Math.random() * 4) + 2
+    // pick random count between 6 and 9
+    const count = Math.floor(Math.random() * 4) + 6
     return shuffled.slice(0, count)
   }, [user.recentPhotos])
 
   // Function to toggle friend status (for demo purposes)
   const toggleFriendStatus = () => {
     setIsFriend(!isFriend)
-  }
-
-  // Function to handle viewing all photos
-  const handleViewAllPhotos = () => {
-    console.log('Navigate to all photos view')
-    // Navigation logic here
-  }
-
-  // Function to handle viewing all albums
-  const handleViewAllAlbums = () => {
-    console.log('Navigate to all albums view')
-    // Navigation logic here
   }
 
   // Function to handle adding friend
@@ -90,14 +99,18 @@ const FriendProfileModal = () => {
 
   // Render album item
   const renderAlbumItem = ({ item }) => (
-    <TouchableOpacity style={styles.albumItem}>
-      <View style={styles.albumIconContainer}>
-        <MaterialCommunityIcons name="album" size={24} color="#4A90E2" />
-        <Text style={styles.albumCount}>{item.count}</Text>
+    <TouchableOpacity style={styles.albumCard} activeOpacity={0.8}>
+      <Image source={{ uri: item.coverUrl }} style={styles.albumCover} />
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.albumGradient} />
+      <View style={styles.albumInfo}>
+        <Text style={styles.albumName} numberOfLines={1}>
+          {item.name}
+        </Text>
+        <View style={styles.albumCountContainer}>
+          <Ionicons name="images-outline" size={14} color="#FFFFFF" />
+          <Text style={styles.albumCount}>{item.count}</Text>
+        </View>
       </View>
-      <Text style={styles.albumName} numberOfLines={1}>
-        {item.name}
-      </Text>
     </TouchableOpacity>
   )
 
@@ -110,16 +123,17 @@ const FriendProfileModal = () => {
           <Image source={{ uri: friend.avatar }} style={styles.profilePic} />
 
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{friend.name}</Text>
-            <Text style={styles.userHandle}>@username</Text>
-            <Text style={[styles.userHandle, { marginBottom: 4 }]}>127 posts</Text>
-            <Text style={styles.lastActive}>Active {friend.lastActive}</Text>
+            <Themed.Text style={styles.userName}>{friend.name}</Themed.Text>
+            <Themed.Text style={styles.userHandle} text70>
+              @username
+            </Themed.Text>
+            <Themed.Text style={styles.lastActive}>127 posts • Active {friend.lastActive}</Themed.Text>
           </View>
         </View>
 
         {/* Bio section */}
         <View style={{ paddingHorizontal: 16 }}>
-          <Text style={styles.bioText}>{user.bio}</Text>
+          <Themed.Text style={styles.bioText}>{user.bio}</Themed.Text>
         </View>
 
         <View style={styles.actionSection}>
@@ -144,51 +158,48 @@ const FriendProfileModal = () => {
 
         <Themed.View type="divider" />
 
-        {isFriend && (
+        {isFriend ? (
           <>
             {/* Recent photos section */}
             <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Recent Photos</Text>
-                <TouchableOpacity onPress={handleViewAllPhotos}>
-                  <Text style={styles.viewAllText}>View All</Text>
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={displayedPhotos}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.photoItem}>
-                    <Image source={{ uri: item.imageUrl }} style={styles.photoThumbnail} />
+              <SectionHeader title="Recent Photos" />
+
+              <View style={styles.photoGrid}>
+                {displayedPhotos.slice(0, 6).map((photo, index) => (
+                  <TouchableOpacity
+                    key={photo.id}
+                    style={styles.photoGridItem}
+                    activeOpacity={0.8}
+                    onPress={() => setSelectedPhoto(photo)}
+                  >
+                    <Image source={{ uri: photo.imageUrl }} style={styles.photoGridThumbnail} />
+                    {index === 5 && displayedPhotos.length > 6 && (
+                      <View style={styles.morePhotosOverlay}>
+                        <Text style={styles.morePhotosText}>+{displayedPhotos.length - 6}</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
-                )}
-                keyExtractor={(item) => item.id}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.photosContainer}
-              />
+                ))}
+              </View>
             </View>
 
             {/* Shared albums section */}
-            <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Shared Albums</Text>
-                <TouchableOpacity onPress={handleViewAllAlbums}>
-                  <Text style={styles.viewAllText}>View All</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={[styles.sectionContainer, { paddingTop: 0 }]}>
+              <SectionHeader title="Shared Albums" />
+
               <FlatList
                 data={user.sharedAlbums}
                 renderItem={renderAlbumItem}
                 keyExtractor={(item) => item.id}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.albumsContainer}
+                contentContainerStyle={{ paddingBottom: 60, marginBottom: 60 }}
+                snapToInterval={width * 0.7 + 12}
+                decelerationRate="fast"
               />
             </View>
           </>
-        )}
-
-        {!isFriend && (
+        ) : (
           <View style={{ padding: 16 }}>
             <ContentUnavailable
               title="Private Content"
@@ -221,21 +232,18 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#333333',
     marginBottom: 2
   },
   userHandle: {
     fontSize: 14,
-    color: '#666666',
-    marginBottom: 6
+    marginBottom: 8
   },
   lastActive: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#888888'
   },
   bioText: {
     fontSize: 14,
-    color: '#555555',
     lineHeight: 20
   },
   actionSection: {
@@ -249,10 +257,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4A90E2',
-    borderRadius: 8,
+    borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    flex: 0.48
+    flex: 0.48,
+    shadowColor: '#4A90E2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3
   },
   messageButtonText: {
     color: '#FFFFFF',
@@ -266,7 +279,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#FF6B6B',
-    borderRadius: 8,
+    borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
     flex: 0.48
@@ -281,77 +294,128 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4A90E2',
-    borderRadius: 8,
+    borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    flex: 1
+    flex: 1,
+    shadowColor: '#4A90E2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3
   },
   addFriendButtonText: {
     color: '#FFFFFF',
     fontWeight: '600',
     marginLeft: 8
   },
+
+  // New styles for enhanced design
   sectionContainer: {
-    paddingVertical: 16
+    padding: 16
   },
-  sectionHeader: {
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
     marginBottom: 12
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333'
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center'
   },
   viewAllText: {
     fontSize: 14,
-    color: '#4A90E2'
+    color: '#4A90E2',
+    marginRight: 4
   },
-  photosContainer: {
-    paddingHorizontal: 12
+
+  // Photo Grid Styles
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -4
   },
-  photoItem: {
-    marginHorizontal: 4,
-    borderRadius: 8,
+  photoGridItem: {
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    margin: 4,
+    borderRadius: 12,
     overflow: 'hidden'
   },
-  photoThumbnail: {
-    width: 120,
-    height: 120,
+  photoGridThumbnail: {
+    width: '100%',
+    height: '100%',
     backgroundColor: '#F0F0F0'
   },
-  albumsContainer: {
-    paddingHorizontal: 12
-  },
-  albumItem: {
-    width: 100,
-    marginHorizontal: 4,
+  morePhotosOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
     alignItems: 'center'
   },
-  albumIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: '#F5F8FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6
+  morePhotosText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700'
   },
-  albumCount: {
+
+  // Album Styles
+  albumsList: {
+    paddingRight: 16
+  },
+  albumCard: {
+    width: width * 0.7,
+    height: 180,
+    marginRight: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5
+  },
+  albumCover: {
+    width: '100%',
+    height: '100%'
+  },
+  albumGradient: {
     position: 'absolute',
-    bottom: 8,
-    right: 8,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#333333'
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%'
+  },
+  albumInfo: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16
   },
   albumName: {
-    fontSize: 12,
-    color: '#555555',
-    textAlign: 'center'
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
+  },
+  albumCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  albumCount: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginLeft: 4,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
   }
 })
 
