@@ -5,7 +5,7 @@ import { Image } from 'expo-image'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useHeaderHeight } from '@react-navigation/elements'
 
-import { useTheme } from '@/hooks'
+import { useTheme, useFriendStore } from '@/hooks'
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
 import { IconSymbol } from '@/components/ui/IconSymbol'
@@ -192,9 +192,15 @@ const WeekPage = ({ bundle, markSeen }: { bundle: WeekBundle; markSeen: (id: str
 /**************** HomeScreen ****************/
 const HomeScreen = () => {
   const { colors } = useTheme()
+  const { friends } = useFriendStore()
+
   const [weeks, setWeeks] = useState(buildWeeks())
   const [weekListIndex, setWeekListIndex] = useState(0)
   const listRef = useRef<FlatList>(null)
+
+  const myFriends = friends.filter((f) => f.type === 'friend')
+
+  myFriends.forEach((f) => console.log(f.name))
 
   const markSeen = useCallback((id: string) => {
     setWeeks((prev) =>

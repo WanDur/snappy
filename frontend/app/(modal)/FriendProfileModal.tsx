@@ -2,7 +2,7 @@
  * Screen Params:
  * friendID: string
  */
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList } from 'react-native'
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
@@ -25,16 +25,31 @@ const FriendProfileModal = () => {
     friendsCount: 348,
     albumsCount: 15,
     recentPhotos: [
+      // your original four
       { id: '1', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131' },
       { id: '2', imageUrl: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e' },
       { id: '3', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5' },
-      { id: '4', imageUrl: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e' }
+      { id: '4', imageUrl: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e' },
+      // now 100 more, ids 5…104
+      ...Array.from({ length: 10 }, (_, i) => ({
+        id: `${i + 5}`,
+        imageUrl: `https://picsum.photos/${100 + i * 5}/${200 + i * 5}`
+      }))
     ],
     sharedAlbums: [
       { id: '1', name: 'Summer Trip 2024', count: 34 },
       { id: '2', name: 'Food Adventures', count: 27 }
     ]
   }
+
+  // pick a random subset of 2–5 photos once on mount
+  const displayedPhotos = useMemo(() => {
+    // shuffle copy
+    const shuffled = [...user.recentPhotos].sort(() => Math.random() - 0.5)
+    // pick random count between 2 and 5
+    const count = Math.floor(Math.random() * 4) + 2
+    return shuffled.slice(0, count)
+  }, [user.recentPhotos])
 
   // Function to toggle friend status (for demo purposes)
   const toggleFriendStatus = () => {
@@ -140,7 +155,7 @@ const FriendProfileModal = () => {
                 </TouchableOpacity>
               </View>
               <FlatList
-                data={user.recentPhotos}
+                data={displayedPhotos}
                 renderItem={({ item }) => (
                   <TouchableOpacity style={styles.photoItem}>
                     <Image source={{ uri: item.imageUrl }} style={styles.photoThumbnail} />
