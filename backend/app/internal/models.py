@@ -48,6 +48,24 @@ class User(Model):
             self.premiumExpireTime += timedelta(days=days)
         await engine.save(self)
 
+    async def get_friends(self) -> list[User]:
+        friendships = await engine.find(
+            Friendship,
+            query.or_(
+                (Friendship.user1 == self.id) & (Friendship.accepted == True),
+                (Friendship.user2 == self.id) & (Friendship.accepted == True),
+            ),
+        )
+        friends = []
+        for friendship in friendships:
+            if friendship.user1 == self.id:
+                friend = await engine.find_one(User, User.id == friendship.user2)
+            else:
+                friend = await engine.find_one(User, User.id == friendship.user1)
+            if friend:
+                friends.append(friend)
+        return friends
+
 
 class Friendship(Model):
     user1: User = Reference()
@@ -159,3 +177,47 @@ class Message(Model):
     message: str
     timestamp: datetime
     attachments: list[Attachment] = Field(default_factory=list)
+
+
+class Photo(Model):
+    user: User = Reference()
+    timestamp: datetime
+    url: str
+    caption: Optional[str] = None
+    taggedUserIds: list[ObjectId] = Field(default_factory=list)
+
+    async def like(self, user: User):
+        like = await engine.find_one(
+            PhotoLike, query.and_(PhotoLike.user == user.id, PhotoLike.photo == self.id)
+        )
+        if like:
+            raise Exception("Already liked")
+        like = PhotoLike(user=user, photo=self)
+        await engine.save(like)
+
+    async def unlike(self, user: User):
+        like = await engine.find_one(
+            PhotoLike, query.and_(PhotoLike.user == user.id, PhotoLike.photo == self.id)
+        )
+        if like:
+            await engine.delete(like)
+        else:
+            raise Exception("Not liked yet")
+
+    async def comment(self, user: User, message: str):
+        comment = PhotoComment(
+            user=user, photo=self, timestamp=datetime.now(), message=message
+        )
+        await engine.save(comment)
+
+
+class PhotoLike(Model):
+    user: User = Reference()
+    photo: Photo = Reference()
+
+
+class PhotoComment(Model):
+    user: User = Reference()
+    photo: Photo = Reference()
+    timestamp: datetime
+    message: str

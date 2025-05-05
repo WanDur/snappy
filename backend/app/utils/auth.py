@@ -60,5 +60,4 @@ class AuthMiddleware(BaseHTTPMiddleware):
 async def get_user(
     credentials: JwtAuthorizationCredentials = Security(access_auth),
 ) -> User | None:
-    log_debug(credentials.subject)
     return await engine.find_one(User, User.id == ObjectId(credentials.subject["id"]))
