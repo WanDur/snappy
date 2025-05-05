@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, ListRenderItem } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
@@ -231,9 +231,8 @@ const HomeScreen = () => {
     } else {
       console.log('Session is null')
     }
-
   }, [])
-          
+
   const myFriends = friends.filter((f) => f.type === 'friend')
 
   const markSeen = useCallback((id: string) => {
@@ -246,6 +245,31 @@ const HomeScreen = () => {
   }, [])
 
   const getItemLayout = (_: any, index: number) => ({ length: SCREEN_HEIGHT, offset: SCREEN_HEIGHT * index, index })
+
+  const BLANK_IMG = 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo'
+
+  /* -------- map Zustand data → feed cards (runs every store change) -------- */
+  const enrichedWeeks = useMemo(() => {
+    if (weeks.length === 0) return weeks
+
+    // Build a single “local feed” list once
+    const localFeed = friends.map((f, i) => {
+      const first = f.albumList.flatMap((al) => al.images ?? [])[0]?.uri
+      return {
+        id: `local-${f.id}-${i}`,
+        user: f.username ?? f.name,
+        avatar: f.avatar,
+        mediaUri: first ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
+        seen: false
+      }
+    })
+
+    // Patch *all* generated weeks, not just the current one
+    return weeks.map((w) => ({
+      ...w,
+      feed: localFeed // overwrite the feed for this week
+    }))
+  }, [weeks, friends])
 
   return (
     <Themed.View style={styles.container}>
@@ -264,7 +288,7 @@ const HomeScreen = () => {
 
       <FlatList
         ref={listRef}
-        data={weeks}
+        data={enrichedWeeks}
         pagingEnabled
         keyExtractor={(w) => w.key}
         renderItem={({ item }) => <WeekPage bundle={item} markSeen={markSeen} />}
