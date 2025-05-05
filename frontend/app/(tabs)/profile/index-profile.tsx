@@ -132,26 +132,24 @@ const ProfileScreen = () => {
   const fetchProfileData = async () => {
     if (session.session) {
       session.apiWithToken.get('/user/profile/myself').then((res) => {
-        const userData = res.data
-        setUser({
-          id: userData.id,
-          email: userData.email,
-          username: userData.username,
-          name: userData.name,
-          phone: userData.phone,
-          iconUrl: userData.iconUrl,
-          bio: userData.bio,
-          notificationTokens: [], // TODO - to be implemented
-          tier: userData.tier,
-          premiumExpireTime: userData.premiumExpireTime
-        })
-        const iconUrl = parsePublicUrl(userData.iconUrl)
-        updateAvatar(iconUrl)
-        setPhotoCount(userData.photoCount)
-        setLastLocation(userData.lastLocation)
-        console.log('Icon url:', iconUrl)
-        console.log('User data fetched and stored in userStore:', userData)
-      })
+              const userData = res.data
+              setUser({
+                id: userData.id,
+                email: userData.email,
+                username: userData.username,
+                name: userData.name,
+                phone: userData.phone,
+                iconUrl: userData.iconUrl,
+                bio: userData.bio,
+                notificationTokens: [], // TODO - to be implemented
+                tier: userData.tier,
+                premiumExpireTime: userData.premiumExpireTime
+              })
+              const iconUrl = parsePublicUrl(userData.iconUrl)
+              updateAvatar(iconUrl)
+              setPhotoCount(userData.photoCount)
+              setLastLocation(userData.lastLocation)
+            })
     }
   }
 
