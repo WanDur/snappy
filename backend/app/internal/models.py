@@ -113,14 +113,6 @@ class Conversation(Model):
     async def find_direct_conversation(
         cls, user1: User, user2: User
     ) -> Conversation | None:
-        # conversation = await engine.find_one(
-        #     Conversation,
-        #     query.and_(
-        #         Conversation.type == ConversationType.DIRECT,
-        #         query.in_(user1.id, Conversation.participants),
-        #         query.in_(user2.id, Conversation.participants),
-        #     ),
-        # )
         conversation = await engine.get_collection(Conversation).find_one(
             {
                 "type": ConversationType.DIRECT,
@@ -130,6 +122,22 @@ class Conversation(Model):
             }
         )
         return conversation
+
+    @classmethod
+    async def find_conversation_ids(cls, user: User) -> list[Conversation]:
+        convo_dicts = (
+            await engine.get_collection(Conversation)
+            .find(
+                {
+                    "participants": {
+                        "$all": [user.id],
+                    },
+                }
+            )
+            .to_list()
+        )
+
+        return [convo["_id"] for convo in convo_dicts]
 
 
 class AttachmentType(str, Enum):

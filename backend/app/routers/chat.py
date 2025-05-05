@@ -163,3 +163,45 @@ async def send_message(
             }
         )
     )
+
+
+@chat_router.get("/fetch")
+async def fetch_messages(
+    since: Optional[datetime] = None,
+    user: User | None = Depends(get_user),
+):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    conversation_ids = await Conversation.find_conversation_ids(user)
+    new_messages = []
+    for conversation_id in conversation_ids:
+        log_debug(conversation_id)
+        from odmantic.query import and_
+
+        query = and_(
+            {"conversation": conversation_id},
+            {"timestamp": {"$gt": since}} if since else {},
+            {"sender": {"$ne": user.id}},
+        )
+        messages = await engine.find(
+            Message,
+            query,
+            sort=Message.timestamp.desc(),
+        )
+        if messages:
+            new_chat_conversations = {
+                "conversationId": str(conversation_id),
+                "messages": [
+                    {
+                        "messageId": str(message.id),
+                        "senderId": str(message.sender.id),
+                        "message": message.message,
+                        "attachments": message.attachments,
+                        "timestamp": message.timestamp,
+                    }
+                    for message in messages
+                ],
+            }
+            new_messages.append(new_chat_conversations)
+    return ORJSONResponse(serialize_mongo_object(new_messages))
