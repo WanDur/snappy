@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ const generateMockPhotos = () => {
   const weeks = []
   const currentDate = new Date()
 
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 4; i++) {
     const weekStart = new Date(currentDate)
     weekStart.setDate(currentDate.getDate() - i * 7)
 
@@ -62,11 +62,56 @@ const generateMockPhotos = () => {
   return weeks
 }
 
+// Generate mock albums
+const generateMockAlbums = () => {
+  const albums = [
+    {
+      id: 'album1',
+      title: 'Vacation 2024',
+      coverImage: 'https://via.placeholder.com/400x400',
+      photoCount: 24
+    },
+    {
+      id: 'album2',
+      title: 'Family',
+      coverImage: 'https://via.placeholder.com/400x400',
+      photoCount: 37
+    },
+    {
+      id: 'album3',
+      title: 'Nature',
+      coverImage: 'https://via.placeholder.com/400x400',
+      photoCount: 18
+    },
+    {
+      id: 'album4',
+      title: 'Food',
+      coverImage: 'https://via.placeholder.com/400x400',
+      photoCount: 12
+    },
+    {
+      id: 'album5',
+      title: 'Travel',
+      coverImage: 'https://via.placeholder.com/400x400',
+      photoCount: 42
+    },
+    {
+      id: 'album6',
+      title: 'Pets',
+      coverImage: 'https://via.placeholder.com/400x400',
+      photoCount: 15
+    }
+  ]
+  return albums
+}
+
 const photosByWeek = generateMockPhotos()
+const albums = generateMockAlbums()
 
 const { width } = Dimensions.get('window')
 const photoCardWidth = width * 0.75
 const photoMargin = 12
+const albumCardSize = (width - 48) / 2
 
 const ProfileScreen = () => {
   const router = useRouter()
@@ -75,7 +120,8 @@ const ProfileScreen = () => {
   const { colors } = useTheme()
 
   const bottomSheetModalRef = useRef<BottomSheetModal>(null)
-  const [selectedTag, setSelectedTag] = useState('All')
+  const scrollViewRef = useRef<ScrollView>(null)
+  const [activeTab, setActiveTab] = useState(0)
   const [firstName, setFirstName] = useState(user.name.split(' ')[0])
   const [lastName, setLastName] = useState(user.name.split(' ')[1])
   const [userName, setUserName] = useState(user.username)
@@ -109,13 +155,27 @@ const ProfileScreen = () => {
 
   useEffect(() => {
     if (!isAuthenticated(session)) {
-      router.replace('/(auth)/LoginScreen');
+      router.replace('/(auth)/LoginScreen')
       return
     }
 
     fetchProfileData()
-
   }, [])
+
+  // Handle tab change from tab press
+  const handleTabPress = (index: number) => {
+    setActiveTab(index)
+    scrollViewRef.current?.scrollTo({ x: width * index, animated: true })
+  }
+
+  // Handle scroll event to update active tab
+  const handleScroll = (event) => {
+    const contentOffsetX = event.nativeEvent.contentOffset.x
+    const tabIndex = Math.round(contentOffsetX / width)
+    if (activeTab !== tabIndex) {
+      setActiveTab(tabIndex)
+    }
+  }
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -126,11 +186,6 @@ const ProfileScreen = () => {
   }
 
   const renderWeekSection = ({ item }) => {
-    // Filter photos if a tag is selected (mock filtering based on index)
-    const filteredPhotos = selectedTag === 'All' ? item.photos : item.photos.filter((_, index) => index % 3 === 0)
-
-    if (filteredPhotos.length === 0) return null
-
     return (
       <View style={styles.weekContainer}>
         <View style={styles.weekHeader}>
@@ -152,7 +207,7 @@ const ProfileScreen = () => {
           snapToInterval={photoCardWidth + photoMargin}
           snapToAlignment="start"
         >
-          {filteredPhotos.map((photo) => (
+          {item.photos.map((photo) => (
             <TouchableOpacity key={photo.id} style={styles.photoCard} activeOpacity={0.9}>
               <Image source={{ uri: photo.uri }} style={styles.photoImage} />
 
@@ -180,6 +235,18 @@ const ProfileScreen = () => {
     )
   }
 
+  const renderAlbum = ({ item }) => {
+    return (
+      <TouchableOpacity activeOpacity={0.8} style={styles.albumCard}>
+        <Image source={{ uri: item.coverImage }} style={styles.albumCover} />
+        <View style={styles.albumInfo}>
+          <Themed.Text style={styles.albumTitle}>{item.title}</Themed.Text>
+          <Themed.Text style={styles.albumCount}>{item.photoCount} photos</Themed.Text>
+        </View>
+      </TouchableOpacity>
+    )
+  }
+
   // #region save profile changes
   const handleSave = () => {
     if (firstName.trim() === '') setFirstName(user.name.split(' ')[0])
@@ -196,14 +263,16 @@ const ProfileScreen = () => {
 
       updateBio(bio.trim())
 
-      session.apiWithToken.post('/user/profile/edit', {
-        name: name,
-        username: username,
-        bio: bio.trim()
-      }).catch((error) => {
-        console.error('Error updating profile:', error)
-        Alert.alert('Error', 'Failed to update profile. Please try again later.')
-      })
+      session.apiWithToken
+        .post('/user/profile/edit', {
+          name: name,
+          username: username,
+          bio: bio.trim()
+        })
+        .catch((error) => {
+          console.error('Error updating profile:', error)
+          Alert.alert('Error', 'Failed to update profile. Please try again later.')
+        })
     }
 
     Keyboard.dismiss()
@@ -228,10 +297,21 @@ const ProfileScreen = () => {
             <View style={styles.profileImageSection}>
               <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/ProfileAvatar')}>
                 <Themed.View style={styles.profileImageWrapper} lightColor="#E6E6E6" darkColor="#4D4D4D">
-                  <Image
-                    source={{ uri: user.iconUrl }}
-                    style={[styles.profileImage, { borderColor: colors.borderColor }]}
-                  />
+                  {user.iconUrl ? (
+                    <Image
+                      source={{ uri: user.iconUrl }}
+                      style={[styles.profileImage, { borderColor: colors.borderColor }]}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.profileImage,
+                        { borderColor: colors.borderColor, justifyContent: 'center', alignItems: 'center' }
+                      ]}
+                    >
+                      <IconSymbol name="person.fill" color={colors.gray} size={36} />
+                    </View>
+                  )}
                 </Themed.View>
               </TouchableOpacity>
               <Themed.View style={styles.postCountBadge} shadow>
@@ -247,7 +327,7 @@ const ProfileScreen = () => {
               </Themed.Text>
               <View style={styles.locationRow}>
                 <Feather name="map-pin" size={14} color="#fff" />
-                <Themed.Text style={styles.locationText}>{lastLocation}</Themed.Text>
+                <Themed.Text style={styles.locationText}>user.location</Themed.Text>
               </View>
               {user.bio !== '' && <Themed.Text style={styles.bioText}>{user.bio}</Themed.Text>}
             </View>
@@ -280,36 +360,61 @@ const ProfileScreen = () => {
           </View>
         </View>
 
-        {/* Tags Section */}
-        <View style={styles.tagsSection}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsScrollView}>
-            <TouchableOpacity
-              style={[styles.tagButton, selectedTag === 'All' && styles.activeTagButton]}
-              onPress={() => setSelectedTag('All')}
-            >
-              <Text style={[styles.tagText, selectedTag === 'All' && styles.activeTagText]}>All</Text>
-            </TouchableOpacity>
-            {/*userData.tags.map((tag, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.tagButton, selectedTag === tag && styles.activeTagButton]}
-                onPress={() => setSelectedTag(tag)}
-              >
-                <Text style={[styles.tagText, selectedTag === tag && styles.activeTagText]}>{tag}</Text>
-              </TouchableOpacity>
-            ))*/}
-          </ScrollView>
+        {/* Instagram-style Tabs Section */}
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 0 && styles.activeTabButton]}
+            onPress={() => handleTabPress(0)}
+          >
+            <Feather name="grid" size={20} color={activeTab === 0 ? '#6c5ce7' : '#999'} />
+            <Themed.Text style={[styles.tabText, activeTab === 0 && styles.activeTabText]}>Photos</Themed.Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === 1 && styles.activeTabButton]}
+            onPress={() => handleTabPress(1)}
+          >
+            <Feather name="folder" size={20} color={activeTab === 1 ? '#6c5ce7' : '#999'} />
+            <Themed.Text style={[styles.tabText, activeTab === 1 && styles.activeTabText]}>Albums</Themed.Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Photos Section */}
-        <View style={styles.photosSection}>
-          <FlatList
-            data={photosByWeek}
-            renderItem={renderWeekSection}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false} // Prevent scrolling since we're already in a ScrollView
-          />
-        </View>
+        {/* Horizontal swipeable content */}
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScroll}
+          scrollEventThrottle={16}
+          style={styles.tabContentContainer}
+        >
+          {/* Photos Tab */}
+          <View style={[styles.tabPage, { width }]}>
+            <View style={styles.photosSection}>
+              <FlatList
+                data={photosByWeek}
+                renderItem={renderWeekSection}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+              />
+            </View>
+          </View>
+
+          {/* Albums Tab */}
+          <View style={[styles.tabPage, { width }]}>
+            <View style={styles.albumsSection}>
+              <FlatList
+                data={albums}
+                renderItem={renderAlbum}
+                keyExtractor={(item) => item.id}
+                numColumns={2}
+                scrollEnabled={false}
+                columnWrapperStyle={styles.albumsColumnWrapper}
+              />
+            </View>
+          </View>
+        </ScrollView>
       </Themed.ScrollView>
       <BottomSheetModal
         index={1}
@@ -355,6 +460,7 @@ const ProfileScreen = () => {
               placeholder="Username"
               placeholderTextColor="#999"
               autoCapitalize="none"
+              autoFocus
             />
           </View>
 
@@ -491,33 +597,84 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 6
   },
-  tagsSection: {
-    marginTop: 20,
-    marginBottom: 10
+  // Instagram-style tabs
+  tabsContainer: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#f0f0f0',
+    marginTop: 20
   },
-  tagsScrollView: {
-    paddingHorizontal: 15
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12
   },
-  tagButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f2f5',
-    marginRight: 10
+  activeTabButton: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#6c5ce7'
   },
-  activeTagButton: {
-    backgroundColor: '#6c5ce7'
+  tabText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8
   },
-  tagText: {
-    color: '#636e72',
-    fontWeight: '500'
+  activeTabText: {
+    color: '#6c5ce7',
+    fontWeight: '600'
   },
-  activeTagText: {
-    color: '#fff'
+  // Tab content container
+  tabContentContainer: {
+    flexGrow: 0,
+    flexShrink: 0
+  },
+  tabPage: {
+    // Full width of the screen
+    flex: 1
   },
   photosSection: {
     paddingVertical: 10,
     paddingBottom: 30
+  },
+  albumsSection: {
+    paddingVertical: 15,
+    paddingHorizontal: 15,
+    paddingBottom: 30
+  },
+  albumsColumnWrapper: {
+    justifyContent: 'space-between',
+    marginBottom: 15
+  },
+  albumCard: {
+    width: albumCardSize,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
+  },
+  albumCover: {
+    width: '100%',
+    height: albumCardSize,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12
+  },
+  albumInfo: {
+    padding: 12
+  },
+  albumTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4
+  },
+  albumCount: {
+    fontSize: 12,
+    color: '#666'
   },
   weekContainer: {
     marginBottom: 30
@@ -595,6 +752,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 5
+  },
+  locationText: {
+    color: '#fff',
+    fontSize: 12,
+    marginLeft: 4
   },
   captionText: {
     fontSize: 13,
