@@ -1,6 +1,6 @@
-import { ProfileData, TUser, EditType } from './profile.type'
+import { User, UserTier, Friendship } from './user.types'
 import { ChatItem, TMessage } from './chats.type'
 import { Album, Image } from './album.types'
 import { Friend } from './friend.types'
 
-export { ProfileData, TUser as User, ChatItem, TMessage, EditType, Album, Image, Friend }
+export { User, UserTier, Friendship, ChatItem, TMessage, Album, Image, Friend }

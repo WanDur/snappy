@@ -14,7 +14,7 @@ import { TMessage } from '@/types'
 import { Themed } from '@/components'
 import { MessageInput, AudioComponent, FileComponent, ImageComponent, ImagesComponent } from '@/components/chat'
 import { Constants } from '@/constants'
-import { useChatStore, useProfileStore, useTheme } from '@/hooks'
+import { useChatStore, useUserStore, useTheme } from '@/hooks'
 // import { useSession } from '@/contexts/auth'
 import { Attachment, MessageResponse, SYSTEM } from '@/types/chats.type'
 
@@ -26,7 +26,7 @@ const ChatScreen = () => {
 
   const { chatID } = useLocalSearchParams<{ chatID: string }>()
 
-  const { profile } = useProfileStore()
+  const { user } = useUserStore()
   const { getChat, addMessage, clearUnreadCount } = useChatStore()
 
   const [keyboardHeight, setKeyboardHeight] = useState(0)
@@ -296,7 +296,7 @@ const ChatScreen = () => {
           showsVerticalScrollIndicator: FIX_SCROLL_INDICATOR_OFFSET
         }}
         renderSend={() => null}
-        user={{ _id: profile.user._id }}
+        user={{ _id: user.id }}
         renderBubble={(props: BubbleProps<TMessage>) => {
           return (
             <View>

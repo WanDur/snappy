@@ -1,24 +1,25 @@
-import { useState } from 'react'
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, FlatList, Dimensions } from 'react-native'
+import { useState, useRef } from 'react'
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  FlatList,
+  Dimensions,
+  Keyboard
+} from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet'
 
 import { Themed, TouchableBounce } from '@/components'
 import { Stack } from '@/components/router-form'
+import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
 import { IconSymbol } from '@/components/ui/IconSymbol'
-import { useTheme } from '@/hooks'
-
-const userData = {
-  name: 'Alex Johnson',
-  username: '@alexjphoto',
-  location: 'San Francisco, CA',
-  profileImage: 'https://randomuser.me/api/portraits/men/2.jpg',
-  postsCount: 184,
-  bio: 'Capturing moments through my lens. Nature lover, urban explorer and coffee enthusiast.',
-  // TODO: i think no need for tags, maybe add tab
-  tags: ['Albums']
-}
+import { useTheme, useUserStore } from '@/hooks'
 
 const generateMockPhotos = () => {
   const weeks = []
@@ -67,9 +68,15 @@ const photoMargin = 12
 
 const ProfileScreen = () => {
   const router = useRouter()
+  const { user, updateName, updateUsername, updateBio } = useUserStore()
   const { colors } = useTheme()
 
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null)
   const [selectedTag, setSelectedTag] = useState('All')
+  const [firstName, setFirstName] = useState(user.name.split(' ')[0])
+  const [lastName, setLastName] = useState(user.name.split(' ')[1])
+  const [userName, setUserName] = useState(user.username)
+  const [bio, setBio] = useState(user.bio)
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -134,6 +141,28 @@ const ProfileScreen = () => {
     )
   }
 
+  // #region save profile changes
+  const handleSave = () => {
+    if (firstName.trim() === '') setFirstName(user.name.split(' ')[0])
+    if (lastName.trim() === '') setLastName(user.name.split(' ')[1])
+    if (userName.trim() === '') setUserName(user.username)
+
+    if (firstName.trim() !== '' && lastName.trim() !== '' && userName.trim() !== '') {
+      const name = `${firstName} ${lastName}`
+      updateName(name)
+
+      const username = userName.startsWith('@') ? userName : `@${userName}`
+      setUserName(username)
+      updateUsername(username)
+
+      updateBio(bio.trim())
+    }
+
+    Keyboard.dismiss()
+    bottomSheetModalRef.current?.close()
+  }
+  // #endregion
+
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen
@@ -152,27 +181,27 @@ const ProfileScreen = () => {
               <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/ProfileAvatar')}>
                 <Themed.View style={styles.profileImageWrapper} lightColor="#E6E6E6" darkColor="#4D4D4D">
                   <Image
-                    source={{ uri: userData.profileImage }}
+                    source={{ uri: user.iconUrl }}
                     style={[styles.profileImage, { borderColor: colors.borderColor }]}
                   />
                 </Themed.View>
               </TouchableOpacity>
               <Themed.View style={styles.postCountBadge} shadow>
-                <Text style={styles.postCountText}>{userData.postsCount}</Text>
+                <Text style={styles.postCountText}># of</Text>
                 <Text style={styles.postLabel}>Photos</Text>
               </Themed.View>
             </View>
 
             <View style={styles.profileInfo}>
-              <Themed.Text style={styles.nameText}>{userData.name}</Themed.Text>
+              <Themed.Text style={styles.nameText}>{user.name}</Themed.Text>
               <Themed.Text style={styles.usernameText} text70>
-                {userData.username}
+                {user.username}
               </Themed.Text>
               <View style={styles.locationRow}>
                 <Feather name="map-pin" size={14} color="#fff" />
-                <Themed.Text style={styles.locationText}>{userData.location}</Themed.Text>
+                <Themed.Text style={styles.locationText}>user.location</Themed.Text>
               </View>
-              <Themed.Text style={styles.bioText}>{userData.bio}</Themed.Text>
+              {user.bio !== '' && <Themed.Text style={styles.bioText}>{user.bio}</Themed.Text>}
             </View>
           </View>
 
@@ -183,6 +212,7 @@ const ProfileScreen = () => {
                   styles.editButton,
                   { borderColor: colors.borderColor, backgroundColor: colors.background, shadowColor: colors.text }
                 ]}
+                onPress={() => bottomSheetModalRef.current?.present()}
               >
                 <Feather name="edit-2" size={16} color="#6c5ce7" />
                 <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -211,7 +241,7 @@ const ProfileScreen = () => {
             >
               <Text style={[styles.tagText, selectedTag === 'All' && styles.activeTagText]}>All</Text>
             </TouchableOpacity>
-            {userData.tags.map((tag, index) => (
+            {/*userData.tags.map((tag, index) => (
               <TouchableOpacity
                 key={index}
                 style={[styles.tagButton, selectedTag === tag && styles.activeTagButton]}
@@ -219,7 +249,7 @@ const ProfileScreen = () => {
               >
                 <Text style={[styles.tagText, selectedTag === tag && styles.activeTagText]}>{tag}</Text>
               </TouchableOpacity>
-            ))}
+            ))*/}
           </ScrollView>
         </View>
 
@@ -233,6 +263,69 @@ const ProfileScreen = () => {
           />
         </View>
       </Themed.ScrollView>
+      <BottomSheetModal
+        index={1}
+        ref={bottomSheetModalRef}
+        snapPoints={['80%']}
+        handleComponent={BlurredHandle}
+        backgroundComponent={BlurredBackground}
+        backdropComponent={() => (
+          <View
+            onTouchEnd={() => {
+              Keyboard.dismiss()
+              bottomSheetModalRef.current?.close()
+            }}
+            style={[StyleSheet.absoluteFill]}
+          />
+        )}
+      >
+        <BottomSheetView style={{ flex: 1, padding: 16 }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', padding: 2, right: 14 }}
+            activeOpacity={0.7}
+            onPress={handleSave}
+          >
+            <Themed.Text type="headerButton" state={true}>
+              Save
+            </Themed.Text>
+          </TouchableOpacity>
+          <View style={styles.nameRow}>
+            <View style={{ flex: 0.48 }}>
+              <Themed.TextInput label="First Name" value={firstName} onChangeText={setFirstName} />
+            </View>
+
+            <View style={{ flex: 0.48 }}>
+              <Themed.TextInput label="Last Name" value={lastName} onChangeText={setLastName} />
+            </View>
+          </View>
+
+          <View>
+            <Themed.TextInput
+              label="Username"
+              value={userName}
+              onChangeText={setUserName}
+              placeholder="Username"
+              placeholderTextColor="#999"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View>
+            <Themed.TextInput
+              label="Bio"
+              value={bio}
+              style={{ height: 100, padding: 16 }}
+              onChangeText={setBio}
+              placeholder="Tell us about yourself..."
+              placeholderTextColor="#999"
+              multiline={true}
+              maxLength={100}
+              numberOfLines={3}
+              onBlur={() => setBio(bio.trim())}
+            />
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   )
 }
@@ -459,6 +552,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#fff',
     fontWeight: '400'
+  },
+  nameRow: {
+    paddingTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  nameInput: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16
   }
 })
 

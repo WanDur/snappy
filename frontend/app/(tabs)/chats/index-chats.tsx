@@ -8,7 +8,7 @@ import { Stack } from 'expo-router'
 import { Themed } from '@/components'
 import { ChatRow } from '@/components/chat'
 import { useBottomTabOverflow } from '@/components/ui/TabBarBackground'
-import { useChatStore, useProfileStore, useStorage, useTheme } from '@/hooks'
+import { useChatStore, useUserStore, useStorage, useTheme } from '@/hooks'
 import { ChatItem } from '@/types'
 // import { useSession } from '@/contexts/auth'
 // import { FetchNewMessageResponse } from '@/types/chats.type'
@@ -84,7 +84,7 @@ export const ChatScreen = () => {
     deleteChat,
     addUnreadCount
   } = useChatStore()
-  const { profile } = useProfileStore()
+  const { user } = useUserStore()
   //const { syncChat } = useSync()
 
   const [isEdit, setIsEdit] = useState(false)

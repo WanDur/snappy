@@ -9,7 +9,7 @@ import { GestureResponderEvent, LayoutRectangle } from 'react-native'
 
 import { Themed } from '@/components'
 import { isBetween } from '@/utils'
-import { useTheme, useProfileStore } from '@/hooks'
+import { useTheme, useUserStore } from '@/hooks'
 // import { useSession } from '@/contexts/auth'
 import { isAxiosError } from 'axios'
 
@@ -17,12 +17,12 @@ const ProfileAvatar = () => {
   // const session = useSession()
 
   const router = useRouter()
-  const { profile, updateAvatar } = useProfileStore()
+  const { user, updateAvatar } = useUserStore()
   const { colors } = useTheme()
 
   const [imagePosition, setImagePosition] = useState({ x: -1, y: -1 })
   const [buttonsLayout, setButtonsLayout] = useState<LayoutRectangle>({ x: -1, y: -1, width: 200, height: 40 })
-  const [avatarURL, setAvatarURL] = useState(profile.user.avatar)
+  const [avatarURL, setAvatarURL] = useState(user.iconUrl)
 
   const imageSize = 200
 

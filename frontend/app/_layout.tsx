@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet'
 import 'react-native-reanimated'
 
-import { useTheme } from '@/hooks'
+import { useTheme, useUserStore } from '@/hooks'
 import { SettingsProvider } from '@/contexts'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { Stack } from '@/components/router-form'
@@ -18,6 +18,7 @@ import { SessionProvider } from '@/contexts/auth'
 SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
+  const { setUser } = useUserStore()
   const colorScheme = useColorScheme()
   const { colors } = useTheme()
   const [loaded] = useFonts({
@@ -27,6 +28,18 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync()
+      setUser({
+        id: 'test',
+        name: 'Alex Johnson',
+        username: '@alexjphoto',
+        email: '@mail',
+        phone: '1234567890',
+        notificationTokens: [],
+        tier: {},
+        iconUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
+        premiumExpireTime: undefined
+      })
+      console.log('User set in _layout.tsx')
     }
   }, [loaded])
 

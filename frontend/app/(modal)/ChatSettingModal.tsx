@@ -9,16 +9,17 @@ import { Image } from 'expo-image'
 import { Stack, Form } from '@/components/router-form'
 import { ModalCloseButton } from '@/components/ui'
 import { Themed } from '@/components'
-import { useChatStore } from '@/hooks'
+import { useChatStore, useUserStore } from '@/hooks'
 
 const ChatProfileScreen = () => {
   const { chatID } = useLocalSearchParams<{ chatID: string }>()
+  const { user } = useUserStore()
   const { getChat } = useChatStore()
 
   const { chatTitle, iconUrl, chatSubtitle } = getChat(chatID)
   const members = [
-    { name: '$my-name', username: '$my-username' },
-    { name: chatTitle, username: chatTitle.toLowerCase(), icon: iconUrl }
+    { name: user.name, username: user.username, icon: user.iconUrl },
+    { name: chatTitle, username: `@${chatTitle.toLowerCase()}`, icon: iconUrl }
   ]
 
   return (
@@ -72,7 +73,7 @@ const ChatProfileScreen = () => {
                   <View />
                   <View>
                     <Form.Text style={{ fontWeight: '600' }}>{member.name}</Form.Text>
-                    <Text style={{ color: '#666' }}>@{member.username}</Text>
+                    <Text style={{ color: '#666' }}>{member.username}</Text>
                   </View>
                 </Form.HStack>
               ))
