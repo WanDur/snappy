@@ -98,6 +98,7 @@ export default function ViewImageModal() {
       <FlatList
         ref={listRef}
         data={photos}
+        style={{ backgroundColor: 'black' }}
         horizontal
         pagingEnabled
         showsVerticalScrollIndicator={false}

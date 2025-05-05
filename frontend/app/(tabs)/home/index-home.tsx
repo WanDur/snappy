@@ -200,8 +200,6 @@ const HomeScreen = () => {
 
   const myFriends = friends.filter((f) => f.type === 'friend')
 
-  myFriends.forEach((f) => console.log(f.name))
-
   const markSeen = useCallback((id: string) => {
     setWeeks((prev) =>
       prev.map((w) => ({
