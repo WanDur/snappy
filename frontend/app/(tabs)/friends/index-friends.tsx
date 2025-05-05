@@ -155,6 +155,7 @@ const FriendsScreen = () => {
     router.push({ pathname: '/(modal)/FriendProfileModal', params: { friendID: id } })
   }
 
+  // #region friend item
   const renderFriendItem = ({ item }: { item: Friend }) => (
     <SwipeableRow
       title={item.name}
@@ -181,7 +182,9 @@ const FriendsScreen = () => {
       </TouchableHighlight>
     </SwipeableRow>
   )
+  // #endregion
 
+  // #region pending request
   const renderPendingRequestItem = ({ item }: { item: Friend }) => (
     <Themed.View style={styles.requestItem}>
       <TouchableOpacity
@@ -215,7 +218,9 @@ const FriendsScreen = () => {
       </View>
     </Themed.View>
   )
+  // #endregion
 
+  // #region suggested friends
   const renderSuggestedFriendItem = ({ item }: { item: Friend }) => (
     <Themed.View style={styles.suggestedItem} shadow>
       <TouchableOpacity style={{ alignItems: 'center' }} activeOpacity={0.7} onPress={() => openUserProfile(item.id)}>
@@ -232,7 +237,9 @@ const FriendsScreen = () => {
       </TouchableBounce>
     </Themed.View>
   )
+  // #endregion
 
+  // #region screen main view
   const renderFriendList = () => (
     <View>
       {pendingRequests.length > 0 && (
@@ -300,9 +307,15 @@ const FriendsScreen = () => {
       />
     </View>
   )
+  // #endregion
 
+  // #region user search result component
   const renderUserItem = ({ item }: { item: Friend }) => (
-    <TouchableOpacity style={styles.userItem} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.userItem}
+      activeOpacity={0.7}
+      onPress={() => router.push({ pathname: '/(modal)/FriendProfileModal', params: { friendID: item.id } })}
+    >
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
       <View style={styles.userInfo}>
         <Themed.Text style={styles.userName}>{item.name}</Themed.Text>
@@ -317,7 +330,9 @@ const FriendsScreen = () => {
       </TouchableOpacity>
     </TouchableOpacity>
   )
+  // #endregion
 
+  // #region empty result component
   const renderEmptyResult = () =>
     isLoading ? (
       <View style={styles.emptyContainer}>
@@ -332,6 +347,7 @@ const FriendsScreen = () => {
         />
       </Form.Section>
     )
+  // #endregion
 
   const onSearch = () => {}
 

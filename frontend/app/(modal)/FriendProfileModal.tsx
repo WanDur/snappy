@@ -8,7 +8,7 @@ import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons'
 import { useLocalSearchParams } from 'expo-router'
 
 import { Themed } from '@/components'
-import { Stack } from '@/components/router-form'
+import { Stack, ContentUnavailable } from '@/components/router-form'
 import { useFriendStore } from '@/hooks'
 
 const FriendProfileModal = () => {
@@ -73,13 +73,6 @@ const FriendProfileModal = () => {
     // Navigation logic here
   }
 
-  // Render photo item
-  const renderPhotoItem = ({ item }) => (
-    <TouchableOpacity style={styles.photoItem}>
-      <Image source={{ uri: item.imageUrl }} style={styles.photoThumbnail} />
-    </TouchableOpacity>
-  )
-
   // Render album item
   const renderAlbumItem = ({ item }) => (
     <TouchableOpacity style={styles.albumItem}>
@@ -96,7 +89,7 @@ const FriendProfileModal = () => {
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen options={{ headerTitle: 'User Profile' }} />
-      <Themed.ScrollView style={styles.scrollContainer}>
+      <Themed.ScrollView style={{ flex: 1 }}>
         {/* Profile section */}
         <View style={styles.profileSection}>
           <Image source={{ uri: friend.avatar }} style={styles.profilePic} />
@@ -104,40 +97,16 @@ const FriendProfileModal = () => {
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{friend.name}</Text>
             <Text style={styles.userHandle}>@username</Text>
-
-            <View style={styles.streakContainer}>
-              <Ionicons name="flame" size={16} color="#FF6B6B" />
-              <Text style={styles.streakText}>`streak` day streak</Text>
-            </View>
-
+            <Text style={[styles.userHandle, { marginBottom: 4 }]}>127 posts</Text>
             <Text style={styles.lastActive}>Active {friend.lastActive}</Text>
           </View>
         </View>
 
         {/* Bio section */}
-        <View style={styles.bioSection}>
+        <View style={{ paddingHorizontal: 16 }}>
           <Text style={styles.bioText}>{user.bio}</Text>
         </View>
 
-        {/* Stats section */}
-        <View style={styles.statsSection}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{user.postsCount}</Text>
-            <Text style={styles.statLabel}>Posts</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{user.friendsCount}</Text>
-            <Text style={styles.statLabel}>Friends</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{user.albumsCount}</Text>
-            <Text style={styles.statLabel}>Albums</Text>
-          </View>
-        </View>
-
-        {/* Action buttons (different based on friend status) */}
         <View style={styles.actionSection}>
           {isFriend ? (
             <>
@@ -158,6 +127,8 @@ const FriendProfileModal = () => {
           )}
         </View>
 
+        <Themed.View type="divider" />
+
         {isFriend && (
           <>
             {/* Recent photos section */}
@@ -170,7 +141,11 @@ const FriendProfileModal = () => {
               </View>
               <FlatList
                 data={user.recentPhotos}
-                renderItem={renderPhotoItem}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.photoItem}>
+                    <Image source={{ uri: item.imageUrl }} style={styles.photoThumbnail} />
+                  </TouchableOpacity>
+                )}
                 keyExtractor={(item) => item.id}
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -199,10 +174,12 @@ const FriendProfileModal = () => {
         )}
 
         {!isFriend && (
-          <View style={styles.nonFriendMessage}>
-            <Ionicons name="lock-closed" size={40} color="#AAAAAA" />
-            <Text style={styles.nonFriendTitle}>Content is private</Text>
-            <Text style={styles.nonFriendText}>Send a friend request to view this user's photos and shared albums</Text>
+          <View style={{ padding: 16 }}>
+            <ContentUnavailable
+              title="Private Content"
+              systemImage="lock.circle"
+              description="Send a friend request to view this user's photos and albums"
+            />
           </View>
         )}
       </Themed.ScrollView>
@@ -211,30 +188,6 @@ const FriendProfileModal = () => {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0'
-  },
-  closeButton: {
-    padding: 4
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333'
-  },
-  headerRightPlaceholder: {
-    width: 28
-  },
-  scrollContainer: {
-    flex: 1
-  },
   profileSection: {
     flexDirection: 'row',
     padding: 16,
@@ -261,55 +214,14 @@ const styles = StyleSheet.create({
     color: '#666666',
     marginBottom: 6
   },
-  streakContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
-  },
-  streakText: {
-    fontSize: 12,
-    color: '#FF6B6B',
-    fontWeight: '600',
-    marginLeft: 4
-  },
   lastActive: {
     fontSize: 12,
     color: '#888888'
-  },
-  bioSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 16
   },
   bioText: {
     fontSize: 14,
     color: '#555555',
     lineHeight: 20
-  },
-  statsSection: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#F0F0F0',
-    justifyContent: 'space-around'
-  },
-  statItem: {
-    alignItems: 'center'
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333333'
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#777777',
-    marginTop: 2
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: '#EEEEEE'
   },
   actionSection: {
     flexDirection: 'row',
@@ -365,9 +277,7 @@ const styles = StyleSheet.create({
     marginLeft: 8
   },
   sectionContainer: {
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0'
+    paddingVertical: 16
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -427,25 +337,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555555',
     textAlign: 'center'
-  },
-  nonFriendMessage: {
-    padding: 24,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  nonFriendTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#555555',
-    marginTop: 16,
-    marginBottom: 8
-  },
-  nonFriendText: {
-    fontSize: 14,
-    color: '#888888',
-    textAlign: 'center',
-    paddingHorizontal: 24,
-    lineHeight: 20
   }
 })
 

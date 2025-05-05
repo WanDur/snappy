@@ -265,33 +265,6 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover' // Ensures images fill the container
   },
-  emptyContainer: {
-    padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#888',
-    marginTop: 16,
-    marginBottom: 24
-  },
-  addPhotoButton: {
-    backgroundColor: '#4a80f5',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  buttonIcon: {
-    marginRight: 8
-  },
-  addPhotoButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15
-  },
   fab: {
     position: 'absolute',
     bottom: 30,
@@ -299,17 +272,13 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 30,
-    backgroundColor: '#4a80f5',
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.25,
     shadowRadius: 4
-  },
-  fullImage: {
-    width: '100%',
-    height: '100%'
   }
 })
 
