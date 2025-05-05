@@ -164,7 +164,7 @@ async def revoke_token(
     It invalidates the provided refresh token and ensures it cannot be used again.
     (To be implemented)
     """
-    return ORJSONResponse({"success": True})
+    return ORJSONResponse(status_code=204, content={"success": True})
 
 
 # endregion
