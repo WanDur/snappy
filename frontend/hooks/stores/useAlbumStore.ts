@@ -12,6 +12,7 @@ interface AlbumStore {
   removeAlbum: (id: string) => void
 
   addImage: (id: string, images: Image[]) => void
+  removeImage: (id: string, photoIndex: number) => void
 }
 
 export const useAlbumStore = create<AlbumStore>()(
@@ -51,6 +52,21 @@ export const useAlbumStore = create<AlbumStore>()(
 
             if (album.coverImage === '') {
               album.coverImage = images[0].uri
+            }
+          }
+        })
+      },
+      removeImage: (id, photoIndex) => {
+        set((state) => {
+          const index = state.albumList.findIndex((album) => album.id === id)
+          if (index !== -1) {
+            const album = state.albumList[index]
+            album.images.splice(photoIndex, 1)
+
+            if (album.images.length === 0) {
+              album.coverImage = ''
+            } else if (album.coverImage === album.images[photoIndex].uri) {
+              album.coverImage = album.images[0].uri
             }
           }
         })

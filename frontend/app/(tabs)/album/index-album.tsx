@@ -1,5 +1,5 @@
-import React, { useState, memo, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ViewStyle, TextStyle } from 'react-native'
+import { useState, memo, useMemo } from 'react'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ViewStyle, StyleProp } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
@@ -25,7 +25,10 @@ const AlbumCover = memo(
     contributors?: number
   }) => {
     const { colors } = useTheme()
-    const commonPlaceholderStyles = [placeholderStyle, { alignItems: 'center', justifyContent: 'center' }]
+    const commonPlaceholderStyles: StyleProp<ViewStyle> = [
+      placeholderStyle,
+      { alignItems: 'center', justifyContent: 'center' }
+    ]
 
     // if the album is at small size, use a smaller icon size
     const iconSize = typeof style.width === 'string' ? 64 : Number(style.width) * 0.4
@@ -33,17 +36,11 @@ const AlbumCover = memo(
     return (
       <View style={style}>
         {coverImage === '' ? (
-          // @ts-ignore
           <Themed.View type="secondary" style={commonPlaceholderStyles}>
             <Ionicons name="image" size={iconSize} color={colors.borderColor} />
           </Themed.View>
         ) : (
-          <Image
-            source={{ uri: coverImage }}
-            style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
-            cachePolicy="disk"
-          />
+          <Image source={{ uri: coverImage }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
         )}
       </View>
     )
