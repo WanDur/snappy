@@ -7,7 +7,16 @@ import random
 import string
 from typing import Annotated, Optional
 from odmantic import ObjectId
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    WebSocket,
+    WebSocketException,
+)
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 
@@ -93,6 +102,40 @@ async def create_group_chat(
     return ORJSONResponse({"conversationId": str(conversation.id)})
 
 
+# region websocket
+
+
+active_connections: dict[ObjectId, list[WebSocket]] = {}
+
+
+@chat_router.websocket("/ws")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    user: User | None = Depends(get_user),
+):
+    if user is None:
+        raise WebSocketException(code=1008, reason="Unauthorized")
+
+    await websocket.accept()
+    if user.id not in active_connections:
+        active_connections[user.id] = []
+    else:
+        active_connections[user.id].append(websocket)
+    log_debug(f"User {user.id} connected to WebSocket")
+
+    try:
+        while True:
+            await websocket.receive()
+    except:
+        active_connections[user.id].remove(websocket)
+        if not active_connections[user.id]:
+            del active_connections[user.id]
+        log_debug(f"User {user.id} disconnected from WebSocket")
+
+
+# region send message
+
+
 class SendMessageResponse(BaseModel):
     messageId: ObjectId
     senderId: ObjectId
@@ -153,6 +196,19 @@ async def send_message(
     await engine.save(msg)
 
     # TODO: send notifications to participants
+
+    for participant in conversation.participants:
+        if participant != user.id and participant in active_connections:
+            for connection in active_connections[participant]:
+                await connection.send_json(
+                    {
+                        "messageId": str(msg.id),
+                        "senderId": str(user.id),
+                        "message": msg.message,
+                        "attachments": msg.attachments,
+                    }
+                )
+
     return ORJSONResponse(
         serialize_mongo_object(
             {
@@ -163,6 +219,9 @@ async def send_message(
             }
         )
     )
+
+
+# region fetch new messages
 
 
 @chat_router.get("/fetch")
