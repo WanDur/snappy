@@ -38,6 +38,12 @@ export function parsePublicUrl(filePath: string) {
 
 export function isAuthenticated(session: AuthContextProps) {
   if (process.env.EXPO_PUBLIC_BYPASS_LOGIN == 'true') return true
+  // const ak = session.refreshAccessTokenRequest()
+  // console.log('ak', ak)
+  // return ak != null
+  // console.log('session', session.session)
+  // console.log('refreshExpireTime', session.session?.refreshExpireTime)
+  // console.log('currentTime', Math.floor(Date.now() / 1000))
   return session.session && session.session.refreshExpireTime > Math.floor(Date.now() / 1000)
 }
 
@@ -227,14 +233,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
       let accessToken = await SecureStore.getItemAsync('accessToken')
       const refreshToken = await SecureStore.getItemAsync('refreshToken')
 
-      if (!session || !refreshToken) {
-        console.log('No session or refreshToken found')
+      if (!refreshToken) {
+        console.log('No refreshToken found')
         return null
       }
 
       const accessTokenExpireTime = session?.accessExpireTime
       if (accessToken && accessTokenExpireTime && isAccessTokenExpired(session)) {
         // Access token expired, request again
+        console.log('Access token expired, refreshing...')
         const response = await api.post('/auth/token/refresh', {}, {
           headers: {
             'Authorization': `Bearer ${refreshToken}`

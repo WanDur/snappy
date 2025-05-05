@@ -46,22 +46,23 @@ class UserFetchProfileResponse(BaseModel):
 async def fetch_my_profile(user: User | None = Depends(get_user)):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
-    return ORJSONResponse(
-        serialize_mongo_object(
-            user,
-            project=[
-                "id",
-                "username",
-                "name",
-                "email",
-                "phone",
-                "iconUrl",
-                "tier",
-                "premiumExpireTime",
-                "bio",
-            ],
-        )
+    response = serialize_mongo_object(
+        user,
+        project=[
+            "id",
+            "username",
+            "name",
+            "email",
+            "phone",
+            "iconUrl",
+            "tier",
+            "premiumExpireTime",
+            "bio",
+        ],
     )
+    response["photoCount"] = 0  # TODO: count photos of users
+    response["lastLocation"] = "Universe"
+    return ORJSONResponse(response)
 
 
 @user_router.get("/profile/fetch/{user_id}")
@@ -86,6 +87,7 @@ class UserEditProfileBody(BaseModel):
     phone: Optional[
         Annotated[str, StringConstraints(pattern=r"^\(\+\d{1,3}\) \d{3,15}$")]
     ] = None
+    bio: Optional[str] = None
 
 
 @user_router.post("/profile/edit")
@@ -117,6 +119,18 @@ async def upload_user_icon(
     user.iconUrl = file_public_path
     await engine.save(user)
     return ORJSONResponse({"status": "success", "filePath": file_public_path})
+
+
+@user_router.delete("/profile/icon/remove")
+async def remove_user_icon(user: User | None = Depends(get_user)):
+    if not user:
+        return HTTPException(status_code=401, detail="Unauthorized")
+    if not user.iconUrl:
+        return HTTPException(status_code=400, detail="Icon not found")
+
+    user.iconUrl = None
+    await engine.save(user)
+    return ORJSONResponse({"status": "success"})
 
 
 # region friendship

@@ -209,7 +209,7 @@ const HomeScreen = () => {
       return
     }
     if (session.session) {
-      session.apiWithToken.get(`/user/profile/fetch/${session.session.userId}`).then((res) => {
+      session.apiWithToken.get('/user/profile/myself').then((res) => {
         const userData = res.data
         userStore.setUser({
           id: userData.id,

@@ -12,9 +12,10 @@ import { isBetween } from '@/utils'
 import { useTheme, useUserStore } from '@/hooks'
 // import { useSession } from '@/contexts/auth'
 import { isAxiosError } from 'axios'
+import { parsePublicUrl, useSession } from '@/contexts/auth'
 
 const ProfileAvatar = () => {
-  // const session = useSession()
+  const session = useSession()
 
   const router = useRouter()
   const { user, updateAvatar } = useUserStore()
@@ -27,7 +28,6 @@ const ProfileAvatar = () => {
   const imageSize = 200
 
   const uploadAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
-    return
     try {
       const formData = new FormData()
       formData.append('file', {
@@ -35,9 +35,10 @@ const ProfileAvatar = () => {
         name: asset.fileName,
         type: asset.mimeType
       } as any)
-      const iconUrl = await session.apiWithToken.post('/panda/user/icon/upload', formData)
-      setAvatarURL(iconUrl.data)
-      updateAvatar(iconUrl.data)
+      const response = await session.apiWithToken.post('/user/profile/icon/upload', formData)
+      const iconUrl = parsePublicUrl(response.data.filePath)
+      setAvatarURL(iconUrl)
+      updateAvatar(iconUrl)
     } catch (error) {
       if (isAxiosError(error)) {
         Alert.alert('Error uploading avatar', error.response?.data.detail)
@@ -82,9 +83,8 @@ const ProfileAvatar = () => {
   }
 
   const deleteAvatar = async () => {
-    return
     try {
-      await session.apiWithToken.delete('/panda/user/icon/delete')
+      await session.apiWithToken.delete('/user/profile/icon/remove')
       setAvatarURL('')
       updateAvatar('')
       Alert.alert('Success', 'Icon deleted successfully')
