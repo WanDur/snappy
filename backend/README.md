@@ -36,7 +36,7 @@ pip install -r requirements.txt
 
 If you run `docker-compose up`, the FastAPI server will be started in production mode automatically
 
-If you wish to run the FastAPI server in development mode, run `fastapi dev main.py`
+If you wish to run the FastAPI server in development mode, run `python main.py`
 
 # Update Dependencies
 

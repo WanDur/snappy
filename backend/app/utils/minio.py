@@ -81,21 +81,21 @@ def optimize_image(file: Annotated[bytes, File()]) -> BytesIO:
     return buf
 
 
-def upload_file_stream(path: str, file: IOBase) -> str:
+def upload_file_stream(path: str, file: IOBase, metadata: dict = None) -> str:
     file.read()
     file_size = file.tell()
     file.seek(0)
     log_debug(f"Uploading file to MinIO: {path}, size: {file_size}")
-    client.put_object(APP_BUCKET, path, file, file_size)
+    client.put_object(APP_BUCKET, path, file, file_size, metadata=metadata)
     return urlparse.quote(encrypt_AES_GCM_contained(path), safe="")
 
 
-def upload_file(path: str, file: bytes) -> str:
+def upload_file(path: str, file: bytes, metadata: dict = None) -> str:
     """
     Upload a file to MinIO Storage
     """
     file = BytesIO(file)
-    return upload_file_stream(path, file)
+    return upload_file_stream(path, file, metadata)
 
 
 def get_public_file(path: str):
