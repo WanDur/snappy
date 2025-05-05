@@ -103,8 +103,6 @@ const ProfileScreen = () => {
               updateAvatar(iconUrl)
               setPhotoCount(userData.photoCount)
               setLastLocation(userData.lastLocation)
-              console.log('Icon url:', iconUrl)
-              console.log('User data fetched and stored in userStore:', userData)
             })
     }
   }

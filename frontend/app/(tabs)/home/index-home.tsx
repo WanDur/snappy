@@ -227,8 +227,6 @@ const HomeScreen = () => {
         })
         const iconUrl = parsePublicUrl(userData.iconUrl)
         userStore.updateAvatar(iconUrl)
-        console.log('Icon url:', iconUrl)
-        console.log('User data fetched and stored in userStore:', userData)
       })
     } else {
       console.log('Session is null')
