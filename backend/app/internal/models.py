@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Annotated, Optional
-from odmantic import Field, Model, ObjectId, Reference
+from odmantic import EmbeddedModel, Field, Model, ObjectId, Reference, query
 from pydantic import EmailStr, StringConstraints
 
 from utils.mongo import engine
@@ -95,3 +95,58 @@ class License(Model):
         self.redeemedBy = user.id
         await user.redeemPremium(self.days)
         await engine.save(self)
+
+
+class ConversationType(str, Enum):
+    GROUP = "group"
+    DIRECT = "direct"
+
+
+class Conversation(Model):
+    type: ConversationType
+    createdBy: User = Reference()
+    createdAt: datetime
+    participants: list[ObjectId] = Field(default_factory=list)
+    name: Optional[str] = Field(default=None, min_length=3, max_length=32)
+
+    @classmethod
+    async def find_direct_conversation(
+        cls, user1: User, user2: User
+    ) -> Conversation | None:
+        # conversation = await engine.find_one(
+        #     Conversation,
+        #     query.and_(
+        #         Conversation.type == ConversationType.DIRECT,
+        #         query.in_(user1.id, Conversation.participants),
+        #         query.in_(user2.id, Conversation.participants),
+        #     ),
+        # )
+        conversation = await engine.get_collection(Conversation).find_one(
+            {
+                "type": ConversationType.DIRECT,
+                "participants": {
+                    "$all": [user1.id, user2.id],
+                },
+            }
+        )
+        return conversation
+
+
+class AttachmentType(str, Enum):
+    IMAGE = "image"
+    VIDEO = "video"
+    AUDIO = "audio"
+
+
+class Attachment(EmbeddedModel):
+    type: AttachmentType
+    name: str
+    url: str
+
+
+class Message(Model):
+    conversation: Conversation = Reference()
+    sender: User = Reference()
+    message: str
+    timestamp: datetime
+    attachments: list[Attachment] = Field(default_factory=list)
