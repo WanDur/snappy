@@ -255,24 +255,24 @@ const ProfileScreen = () => {
 
     if (firstName.trim() !== '' && lastName.trim() !== '' && userName.trim() !== '') {
       const name = `${firstName} ${lastName}`
-      updateName(name)
-
-      const username = userName.startsWith('@') ? userName : `@${userName}`
-      setUserName(username)
-      updateUsername(username)
-
-      updateBio(bio.trim())
 
       session.apiWithToken
         .post('/user/profile/edit', {
           name: name,
-          username: username,
+          username: userName,
           bio: bio.trim()
         })
         .catch((error) => {
           console.error('Error updating profile:', error)
           Alert.alert('Error', 'Failed to update profile. Please try again later.')
         })
+
+        updateName(name)
+  
+        setUserName(userName)
+        updateUsername(userName)
+  
+        updateBio(bio.trim())
     }
 
     Keyboard.dismiss()
@@ -323,7 +323,7 @@ const ProfileScreen = () => {
             <View style={styles.profileInfo}>
               <Themed.Text style={styles.nameText}>{user.name}</Themed.Text>
               <Themed.Text style={styles.usernameText} text70>
-                {user.username}
+                @{user.username}
               </Themed.Text>
               <View style={styles.locationRow}>
                 <Feather name="map-pin" size={14} color="#fff" />
@@ -542,10 +542,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12
-  },
-  locationText: {
-    fontSize: 12,
-    marginLeft: 6
   },
   bioText: {
     fontSize: 14,
