@@ -100,9 +100,7 @@ def upload_file(path: str, file: bytes, metadata: dict = None) -> str:
 
 def get_public_file(path: str):
     try:
-        log_debug("hi")
         minio_path = decrypt_AES_GCM_contained(path)
-        log_debug(f"minio_path: {minio_path}")
         file_stream = client.get_object(APP_BUCKET, minio_path)
         filename = minio_path.split("/")[-1]
         media_type, _ = mimetypes.guess_type(filename)

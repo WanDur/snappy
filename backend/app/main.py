@@ -5,6 +5,7 @@ from routers.user import user_router
 from routers.auth import auth_router
 from routers.license import license_router
 from routers.chat import chat_router
+from routers.photo import photo_router
 from utils.auth import AuthMiddleware
 from utils.minio import get_public_file
 
@@ -22,6 +23,7 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(license_router)
 app.include_router(chat_router)
+app.include_router(photo_router)
 
 
 @app.get("/public/{file_path:path}")

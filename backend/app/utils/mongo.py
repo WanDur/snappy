@@ -17,7 +17,9 @@ client = AsyncIOMotorClient(mongodb_connection_string)
 engine = AIOEngine(client=client, database="snappy")
 
 
-def serialize_mongo_object(obj: any, project: list[str] = []):
+def serialize_mongo_object(
+    obj: any, project: list[str] = None, exclude: list[str] = None
+) -> any:
     if hasattr(obj, "model_dump"):
         obj = obj.model_dump()
     if isinstance(obj, dict):
@@ -25,8 +27,10 @@ def serialize_mongo_object(obj: any, project: list[str] = []):
             obj["id"] = obj.pop("_id")
         newobj = {}
         for k, v in obj.items():
-            if k in project or project == []:
-                newobj[k] = serialize_mongo_object(v)
+            if (project is None or k in project) and (
+                exclude is None or k not in exclude
+            ):
+                newobj[k] = serialize_mongo_object(v, project, exclude)
         obj = newobj
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
