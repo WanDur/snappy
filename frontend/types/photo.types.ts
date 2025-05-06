@@ -1,29 +1,34 @@
+/* ------------------------------------------------------------------
+   Photo domain models  –  aligned with UML + extra week counters
+------------------------------------------------------------------- */
 export interface PhotoLocation {
   latitude: number
   longitude: number
-  /** Optional human-readable place name (city, venue, etc.) */
-  name?: string
+  name?: string // optional human-readable place
+}
+
+export interface PhotoComment {
+  id: string // UUID per comment
+  userId: string // who wrote it
+  message: string
+  timestamp: string // ISO-8601
 }
 
 export interface Photo {
-  /** Unique per-photo UUID */
-  photoId: string
-
-  /** Local-file URI (when first added) or remote URL after upload */
-  uri: string
-
-  /** Optional caption or comment the user typed in */
+  /* --- core fields from the UML diagram ---------------------------------- */
+  photoId: string // primary key (UUID)
+  userId: string // uploader
+  timestamp: string // upload time  (ISO-8601)
+  url: string // local URI or remote CDN URL
   caption?: string
+  taggedUserIds: string[]
 
-  /** ISO-8601 time the user hit “Post”  (e.g. "2025-05-06T10:24:18.553Z") */
-  uploadedAt: string
+  /* --- social signals ----------------------------------------------------- */
+  likes: string[] // list of userIds that liked
+  comments: PhotoComment[] // ordered oldest-first
 
-  /** Where the picture was taken (if the user granted location perm) */
+  /* --- extra local-only metadata ----------------------------------------- */
   location?: PhotoLocation
-
-  /** 1-based index of this photo within its ISO-week, assigned on add */
-  orderInWeek: number
-
-  /** Total photos the user has posted in that ISO-week, updated on every add / delete */
-  weekTotal: number
+  orderInWeek: number // e.g. 2  ( “2 / 3” that week )
+  weekTotal: number // e.g. 3  ( denominator )
 }
