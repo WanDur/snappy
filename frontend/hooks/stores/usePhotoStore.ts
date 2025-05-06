@@ -1,144 +1,170 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { Photo, PhotoComment } from '@/types/photo.types'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+import Storage from 'expo-sqlite/kv-store'
 
-/* ---------- helpers ---------- */
+/* ---------- domain types (minimal) ---------------------------- */
+export interface PhotoComment {
+  id: string
+  userId: string
+  message: string
+  timestamp: string // ISO-8601
+}
+
+export interface Photo {
+  photoId: string
+  userId: string
+  timestamp: string // ISO-8601
+  url: string
+  caption?: string
+  taggedUserIds: string[]
+  likes: string[]
+  comments: PhotoComment[]
+  /* local-only helpers */
+  orderInWeek: number
+  weekTotal: number
+}
+
+/* ---------- helpers ------------------------------------------ */
 const isoWeek = (d: Date) => {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
   t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7))
   const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1))
-  return Math.ceil(((t.getTime() - yearStart.getTime()) / 864e5 + 1) / 7)
+  return Math.ceil((1 + (t.getTime() - yearStart.getTime()) / 86400000) / 7)
 }
 const weekKey = (d: Date) => `${d.getUTCFullYear()}-${isoWeek(d)}`
+/* cheap collision-safe id (no uuid needed) */
+const id = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
-/* ---------- store ---------- */
-interface PhotoState {
-  /** userId → photos they posted */
+/* ---------- store shape -------------------------------------- */
+interface State {
+  /** uploaderId → photos they posted */
   photoMap: Record<string, Photo[]>
 
-  /* crud */
+  /* CRUD */
   addPhoto: (
     userId: string,
     data: {
       uri: string
       caption?: string
       tags?: string[]
-      location?: Photo['location']
       when?: Date
     }
   ) => void
   removePhoto: (userId: string, photoId: string) => void
 
   /* social */
-  toggleLike: (photoOwnerId: string, photoId: string, byUserId: string) => void
-  addComment: (photoOwnerId: string, photoId: string, byUserId: string, message: string) => void
+  toggleLike: (ownerId: string, photoId: string, byUserId: string) => void
+  addComment: (ownerId: string, photoId: string, byUserId: string, message: string) => void
 
-  /* convenience */
-  fetchFeed: (friendIds: string[]) => Photo[] // local-only stub
+  /* local feed helper (you can replace with real API later) */
+  fetchFeed: (friendIds: string[]) => Photo[]
 }
 
-export const usePhotoStore = create<PhotoState>()(
+/* ---------- the store ---------------------------------------- */
+export const usePhotoStore = create<State>()(
   persist(
-    (set, get) => ({
+    immer<State>((set, get) => ({
       photoMap: {},
 
-      /* ------------------- addPhoto ------------------- */
-      addPhoto(userId, { uri, caption, tags = [], location, when = new Date() }) {
-        const map = { ...get().photoMap }
-        const list = map[userId] ? [...map[userId]] : []
+      /* ==== ADD PHOTO ===================================================== */
+      addPhoto(userId, { uri, caption, tags = [], when = new Date() }) {
+        set((draft) => {
+          const list = draft.photoMap[userId] ?? (draft.photoMap[userId] = [])
 
-        const newPhoto: Photo = {
-          photoId: uuid(),
-          userId,
-          timestamp: when.toISOString(),
-          url: uri,
-          caption,
-          taggedUserIds: tags,
-          likes: [],
-          comments: [],
-          location,
-          orderInWeek: 0, // filled just below
-          weekTotal: 0
-        }
+          /* create new photo */
+          const p: Photo = {
+            photoId: id(),
+            userId,
+            timestamp: when.toISOString(),
+            url: uri,
+            caption,
+            taggedUserIds: tags,
+            likes: [],
+            comments: [],
+            orderInWeek: 0,
+            weekTotal: 0
+          }
+          list.push(p)
 
-        list.push(newPhoto)
+          /* re-index JUST that ISO week */
+          const wk = weekKey(when)
+          const weekBlock = list
+            .filter((x) => weekKey(new Date(x.timestamp)) === wk)
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 
-        /* re-index just the week that was touched */
-        const wk = weekKey(when)
-        const weekSet = list
-          .filter((p) => weekKey(new Date(p.timestamp)) === wk)
-          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-
-        weekSet.forEach((p, i) => {
-          p.orderInWeek = i + 1
-          p.weekTotal = weekSet.length
-        })
-
-        map[userId] = list
-        set({ photoMap: map })
-      },
-
-      /* ------------------- removePhoto ------------------- */
-      removePhoto(userId, photoId) {
-        const map = { ...get().photoMap }
-        const list = map[userId]?.filter((p) => p.photoId !== photoId) ?? []
-        if (!list.length) {
-          delete map[userId]
-          return set({ photoMap: map })
-        }
-
-        /* re-index the affected week */
-        const removedWeek = weekKey(new Date(get().photoMap[userId].find((p) => p.photoId === photoId)!.timestamp))
-        const wkPhotos = list.filter((p) => weekKey(new Date(p.timestamp)) === removedWeek)
-        wkPhotos
-          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-          .forEach((p, i) => {
-            p.orderInWeek = i + 1
-            p.weekTotal = wkPhotos.length
+          weekBlock.forEach((x, i) => {
+            x.orderInWeek = i + 1
+            x.weekTotal = weekBlock.length
           })
-
-        map[userId] = list
-        set({ photoMap: map })
+        })
       },
 
-      /* ------------------- toggleLike ------------------- */
-      toggleLike(photoOwnerId, photoId, byUserId) {
-        const map = { ...get().photoMap }
-        const photo = map[photoOwnerId]?.find((p) => p.photoId === photoId)
-        if (!photo) return
+      /* ==== REMOVE PHOTO ================================================== */
+      removePhoto(userId, photoId) {
+        set((draft) => {
+          const list = draft.photoMap[userId]
+          if (!list) return
 
-        const i = photo.likes.indexOf(byUserId)
-        if (i === -1) photo.likes.push(byUserId)
-        else photo.likes.splice(i, 1)
+          /* find week before deleting */
+          const idx = list.findIndex((p) => p.photoId === photoId)
+          if (idx === -1) return
+          const removedWeek = weekKey(new Date(list[idx].timestamp))
 
-        set({ photoMap: map })
+          list.splice(idx, 1)
+          if (!list.length) {
+            delete draft.photoMap[userId]
+            return
+          }
+
+          /* re-index the week that changed */
+          const weekBlock = list
+            .filter((x) => weekKey(new Date(x.timestamp)) === removedWeek)
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+          weekBlock.forEach((x, i) => {
+            x.orderInWeek = i + 1
+            x.weekTotal = weekBlock.length
+          })
+        })
       },
 
-      /* ------------------- addComment ------------------- */
-      addComment(photoOwnerId, photoId, byUserId, message) {
+      /* ==== TOGGLE LIKE =================================================== */
+      toggleLike(ownerId, photoId, byUserId) {
+        set((draft) => {
+          const photo = draft.photoMap[ownerId]?.find((p) => p.photoId === photoId)
+          if (!photo) return
+          const i = photo.likes.indexOf(byUserId)
+          i === -1 ? photo.likes.push(byUserId) : photo.likes.splice(i, 1)
+        })
+      },
+
+      /* ==== ADD COMMENT =================================================== */
+      addComment(ownerId, photoId, byUserId, message) {
         if (!message.trim()) return
-        const map = { ...get().photoMap }
-        const photo = map[photoOwnerId]?.find((p) => p.photoId === photoId)
-        if (!photo) return
-
-        const comment: PhotoComment = {
-          id: uuid(),
-          userId: byUserId,
-          message,
-          timestamp: new Date().toISOString()
-        }
-        photo.comments.push(comment)
-        set({ photoMap: map })
+        set((draft) => {
+          const photo = draft.photoMap[ownerId]?.find((p) => p.photoId === photoId)
+          if (!photo) return
+          photo.comments.push({
+            id: id(),
+            userId: byUserId,
+            message,
+            timestamp: new Date().toISOString()
+          })
+        })
       },
 
-      /* ------------------- fetchFeed (local stub) ------------------- */
+      /* ==== LOCAL FEED (stub) ============================================ */
       fetchFeed(friendIds) {
         const map = get().photoMap
         return friendIds
           .flatMap((fid) => map[fid] ?? [])
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       }
-    }),
-    { name: 'zustand-photos-v2', version: 1 }
+    })),
+    {
+      name: 'zustand-photo',
+      storage: createJSONStorage(() => Storage)
+    }
   )
 )
