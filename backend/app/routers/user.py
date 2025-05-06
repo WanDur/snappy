@@ -69,7 +69,7 @@ async def fetch_my_profile(user: User | None = Depends(get_user)):
 async def fetch_user_profile(user_id: str) -> UserFetchProfileResponse:
     user = await engine.find_one(User, User.id == ObjectId(user_id))
     if not user:
-        return HTTPException(status_code=400, detail="User not found")
+        raise HTTPException(status_code=400, detail="User not found")
     return ORJSONResponse(
         serialize_mongo_object(
             user, project=["id", "username", "name", "iconUrl", "tier"]
