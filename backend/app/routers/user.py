@@ -207,7 +207,7 @@ async def list_friends(user: User | None = Depends(get_user)):
     for friendship in friendships:
         if friendship.accepted:
             friends.append(
-                friendship.user2 if friendship.user1 == user.id else friendship.user1
+                friendship.user2 if friendship.user1.id == user.id else friendship.user1
             )
         else:
             log_debug(friendship)
