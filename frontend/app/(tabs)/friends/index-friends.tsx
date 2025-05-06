@@ -38,7 +38,7 @@ const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
   const name = names[Math.floor(Math.random() * names.length)]
   const username = name.toLowerCase().replace(/\s+/g, '').slice(0, 10)
 
-  const item: Friend = { id, name, avatar, type, username, albumList: [] }
+  const item: Friend = { id, name, avatar, type, username, albumList: [], photolist: [] }
   const lastActiveOptions = ['Just now', '2h ago', '4h ago', '1d ago', '3d ago']
   item.lastActive = lastActiveOptions[Math.floor(Math.random() * lastActiveOptions.length)]
   item.mutualFriends = Math.floor(Math.random() * 10)
@@ -92,6 +92,7 @@ const FriendsScreen = () => {
         username: 'alexj',
         avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
         albumList: [],
+        photolist: [],
         type: 'suggested',
         lastActive: 'Just now',
         mutualFriends: 3
@@ -102,6 +103,7 @@ const FriendsScreen = () => {
         username: 'sarahw',
         avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
         albumList: [],
+        photolist: [],
         type: 'suggested',
         lastActive: 'Just now',
         mutualFriends: 2
@@ -112,6 +114,7 @@ const FriendsScreen = () => {
         username: 'michaelb',
         avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
         albumList: [],
+        photolist: [],
         type: 'suggested',
         lastActive: 'Just now',
         mutualFriends: 1
@@ -122,6 +125,7 @@ const FriendsScreen = () => {
         username: 'jessicad',
         avatar: 'https://randomuser.me/api/portraits/women/17.jpg',
         albumList: [],
+        photolist: [],
         type: 'suggested',
         lastActive: 'Just now',
         mutualFriends: 5

@@ -1,4 +1,6 @@
+import { Image } from 'react-native-reanimated/lib/typescript/Animated'
 import { Album } from './album.types'
+import { Photo } from './photo.types'
 
 export interface Friend {
   /**
@@ -10,6 +12,7 @@ export interface Friend {
   username: string
   avatar: string
   albumList: Album[]
+  photolist: Photo[]
   type: 'friend' | 'pending' | 'suggested'
   lastActive?: string
   mutualFriends?: number
