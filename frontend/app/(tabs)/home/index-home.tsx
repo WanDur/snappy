@@ -10,7 +10,7 @@ import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Constants } from '@/constants'
-import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
+import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { useRouter } from 'expo-router'
 import { FriendResponse } from '@/types/friend.types'
 import { syncFriends } from '@/utils/sync'
@@ -208,6 +208,11 @@ const HomeScreen = () => {
   const listRef = useRef<FlatList>(null)
 
   useEffect(() => {
+    if (bypassLogin()) {
+      
+      return
+    }
+
     if (!isAuthenticated(session)) {
       console.log('User is not authenticated, redirecting to login')
       router.replace('/(auth)/LoginScreen')
@@ -239,6 +244,7 @@ const HomeScreen = () => {
   /* -------- map Zustand data → feed cards (runs every store change) -------- */
   const enrichedWeeks = useMemo(() => {
     if (weeks.length === 0) return weeks
+    if (bypassLogin()) return weeks
 
     // Build a single “local feed” list once
     const localFeed = friends.map((f, i) => {

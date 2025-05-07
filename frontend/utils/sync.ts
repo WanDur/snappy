@@ -25,8 +25,9 @@ export const syncUserData = async (session: AuthContextProps) => {
 };
 
 export const syncFriends = async (session: AuthContextProps) => {
-  const { addFriend } = useFriendStore.getState();
+  const { addFriend, clearFriends } = useFriendStore();
   try {
+    clearFriends();
     const res = await session.apiWithToken.get("/user/friends/list");
     const data = res.data;
     data.friends.forEach((user: FriendResponse) => {

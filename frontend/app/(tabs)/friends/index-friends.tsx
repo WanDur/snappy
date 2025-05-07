@@ -11,7 +11,7 @@ import { Form, Stack, ContentUnavailable } from '@/components/router-form'
 import { HeaderText } from '@/components/ui'
 import { useTheme, useFriendStore, useChatStore } from '@/hooks'
 import { Friend } from '@/types'
-import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
+import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { FriendResponse } from '@/types/friend.types'
 import { set } from 'zod'
 import { syncFriends } from '@/utils/sync'
@@ -70,6 +70,10 @@ const FriendsScreen = () => {
   const suggestedFriends = friends.filter((f) => f.type === 'suggested')
 
   useEffect(() => {
+    if (bypassLogin()) {
+      return
+    }
+
     if (!isAuthenticated(session)) {
       router.replace('/(auth)/LoginScreen')
     }
