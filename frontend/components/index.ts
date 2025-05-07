@@ -9,8 +9,6 @@ import Dot from './Dot'
 import FilterSortButton from './FliterSortButton'
 import TouchableBounce from './TouchableBounce'
 
-import SegmentedControl from './segmentControl/SegmentedControl'
-
 import SettingsGroup from './settings/SettingGroup'
 
 import Themed from './themed/Themed'
@@ -27,7 +25,6 @@ export {
   Dot,
   FilterSortButton,
   TouchableBounce,
-  SegmentedControl,
   SettingsGroup,
   Themed,
   Pagination

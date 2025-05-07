@@ -1,6 +1,5 @@
 import { type ReactNode } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { useTranslation } from 'react-i18next'
 
 import Themed from '../themed/Themed'
 import SettingsToggle from './components/SettingsToggle'
@@ -32,13 +31,11 @@ interface SettingsGroupProps {
 }
 
 const SettingsGroup = ({ children, title, footer }: SettingsGroupProps) => {
-  const { t } = useTranslation()
-
   const renderTitle = (): ReactNode | JSX.Element | null => {
     if (typeof title === 'function') {
       return title()
     } else if (typeof title === 'string') {
-      return <Themed.Text style={[styles.groupTitle]}>{t(title)}</Themed.Text>
+      return <Themed.Text style={[styles.groupTitle]}>{title}</Themed.Text>
     } else {
       return null
     }
@@ -55,7 +52,7 @@ const SettingsGroup = ({ children, title, footer }: SettingsGroupProps) => {
       >
         {children}
       </Themed.View>
-      {footer && <Themed.Text style={styles.footer}>{t(footer)}</Themed.Text>}
+      {footer && <Themed.Text style={styles.footer}>{footer}</Themed.Text>}
     </Themed.View>
   )
 }

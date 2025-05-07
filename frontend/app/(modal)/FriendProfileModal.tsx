@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 
 import { Themed, SectionHeader } from '@/components'
 import { Stack, ContentUnavailable } from '@/components/router-form'
-import { useFriendStore, useTheme } from '@/hooks'
+import { useFriendStore, useTheme, usePhotoStore } from '@/hooks'
 
 const { width } = Dimensions.get('window')
 const PHOTO_SIZE = (width - 48) / 3

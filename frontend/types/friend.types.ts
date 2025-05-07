@@ -1,4 +1,6 @@
-import { Album } from "./album.types";
+import { Image } from 'react-native-reanimated/lib/typescript/Animated'
+import { Album } from './album.types'
+import { Photo } from './photo.types'
 
 export interface Friend {
   /**

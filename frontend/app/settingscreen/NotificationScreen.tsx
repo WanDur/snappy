@@ -2,7 +2,6 @@ import { View, Platform, Button, Keyboard, ScrollView } from 'react-native'
 import React, { useState, useRef, useEffect } from 'react'
 import { Stack } from 'expo-router'
 import * as Notifications from 'expo-notifications'
-import { useTranslation } from 'react-i18next'
 
 import { Constants } from '@/constants'
 import { useTheme } from '@/hooks'
@@ -18,7 +17,6 @@ Notifications.setNotificationHandler({
 })
 
 const NotificationScreen = () => {
-  const { t } = useTranslation()
   const { colors } = useTheme()
 
   const [expoPushToken, setExpoPushToken] = useState('')
@@ -115,8 +113,8 @@ const NotificationScreen = () => {
       <Themed.ScrollView ref={scrollViewRef} style={{ padding: 16, paddingTop: 0 }} keyboardDismissMode="on-drag">
         <Stack.Screen
           options={{
-            headerTitle: t('notifications'),
-            headerBackTitle: t('settings')
+            headerTitle: 'Notifications',
+            headerBackTitle: 'Settings'
           }}
         />
         <Themed.Text style={{ fontWeight: 'bold' }}>======= Region remote push =======</Themed.Text>

@@ -42,7 +42,7 @@ const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
   const name = names[Math.floor(Math.random() * names.length)]
   const username = name.toLowerCase().replace(/\s+/g, '').slice(0, 10)
 
-  const item: Friend = { id, name, avatar, type, username, albumList: [] }
+  const item: Friend = { id, name, avatar, type, username, albumList: [], photolist: [] }
   const lastActiveOptions = ['Just now', '2h ago', '4h ago', '1d ago', '3d ago']
   item.lastActive = lastActiveOptions[Math.floor(Math.random() * lastActiveOptions.length)]
   item.mutualFriends = Math.floor(Math.random() * 10)
@@ -115,8 +115,6 @@ const FriendsScreen = () => {
 
   const fetchUsers = async (query: string) => {
     setIsLoading(true)
-
-    // this should be fetched from the server
     if (process.env.EXPO_PUBLIC_BYPASS_LOGIN == 'true') {
       await new Promise((resolve) => setTimeout(resolve, 500))
       const mockUsers: Friend[] = [
@@ -186,9 +184,9 @@ const FriendsScreen = () => {
           console.error('Error fetching users:', error)
           Alert.alert('Error', 'Failed to fetch users. Please try again later.')
           setSearchResults([])
+          setIsLoading(false)
         })
     }
-    
 
     
   }

@@ -6,5 +6,15 @@ import { useChatStore } from './stores/useChatStore'
 import { useStorageStore } from './stores/useStorageStore'
 import { useAlbumStore } from './stores/useAlbumStore'
 import { useFriendStore } from './stores/useFriendStore'
+import { usePhotoStore } from './stores/usePhotoStore'
 
-export { useStorage, useTheme, useUserStore, useChatStore, useStorageStore, useAlbumStore, useFriendStore }
+export {
+  useStorage,
+  useTheme,
+  useUserStore,
+  useChatStore,
+  useStorageStore,
+  useAlbumStore,
+  useFriendStore,
+  usePhotoStore
+}

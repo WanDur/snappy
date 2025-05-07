@@ -1,3 +1,3 @@
-import { formatDate, formatBytes, formatChatDate, formatTag, isBetween, pickRandom, randomInt } from './utils'
+import { formatDate, formatBytes, formatChatDate, isBetween, pickRandom, randomInt } from './utils'
 
-export { formatDate, formatBytes, formatChatDate, formatTag, isBetween, pickRandom, randomInt }
+export { formatDate, formatBytes, formatChatDate, isBetween, pickRandom, randomInt }

@@ -11,7 +11,6 @@ import { useTheme, useUserStore } from '@/hooks'
 import { SettingsProvider } from '@/contexts'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { Stack } from '@/components/router-form'
-import { initializeI18next } from '@/locales'
 import { SessionProvider } from '@/contexts/auth'
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -36,7 +35,7 @@ export default function RootLayout() {
         phone: '1234567890',
         notificationTokens: [],
         tier: {},
-        bio: "",
+        bio: '',
         iconUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
         premiumExpireTime: undefined
       })
@@ -47,10 +46,6 @@ export default function RootLayout() {
   if (!loaded) {
     return null
   }
-
-  initializeI18next().then(() => {
-    // console.info('i18next initialized - log from app/_layout.tsx')
-  })
 
   return (
     <SessionProvider>
