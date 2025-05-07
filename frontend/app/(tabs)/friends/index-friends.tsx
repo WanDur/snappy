@@ -62,10 +62,11 @@ const FriendsScreen = () => {
   const [isSearching, setIsSearching] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<Friend[]>([])
-  const [suggestedFriends, setSuggestedFriends] = useState<Friend[]>([])
+  
 
   const myFriend = friends.filter((f) => f.type === 'friend')
   const pendingRequests = friends.filter((f) => f.type === 'pending')
+  const suggestedFriends = friends.filter((f) => f.type === 'suggested')
 
   useEffect(() => {
     if (!isAuthenticated(session)) {
@@ -79,10 +80,10 @@ const FriendsScreen = () => {
         const parsedData = data.map((user: FriendResponse) => ({
           ...user,
           avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
-          type: user.friendStatus,
+          type: "suggested",
           albumList: [],
         }))
-        setSuggestedFriends(parsedData)
+        parsedData.forEach((friend: Friend) => addFriend(friend))
       })
       .catch((error) => {
         console.error('Error fetching suggested friends:', error)
@@ -205,12 +206,8 @@ const FriendsScreen = () => {
         // Update the friend type in the searchResults state
         setSearchResults((prevResults) =>
           prevResults.map((friend) =>
-            friend.id === id ? { ...friend, type: 'pending' } : friend
+            friend.id === id ? { ...friend, type: 'outgoing' } : friend
           )
-        );
-        
-        setSuggestedFriends((prevResults) =>
-          prevResults.filter((friend) => friend.id !== id)
         );
 
         // Update the friend type in the global store (optional)
