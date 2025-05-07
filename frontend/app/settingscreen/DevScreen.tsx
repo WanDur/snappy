@@ -5,7 +5,6 @@ import React, { useEffect, useState } from 'react'
 import { Platform, Alert } from 'react-native'
 import { Stack, useRouter } from 'expo-router'
 import * as Device from 'expo-device'
-import i18next from 'i18next'
 import Storage from 'expo-sqlite/kv-store'
 
 import { SettingsGroup, Themed } from '@/components'
@@ -52,7 +51,6 @@ const DevScreen = () => {
           <SettingsGroup.Button title="Return" titleStyle={{ color: 'blue' }} onPress={() => router.back()} isLast />
         </SettingsGroup>
         <SettingsGroup title="Language">
-          <SettingsGroup.InfoDisplay title="App using language" type="string" stateValue={i18next.language} />
           <SettingsGroup.InfoDisplay title="Device language" type="string" stateValue={Constants.deviceLng} isLast />
         </SettingsGroup>
 

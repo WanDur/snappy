@@ -2,7 +2,6 @@ import { useRouter, Stack } from 'expo-router'
 import { Linking, Share, Alert, TouchableOpacity } from 'react-native'
 import { useState } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import { useTranslation } from 'react-i18next'
 import * as AC from '@bacons/apple-colors'
 
 import { useTheme, useUserStore } from '@/hooks'
@@ -17,7 +16,6 @@ export default function SettingScreen() {
   //const sync = useSync()
   const router = useRouter()
   const { colors } = useTheme()
-  const { t } = useTranslation()
   const { user } = useUserStore()
 
   const [loading, setLoading] = useState(false)
@@ -44,7 +42,7 @@ export default function SettingScreen() {
     <Themed.ScrollView>
       <Stack.Screen
         options={{
-          headerTitle: t('settings'),
+          headerTitle: 'Settings',
           headerLeft: () => (
             <TouchableOpacity
               onPress={() => {
@@ -60,10 +58,10 @@ export default function SettingScreen() {
       <Form.List>
         <Form.Section title="general">
           <Form.Link href="/settingscreen/NotificationScreen" systemImage="bell">
-            {t('notifications')}
+            Notifications
           </Form.Link>
           <Form.Link href="/settingscreen/PermissionScreen" systemImage="hand.raised">
-            {t('permissions.title')}
+            Permissions
           </Form.Link>
         </Form.Section>
 
@@ -102,7 +100,7 @@ export default function SettingScreen() {
             systemImage="rectangle.portrait.and.arrow.right"
             onPress={() => {
               session.signOut().then(() => {
-                router.replace('/screens/LoginScreen')
+                router.replace('/(auth)/LoginScreen')
               })
             }}
           >

@@ -11,7 +11,6 @@ import { useTheme } from '@/hooks'
 import { isAxiosError } from 'axios'
 import validator from 'validator'
 import Carousel, { ICarouselInstance } from 'react-native-reanimated-carousel'
-import { useTranslation } from 'react-i18next'
 import { useSettings } from '@/contexts'
 
 const { width, height } = Dimensions.get('window')
@@ -20,7 +19,6 @@ const SignUpScreen = () => {
   const router = useRouter()
   const { colors } = useTheme()
   // const auth = useSession()
-  const { t } = useTranslation()
   // const { signUpWithCredential } = auth
   const { isDark } = useTheme()
   const { settings } = useSettings()
@@ -179,7 +177,7 @@ const SignUpScreen = () => {
                     value={honorific}
                     onValueChange={setHonorific}
                     placeholder={{ label: 'Honorific', value: null, color: 'grey' }}
-                    items={['mr', 'ms', 'mrs', 'dr'].map((hon) => ({ label: t(`honorific.${hon}`), value: hon }))}
+                    items={['mr', 'ms', 'mrs', 'dr'].map((hon) => ({ label: `honorific.${hon}`, value: hon }))}
                     darkTheme={isDark}
                   />
                 </Themed.View>

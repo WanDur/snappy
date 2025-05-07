@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Stack } from 'expo-router'
 import { View, Switch, StyleSheet, Pressable, Linking } from 'react-native'
-import { useTranslation } from 'react-i18next'
 import * as ImagePicker from 'expo-image-picker'
 import * as Contacts from 'expo-contacts'
 
@@ -9,7 +8,6 @@ import { useTheme } from '@/hooks'
 import { Themed } from '@/components'
 
 const PermissionScreen = () => {
-  const { t } = useTranslation()
   const { colors } = useTheme()
 
   const [dummy, setDummy] = useState(false)
@@ -28,19 +26,19 @@ const PermissionScreen = () => {
 
   const permissions = [
     {
-      name: 'permissions.camera',
+      name: 'Camera',
       disc: 'Allows capturing photos',
       status: cameraPermission?.granted,
       onPress: requestCameraPermission
     },
     {
-      name: 'permissions.contacts',
+      name: 'Contacts',
       disc: 'Enables sharing with your contacts',
       status: contactsGranted,
       onPress: Contacts.requestPermissionsAsync
     },
     {
-      name: 'permissions.location',
+      name: 'Location',
       disc: 'Enables finding jobs based on your location',
       status: false,
       onPress: () => {
@@ -49,19 +47,19 @@ const PermissionScreen = () => {
       }
     },
     {
-      name: 'permissions.media',
+      name: 'Media',
       disc: 'Allows uploading photos or files',
       status: mediaPermission?.granted,
       onPress: requestMediaPermission
     },
     {
-      name: 'permissions.microphone',
+      name: 'Microphone',
       disc: 'Required for voice messages',
       status: false,
       onPress: () => {}
     },
     {
-      name: 'permissions.notifications',
+      name: 'Notifications',
       disc: 'Keeps you updated about new job matches',
       status: false,
       onPress: () => {}
@@ -72,8 +70,8 @@ const PermissionScreen = () => {
     <Themed.ScrollView>
       <Stack.Screen
         options={{
-          headerTitle: t('permissions.title'),
-          headerBackTitle: t('settings')
+          headerTitle: 'Permissions',
+          headerBackTitle: 'Settings'
         }}
       />
       <View style={{ padding: 16, paddingTop: 0 }}>
@@ -89,7 +87,7 @@ const PermissionScreen = () => {
             key={index}
           >
             <View>
-              <Themed.Text style={styles.title}>{t(permission.name)}</Themed.Text>
+              <Themed.Text style={styles.title}>{permission.name}</Themed.Text>
               <Themed.Text style={styles.subText}>{permission.disc}</Themed.Text>
             </View>
 

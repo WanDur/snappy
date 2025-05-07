@@ -2,7 +2,6 @@ import React, { useEffect } from 'react'
 import type { StyleProp, TextStyle } from 'react-native'
 import { StyleSheet } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { useTranslation } from 'react-i18next'
 
 import Themed from '../../themed/Themed'
 import styles from './settingsbtn.style'
@@ -67,7 +66,6 @@ const SettingsButton = ({
   icon
 }: SettingsButtonProps) => {
   const { colors } = useTheme()
-  const { t } = useTranslation()
 
   // Warn if both hintText and icon are provided
   useEffect(() => {
@@ -87,7 +85,7 @@ const SettingsButton = ({
     >
       <Themed.View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'transparent' }}>
         {icon && <Themed.View style={{ marginRight: 8, marginLeft: -2 }}>{icon}</Themed.View>}
-        <Themed.Text style={[styles.cardTitle, titleStyle]}>{t(title)}</Themed.Text>
+        <Themed.Text style={[styles.cardTitle, titleStyle]}>{title}</Themed.Text>
       </Themed.View>
 
       {/* Row for either hint text OR icon + optional arrow */}

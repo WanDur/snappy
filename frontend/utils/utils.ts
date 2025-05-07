@@ -1,5 +1,3 @@
-import { TFunctionNonStrict } from 'i18next'
-
 /**
  * @param format
  * * *month*: mmmm (November) | mmm (Nov) | mm (11)
@@ -62,10 +60,6 @@ export const formatBytes = (bytes: number | string) => {
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
-
-export const formatTag = (t: TFunctionNonStrict, tagId: string) => {
-  return t(`tags.${tagId}`) != `tags.${tagId}` ? t(`tags.${tagId}`) : tagId.slice(0, 1).toUpperCase() + tagId.slice(1)
 }
 
 /**
