@@ -13,6 +13,8 @@ import { Constants } from '@/constants'
 import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { useRouter } from 'expo-router'
 import { FriendResponse } from '@/types/friend.types'
+import { syncFriends } from '@/utils/sync'
+import { syncUserData } from '@/utils/sync'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -212,52 +214,8 @@ const HomeScreen = () => {
       return
     }
     if (session.session) {
-      // Fetch My Profile
-      session.apiWithToken.get('/user/profile/myself').then((res) => {
-        const userData = res.data
-        userStore.setUser({
-          id: userData.id,
-          email: userData.email,
-          username: userData.username,
-          name: userData.name,
-          phone: userData.phone,
-          iconUrl: userData.iconUrl,
-          bio: userData.bio,
-          notificationTokens: [], // TODO - to be implemented
-          tier: userData.tier,
-          premiumExpireTime: userData.premiumExpireTime
-        })
-        const iconUrl = parsePublicUrl(userData.iconUrl)
-        userStore.updateAvatar(iconUrl)
-      })
-
-      // Fetch My Friends
-      session.apiWithToken.get('/user/friends/list').then((res) => {
-        clearFriends()  
-
-        const friendsData = res.data.friends
-        friendsData.forEach((friend: FriendResponse) => {
-          addFriend({
-            id: friend.id,
-            name: friend.name,
-            username: friend.username,
-            avatar: friend.iconUrl ? parsePublicUrl(friend.iconUrl) : undefined,
-            albumList: [],
-            type: "friend"
-          })
-        })
-        const pendingRequests = res.data.incomingInvitations
-        pendingRequests.forEach((request: FriendResponse) => {
-          addFriend({
-            id: request.id,
-            name: request.name,
-            username: request.username,
-            avatar: request.iconUrl ? parsePublicUrl(request.iconUrl) : undefined,
-            albumList: [],
-            type: "pending"
-          })
-        })
-      })
+      syncUserData(session)
+      syncFriends(session)
     } else {
       console.log('Session is null')
     }

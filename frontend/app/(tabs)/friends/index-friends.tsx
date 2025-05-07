@@ -14,6 +14,7 @@ import { Friend } from '@/types'
 import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { FriendResponse } from '@/types/friend.types'
 import { set } from 'zod'
+import { syncFriends } from '@/utils/sync'
 
 const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
   const names = [
@@ -74,6 +75,7 @@ const FriendsScreen = () => {
     }
     
     // fetch suggested friends
+    syncFriends(session);
     session.apiWithToken.get('/user/friends/suggested?limit=10')
       .then((res) => {
         const data = res.data.suggestedFriends
