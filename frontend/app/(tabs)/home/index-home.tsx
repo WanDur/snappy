@@ -10,8 +10,11 @@ import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Constants } from '@/constants'
-import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
+import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { useRouter } from 'expo-router'
+import { FriendResponse } from '@/types/friend.types'
+import { syncFriends } from '@/utils/sync'
+import { syncUserData } from '@/utils/sync'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -198,36 +201,26 @@ const HomeScreen = () => {
   const userStore = useUserStore()
 
   const { colors } = useTheme()
-  const { friends } = useFriendStore()
+  const { friends, addFriend, clearFriends } = useFriendStore()
 
   const [weeks, setWeeks] = useState(buildWeeks())
   const [weekListIndex, setWeekListIndex] = useState(0)
   const listRef = useRef<FlatList>(null)
 
   useEffect(() => {
+    if (bypassLogin()) {
+      
+      return
+    }
+
     if (!isAuthenticated(session)) {
       console.log('User is not authenticated, redirecting to login')
       router.replace('/(auth)/LoginScreen')
       return
     }
     if (session.session) {
-      session.apiWithToken.get('/user/profile/myself').then((res) => {
-        const userData = res.data
-        userStore.setUser({
-          id: userData.id,
-          email: userData.email,
-          username: userData.username,
-          name: userData.name,
-          phone: userData.phone,
-          iconUrl: userData.iconUrl,
-          bio: userData.bio,
-          notificationTokens: [], // TODO - to be implemented
-          tier: userData.tier,
-          premiumExpireTime: userData.premiumExpireTime
-        })
-        const iconUrl = parsePublicUrl(userData.iconUrl)
-        userStore.updateAvatar(iconUrl)
-      })
+      syncUserData(session)
+      syncFriends(session)
     } else {
       console.log('Session is null')
     }
@@ -251,6 +244,7 @@ const HomeScreen = () => {
   /* -------- map Zustand data → feed cards (runs every store change) -------- */
   const enrichedWeeks = useMemo(() => {
     if (weeks.length === 0) return weeks
+    if (bypassLogin()) return weeks
 
     // Build a single “local feed” list once
     const localFeed = friends.map((f, i) => {

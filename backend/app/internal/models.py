@@ -6,6 +6,7 @@ from odmantic import EmbeddedModel, Field, Model, ObjectId, Reference, query
 from pydantic import EmailStr, StringConstraints
 
 from utils.mongo import engine
+from utils.debug import log_debug
 
 # section user
 
@@ -58,12 +59,10 @@ class User(Model):
         )
         friends = []
         for friendship in friendships:
-            if friendship.user1 == self.id:
-                friend = await engine.find_one(User, User.id == friendship.user2)
+            if friendship.user1.id == self.id:
+                friends.append(friendship.user2)
             else:
-                friend = await engine.find_one(User, User.id == friendship.user1)
-            if friend:
-                friends.append(friend)
+                friends.append(friendship.user1)
         return friends
 
 
@@ -94,6 +93,13 @@ class Friendship(Model):
         if fdship:
             return fdship.accepted
         return False
+
+    @classmethod
+    async def get_mutual_friends_count(cls, user1: User, user2: User) -> int:
+        friends1 = await user1.get_friends()
+        friends2 = await user2.get_friends()
+        mutual_friends = [friend for friend in friends1 if friend in friends2]
+        return len(mutual_friends)
 
 
 class License(Model):

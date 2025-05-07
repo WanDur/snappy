@@ -36,8 +36,12 @@ export function parsePublicUrl(filePath: string) {
   return `${BASE_URL}/public/${filePath}`
 }
 
+export function bypassLogin() {
+  return process.env.EXPO_PUBLIC_BYPASS_LOGIN == 'true'
+}
+
 export function isAuthenticated(session: AuthContextProps) {
-  if (process.env.EXPO_PUBLIC_BYPASS_LOGIN == 'true') return true
+  if (bypassLogin()) return true
   return session.session && session.session.refreshExpireTime > Math.floor(Date.now() / 1000)
 }
 
