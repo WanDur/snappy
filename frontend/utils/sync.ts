@@ -36,6 +36,7 @@ export const syncFriends = async (session: AuthContextProps) => {
         avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
         type: "suggested",
         albumList: [],
+        photolist: [],
       });
     });
     data.incomingInvitations.forEach((user: FriendResponse) => {
@@ -44,6 +45,7 @@ export const syncFriends = async (session: AuthContextProps) => {
         avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
         type: "pending",
         albumList: [],
+        photolist: [],
       });
     });
   } catch (error) {

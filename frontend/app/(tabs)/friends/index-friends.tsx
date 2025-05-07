@@ -126,7 +126,8 @@ const FriendsScreen = () => {
           albumList: [],
           type: 'suggested',
           lastActive: 'Just now',
-          mutualFriends: 3
+          mutualFriends: 3,
+          photolist: []
         },
         {
           id: '2',
@@ -136,7 +137,8 @@ const FriendsScreen = () => {
           albumList: [],
           type: 'suggested',
           lastActive: 'Just now',
-          mutualFriends: 2
+          mutualFriends: 2,
+          photolist: []
         },
         {
           id: '3',
@@ -146,7 +148,8 @@ const FriendsScreen = () => {
           albumList: [],
           type: 'suggested',
           lastActive: 'Just now',
-          mutualFriends: 1
+          mutualFriends: 1,
+          photolist: []
         },
         {
           id: '4',
@@ -156,7 +159,8 @@ const FriendsScreen = () => {
           albumList: [],
           type: 'suggested',
           lastActive: 'Just now',
-          mutualFriends: 5
+          mutualFriends: 5,
+          photolist: []
         }
       ]
   
