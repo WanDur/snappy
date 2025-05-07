@@ -136,6 +136,54 @@ async def remove_user_icon(user: User | None = Depends(get_user)):
 # region friendship
 
 
+@user_router.get("/search")
+async def search_user(query: str, user: User | None = Depends(get_user)):
+    if not user:
+        return HTTPException(status_code=401, detail="Unauthorized")
+    if len(query) < 3:
+        return ORJSONResponse(
+            {
+                "status": "success",
+                "users": [],
+            }
+        )
+    if query == "":
+        return ORJSONResponse(
+            {
+                "status": "success",
+                "users": [],
+            }
+        )
+    query_users = await engine.find(
+        User,
+        {
+            "username": {"$regex": query, "$options": "i"},
+        },
+    )
+    responseUsers = []
+    for query_user in query_users:
+        if user.id != query_user.id:
+            friendship = await Friendship.get_friendship(user, query_user)
+            if friendship:
+                friend_status = "friend" if friendship.accepted else "pending"
+            else:
+                friend_status = "suggested"
+            responseUsers.append(
+                {
+                    "friendStatus": friend_status,
+                    **serialize_mongo_object(
+                        query_user, project=["username", "name", "iconUrl", "id"]
+                    ),
+                }
+            )
+    return ORJSONResponse(
+        {
+            "status": "success",
+            "users": responseUsers,
+        }
+    )
+
+
 @user_router.post("/friends/invite/{target_user_id}")
 async def invite_friend(target_user_id: str, user: User | None = Depends(get_user)):
     if not user:
@@ -210,11 +258,10 @@ async def list_friends(user: User | None = Depends(get_user)):
                 friendship.user2 if friendship.user1.id == user.id else friendship.user1
             )
         else:
-            log_debug(friendship)
             if friendship.user1 == user:
                 outgoing_invitations.append(friendship.user2)
             else:
-                incoming_invitations.append(friendship.user2)
+                incoming_invitations.append(friendship.user1)
     return ORJSONResponse(
         {
             "status": "success",
@@ -233,6 +280,36 @@ async def list_friends(user: User | None = Depends(get_user)):
                     invitation, ["username", "name", "iconUrl", "id"]
                 )
                 for invitation in outgoing_invitations
+            ],
+        }
+    )
+
+
+@user_router.get("/friends/suggested")
+async def get_suggested_friends(limit: int = 10, user: User | None = Depends(get_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    suggested_friends = await engine.find(User, User.id != user.id, limit=100)
+    result = []
+    for suggested_friend in suggested_friends:
+        if await Friendship.are_friends(user, suggested_friend):
+            continue
+        mutual_friends_count = await Friendship.get_mutual_friends_count(
+            user, suggested_friend
+        )
+        result.append((mutual_friends_count, suggested_friend))
+    result.sort(key=lambda x: x[0], reverse=True)
+    return ORJSONResponse(
+        {
+            "status": "success",
+            "suggestedFriends": [
+                {
+                    **serialize_mongo_object(
+                        result[i][1], ["username", "name", "iconUrl", "id"]
+                    ),
+                    "mutualFriends": result[i][0],
+                }
+                for i in range(min(len(result), limit))
             ],
         }
     )

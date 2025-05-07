@@ -43,23 +43,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         try:
             auth_header = request.headers.get("Authorization", "")
-            print(f"Auth header: {auth_header}")  # Debug log
-            
+
             if not auth_header.startswith("Bearer "):
-                print("No Bearer token found")  # Debug log
-                return ORJSONResponse(status_code=401, content={"detail": "Unauthorized"})
-                
+                return ORJSONResponse(
+                    status_code=401, content={"detail": "Unauthorized"}
+                )
+
             token = auth_header.split("Bearer ")[1]
-            print(f"Token: {token}")  # Debug log
-            
+
             payload = access_auth.jwt_backend.decode(
                 token,
                 access_auth.secret_key,
             )
-            print(f"Decoded payload: {payload}")  # Debug log
-            
+
             if payload["exp"] < time.time():
-                print(f"Token expired. Exp: {payload['exp']}, Current: {time.time()}")  # Debug log
+                print(
+                    f"Token expired. Exp: {payload['exp']}, Current: {time.time()}"
+                )  # Debug log
                 return ORJSONResponse(
                     status_code=401, content={"detail": "Token expired"}
                 )

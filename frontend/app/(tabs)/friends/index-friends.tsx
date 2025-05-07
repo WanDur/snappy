@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Text, View, TouchableOpacity, TouchableHighlight, ActivityIndicator, StyleSheet } from 'react-native'
+import { Text, View, TouchableOpacity, TouchableHighlight, ActivityIndicator, StyleSheet, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import * as Crypto from 'expo-crypto'
-import { router } from 'expo-router'
+import { router, useRouter } from 'expo-router'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 
 import { Themed, TouchableBounce, SectionHeader, SwipeableRow } from '@/components'
@@ -11,6 +11,9 @@ import { Form, Stack, ContentUnavailable } from '@/components/router-form'
 import { HeaderText } from '@/components/ui'
 import { useTheme, useFriendStore, useChatStore } from '@/hooks'
 import { Friend } from '@/types'
+import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
+import { FriendResponse } from '@/types/friend.types'
+import { set } from 'zod'
 
 const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
   const names = [
@@ -47,8 +50,11 @@ const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
 }
 
 const FriendsScreen = () => {
+  const router = useRouter()
+  const session = useSession()
+
   const { colors, isDark } = useTheme()
-  const { friends, addFriend, getFriend, removeFriend, handleRequest } = useFriendStore()
+  const { friends, addFriend, getFriend, removeFriend, changeFriendType } = useFriendStore()
   const { addChat, hasChat } = useChatStore()
 
   const [query, setQuery] = useState('')
@@ -56,11 +62,32 @@ const FriendsScreen = () => {
   const [isSearching, setIsSearching] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<Friend[]>([])
+  const [suggestedFriends, setSuggestedFriends] = useState<Friend[]>([])
 
   const myFriend = friends.filter((f) => f.type === 'friend')
   const pendingRequests = friends.filter((f) => f.type === 'pending')
-  const suggestedFriends = friends.filter((f) => f.type === 'suggested')
 
+  useEffect(() => {
+    if (!isAuthenticated(session)) {
+      router.replace('/(auth)/LoginScreen')
+    }
+    
+    // fetch suggested friends
+    session.apiWithToken.get('/user/friends/suggested?limit=10')
+      .then((res) => {
+        const data = res.data.suggestedFriends
+        const parsedData = data.map((user: FriendResponse) => ({
+          ...user,
+          avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
+          type: user.friendStatus,
+          albumList: [],
+        }))
+        setSuggestedFriends(parsedData)
+      })
+      .catch((error) => {
+        console.error('Error fetching suggested friends:', error)
+      })
+  }, [])
   const onPressMessage = (friendID: string) => {
     const chatExist = hasChat(friendID)
     if (!chatExist) {
@@ -82,62 +109,85 @@ const FriendsScreen = () => {
   const fetchUsers = async (query: string) => {
     setIsLoading(true)
 
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
     // this should be fetched from the server
-    const mockUsers: Friend[] = [
-      {
-        id: '1',
-        name: 'Alex Johnson',
-        username: 'alexj',
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-        albumList: [],
-        type: 'suggested',
-        lastActive: 'Just now',
-        mutualFriends: 3
-      },
-      {
-        id: '2',
-        name: 'Sarah Williams',
-        username: 'sarahw',
-        avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-        albumList: [],
-        type: 'suggested',
-        lastActive: 'Just now',
-        mutualFriends: 2
-      },
-      {
-        id: '3',
-        name: 'Michael Brown',
-        username: 'michaelb',
-        avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
-        albumList: [],
-        type: 'suggested',
-        lastActive: 'Just now',
-        mutualFriends: 1
-      },
-      {
-        id: '4',
-        name: 'Jessica Davis',
-        username: 'jessicad',
-        avatar: 'https://randomuser.me/api/portraits/women/17.jpg',
-        albumList: [],
-        type: 'suggested',
-        lastActive: 'Just now',
-        mutualFriends: 5
-      }
-    ]
+    if (process.env.EXPO_PUBLIC_BYPASS_LOGIN == 'true') {
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      const mockUsers: Friend[] = [
+        {
+          id: '1',
+          name: 'Alex Johnson',
+          username: 'alexj',
+          avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
+          albumList: [],
+          type: 'suggested',
+          lastActive: 'Just now',
+          mutualFriends: 3
+        },
+        {
+          id: '2',
+          name: 'Sarah Williams',
+          username: 'sarahw',
+          avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+          albumList: [],
+          type: 'suggested',
+          lastActive: 'Just now',
+          mutualFriends: 2
+        },
+        {
+          id: '3',
+          name: 'Michael Brown',
+          username: 'michaelb',
+          avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
+          albumList: [],
+          type: 'suggested',
+          lastActive: 'Just now',
+          mutualFriends: 1
+        },
+        {
+          id: '4',
+          name: 'Jessica Davis',
+          username: 'jessicad',
+          avatar: 'https://randomuser.me/api/portraits/women/17.jpg',
+          albumList: [],
+          type: 'suggested',
+          lastActive: 'Just now',
+          mutualFriends: 5
+        }
+      ]
+  
+      const users = [...friends, ...mockUsers]
+  
+      const filteredUsers = users.filter((user) => user.name.toLowerCase().includes(query.toLowerCase()))
 
-    const users = [...friends, ...mockUsers]
+      setSearchResults(query ? filteredUsers : [])
+      setIsLoading(false)
+    } else {
+      // actual fetching from server
+      session.apiWithToken.get('/user/search', { params: { query } })
+        .then((res) => {
+          const data = res.data.users
+          const parsedData = data.map((user: FriendResponse) => ({
+            ...user,
+            avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
+            type: user.friendStatus,  
+            albumList: [],
+          }))
+          setSearchResults(parsedData)
+          setIsLoading(false)
+        })
+        .catch((error) => {
+          console.error('Error fetching users:', error)
+          Alert.alert('Error', 'Failed to fetch users. Please try again later.')
+          setSearchResults([])
+        })
+    }
+    
 
-    const filteredUsers = users.filter((user) => user.name.toLowerCase().includes(query.toLowerCase()))
-
-    setSearchResults(query ? filteredUsers : [])
-    setIsLoading(false)
+    
   }
 
   useEffect(() => {
-    if (query.trim()) {
+    if (query.trim() && query.length > 2) {
       setIsSearching(true)
       fetchUsers(query)
       return
@@ -147,8 +197,57 @@ const FriendsScreen = () => {
     }
   }, [query])
 
-  const handleAddSuggested = (id: string) => {
-    // send a friend request
+  const sendFriendRequest = (id: string) => {
+    session.apiWithToken.post(`/user/friends/invite/${id}`)
+      .then((res) => {
+        Alert.alert('Success', 'Friend request sent successfully.');
+
+        // Update the friend type in the searchResults state
+        setSearchResults((prevResults) =>
+          prevResults.map((friend) =>
+            friend.id === id ? { ...friend, type: 'pending' } : friend
+          )
+        );
+        
+        setSuggestedFriends((prevResults) =>
+          prevResults.filter((friend) => friend.id !== id)
+        );
+
+        // Update the friend type in the global store (optional)
+        changeFriendType(id, 'pending');
+      })
+      .catch((error) => {
+        console.error('Error sending friend request:', error);
+        Alert.alert('Error', error.response?.data?.detail || 'Failed to send friend request. Please try again later.');
+      });
+  };
+
+  const cancelFriendRequest = (id: string) => {
+    session.apiWithToken.post(`/user/friends/remove/${id}`)
+      .then((res) => {
+        Alert.alert('Success', 'Friend request canceled successfully.');
+        setSearchResults((prevResults) => prevResults.filter((friend) => friend.id !== id));
+        removeFriend(id)
+      })
+      .catch((error) => {
+        console.error('Error canceling friend request:', error);
+        Alert.alert('Error', error.response?.data?.detail || 'Failed to cancel friend request. Please try again later.');
+      });
+  };
+
+  const handleFriendRequest = (id: string, accept: boolean) => {
+    if (accept) {
+      session.apiWithToken.post(`/user/friends/accept/${id}`)
+        .then((res) => {
+          Alert.alert('Success', 'Friend request accepted successfully.');
+          changeFriendType(id, 'friend')
+        })
+        .catch((error) => {
+          console.error('Error accepting friend request:', error);
+        })
+    } else {
+      cancelFriendRequest(id)
+    }
   }
 
   const openUserProfile = (id: string) => {
@@ -168,7 +267,14 @@ const FriendsScreen = () => {
         underlayColor={isDark ? '#3A3A4A' : '#DCDCE2'}
       >
         <View style={[styles.friendItem, { backgroundColor: colors.background }]}>
-          <Image source={{ uri: item.avatar }} style={styles.avatar} />
+          {
+            item.avatar ? (
+              <Image source={{ uri: item.avatar }} style={styles.avatar} />
+            ) : (
+              <Ionicons name="person-circle-outline" size={50} color={colors.gray} style={{ marginLeft: 4 }} />
+            )
+          }
+          
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
             <Themed.Text style={{ fontSize: 13 }} text70>
@@ -192,26 +298,34 @@ const FriendsScreen = () => {
         activeOpacity={0.7}
         onPress={() => openUserProfile(item.id)}
       >
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        {
+            item.avatar ? (
+              <Image source={{ uri: item.avatar }} style={styles.avatar} />
+            ) : (
+              <Ionicons name="person-circle-outline" size={50} color={colors.gray} style={{ marginLeft: 4 }} />
+            )
+          }
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
-          <Themed.Text style={{ fontSize: 13 }} text70>
-            {item.mutualFriends} mutual friends
-          </Themed.Text>
+          {item.mutualFriends && item.mutualFriends > 0 ? (
+            <Themed.Text style={{ fontSize: 13 }} text70>
+              {item.mutualFriends} mutual friends
+            </Themed.Text>
+          ) : null}
         </View>
       </TouchableOpacity>
       <View style={{ flexDirection: 'row' }}>
         <TouchableOpacity
           style={[styles.actionButton, styles.acceptButton]}
-          onPress={() => handleRequest(item.id, true)}
+          onPress={() => handleFriendRequest(item.id, true)}
           activeOpacity={0.7}
         >
           <Themed.Text style={{ color: '#fff', fontSize: 14, fontWeight: '500' }}>Accept</Themed.Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.declineButton]}
-          onPress={() => handleRequest(item.id, false)}
-          activeOpacity={0.7}
+          onPress={() => handleFriendRequest(item.id, false)}
+          activeOpacity={0.7} 
         >
           <Themed.Text style={{ color: '#666', fontSize: 14, fontWeight: '500' }}>Decline</Themed.Text>
         </TouchableOpacity>
@@ -224,15 +338,21 @@ const FriendsScreen = () => {
   const renderSuggestedFriendItem = ({ item }: { item: Friend }) => (
     <Themed.View style={styles.suggestedItem} shadow>
       <TouchableOpacity style={{ alignItems: 'center' }} activeOpacity={0.7} onPress={() => openUserProfile(item.id)}>
-        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      {
+            item.avatar ? (
+              <Image source={{ uri: item.avatar }} style={styles.avatar} />
+            ) : (
+              <Ionicons name="person-circle-outline" size={50} color={colors.gray} style={{ marginLeft: 4 }} />
+            )
+          }
         <View style={styles.suggestedInfo}>
-          <Themed.Text style={styles.friendName}>{item.name}</Themed.Text>
-          <Themed.Text style={{ fontSize: 13 }} text70>
+          <Themed.Text style={[styles.friendName, { textAlign: 'center' }]}>{item.name}</Themed.Text>
+          {(item.mutualFriends && item.mutualFriends > 0) ? <Themed.Text style={{ fontSize: 13 }} text70>
             {item.mutualFriends} mutual friends
-          </Themed.Text>
+          </Themed.Text> : null}
         </View>
       </TouchableOpacity>
-      <TouchableBounce style={styles.addButton} onPress={() => handleAddSuggested(item.id)}>
+      <TouchableBounce style={styles.addButton} onPress={() => sendFriendRequest(item.id)}>
         <Ionicons name="person-add-outline" size={18} color="#FFFFFF" />
       </TouchableBounce>
     </Themed.View>
@@ -316,18 +436,55 @@ const FriendsScreen = () => {
       activeOpacity={0.7}
       onPress={() => router.push({ pathname: '/(modal)/FriendProfileModal', params: { friendID: item.id } })}
     >
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      {
+        item.avatar ? (
+          <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        ) : (
+          <Ionicons name="person-circle-outline" size={50} color={colors.gray} style={{ marginLeft: 4 }} />
+        )
+      } 
       <View style={styles.userInfo}>
         <Themed.Text style={styles.userName}>{item.name}</Themed.Text>
         <Themed.Text style={{ fontSize: 14 }} text50>
           @{item.username}
         </Themed.Text>
       </View>
-      <TouchableOpacity
-        style={{ backgroundColor: '#007AFF', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
-      >
-        <Text style={styles.addButtonText}>Add</Text>
-      </TouchableOpacity>
+      {
+        item.type === 'suggested' && (  
+          <TouchableOpacity
+            style={{ backgroundColor: '#007AFF', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
+            onPress={() => sendFriendRequest(item.id)}
+          >
+            <Text style={styles.addButtonText}>Add</Text>
+          </TouchableOpacity>
+        )
+      }
+      {
+        item.type === 'pending' && (  
+          <TouchableOpacity
+            style={{ backgroundColor: colors.orange, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
+            onPress={() => {
+              Alert.alert('Cancel Request', 'Are you sure to cancel this request?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'OK', onPress: () => {
+                  cancelFriendRequest(item.id)
+                } }
+              ])
+            }}
+          >
+            <Text style={styles.addButtonText}>Pending</Text>
+          </TouchableOpacity>
+        )
+      }
+      {
+        item.type === 'friend' && (
+          <TouchableOpacity
+            style={{ backgroundColor: colors.green, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
+          >
+            <Text style={styles.addButtonText}>Friend</Text>
+          </TouchableOpacity>
+        )
+      }
     </TouchableOpacity>
   )
   // #endregion
@@ -365,6 +522,7 @@ const FriendsScreen = () => {
           headerSearchBarOptions: {
             placeholder: 'Search',
             autoFocus: true,
+            autoCapitalize: 'none',
             hideWhenScrolling: false,
             onChangeText: (e) => {
               setQuery(e.nativeEvent.text)
@@ -392,6 +550,7 @@ const FriendsScreen = () => {
                 contentContainerStyle={{ paddingTop: 8 }}
                 scrollEnabled={false}
                 ItemSeparatorComponent={() => <Themed.View type="divider" />}
+                extraData={friends}
               />
             ) : (
               isSearching && renderEmptyResult()
