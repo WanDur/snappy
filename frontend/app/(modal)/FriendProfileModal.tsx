@@ -10,12 +10,14 @@ import { LinearGradient } from 'expo-linear-gradient'
 
 import { Themed, SectionHeader } from '@/components'
 import { Stack, ContentUnavailable } from '@/components/router-form'
-import { useFriendStore } from '@/hooks'
+import { useFriendStore, useTheme } from '@/hooks'
 
 const { width } = Dimensions.get('window')
 const PHOTO_SIZE = (width - 48) / 3
 
 const FriendProfileModal = () => {
+  const { colors } = useTheme()
+
   const { friends } = useFriendStore()
   const { friendID } = useLocalSearchParams<{ friendID: string }>()
   const friend = friends.find((f) => f.id === friendID)!
@@ -120,7 +122,11 @@ const FriendProfileModal = () => {
       <Themed.ScrollView style={{ flex: 1 }}>
         {/* Profile section */}
         <View style={styles.profileSection}>
-          <Image source={{ uri: friend.avatar }} style={styles.profilePic} />
+          {friend.avatar ? (
+            <Image source={{ uri: friend.avatar }} style={styles.profilePic} />
+          ) : (
+            <Ionicons name="person-circle-outline" size={50} color={colors.gray} style={{ marginLeft: 4 }} />
+          )}
 
           <View style={styles.userInfo}>
             <Themed.Text style={styles.userName}>{friend.name}</Themed.Text>
