@@ -7,6 +7,7 @@ import { Friend } from "@/types";
 
 interface FriendStore {
   friends: Friend[];
+  hasFriend: (id: string) => boolean;
   addFriend: (friend: Friend) => void;
   getFriend: (id: string) => Friend | undefined;
   removeFriend: (id: string) => void;
@@ -15,12 +16,17 @@ interface FriendStore {
     type: "friend" | "pending" | "suggested" | "outgoing"
   ) => void;
   clearFriends: () => void;
+  updateFriend: (id: string, friend: Friend) => void;
 }
 
 export const useFriendStore = create<FriendStore>()(
   persist(
     immer<FriendStore>((set, get) => ({
       friends: [],
+
+      hasFriend: (id: string) => {
+        return get().friends.some((friend) => friend.id === id);
+      },
 
       clearFriends: () => {
         set({ friends: [] });
@@ -47,6 +53,14 @@ export const useFriendStore = create<FriendStore>()(
           const friend = state.friends.find((f) => f.id === id);
           if (friend) {
             friend.type = type;
+          }
+        });
+      },
+      updateFriend: (id, friend) => {
+        set((state) => {
+          const index = state.friends.findIndex((f) => f.id === id);
+          if (index !== -1) {
+            state.friends[index] = friend;
           }
         });
       },

@@ -2,7 +2,7 @@
 Component for all chat related logics and routes
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import random
 import string
 from typing import Annotated, Optional
@@ -20,7 +20,7 @@ from fastapi import (
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 
-from internal.models import Attachment, Message, User, Conversation
+from internal.models import Attachment, ConversationType, Message, User, Conversation
 from utils.auth import get_user
 from utils.debug import log_debug
 from utils.minio import upload_file
@@ -63,7 +63,7 @@ async def create_direct_chat(
     # Create a new conversation
     conversation = Conversation(
         type="direct",
-        createdAt=datetime.now(),
+        createdAt=datetime.now(timezone.utc),
         createdBy=user,
         participants=[user.id, body.targetUserId],
     )
@@ -94,7 +94,7 @@ async def create_group_chat(
     # Create a new conversation
     conversation = Conversation(
         type="group",
-        createdAt=datetime.now(),
+        createdAt=datetime.now(timezone.utc),
         createdBy=user,
         participants=body.participants,
     )
@@ -136,6 +136,61 @@ async def websocket_endpoint(
 # region send message
 
 
+class ConversationParticipantInfo(BaseModel):
+    userId: ObjectId
+    username: str
+    name: str
+    iconUrl: Optional[str]
+
+
+class ConversationInfoResponse(BaseModel):
+    conversationId: ObjectId
+    conversationType: ConversationType
+    participants: list[ConversationParticipantInfo]
+
+
+@chat_router.get("/conversation/{conversation_id}/info")
+async def get_conversation_info(
+    conversation_id: ObjectId, user: User | None = Depends(get_user)
+) -> ConversationInfoResponse:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    conversation = await engine.find_one(
+        Conversation, Conversation.id == conversation_id
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    if user.id not in conversation.participants:
+        raise HTTPException(status_code=401, detail="User not in conversation")
+
+    participants = []
+    for participant in conversation.participants:
+        user = await engine.find_one(User, User.id == participant)
+        if not user:
+            log_debug(f"User {participant} not found")
+            continue
+        participants.append(
+            ConversationParticipantInfo(
+                userId=participant,
+                username=user.username,
+                name=user.name,
+                iconUrl=user.iconUrl,
+            )
+        )
+
+    return ORJSONResponse(
+        serialize_mongo_object(
+            {
+                "conversationId": str(conversation.id),
+                "conversationType": conversation.type,
+                "participants": participants,
+            }
+        )
+    )
+
+
 class SendMessageResponse(BaseModel):
     messageId: ObjectId
     senderId: ObjectId
@@ -168,7 +223,7 @@ async def send_message(
         conversation=conversation,
         sender=user,
         message=message,
-        timestamp=datetime.now(),
+        timestamp=datetime.now(timezone.utc),
     )
 
     if attachments:
@@ -179,7 +234,7 @@ async def send_message(
                     status_code=400,
                     detail="Invalid file type.",
                 )
-            filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{afile.filename}"
+            filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{afile.filename}"
             file_url = await upload_file(
                 f"chat/{conversation.id}/{filename}",
                 afile.file,
@@ -224,18 +279,36 @@ async def send_message(
 # region fetch new messages
 
 
+class MessageResponse(BaseModel):
+    messageId: ObjectId
+    senderId: ObjectId
+    message: str
+    timestamp: datetime
+    attachments: list[Attachment]
+
+
+class ConversationResponse(BaseModel):
+    conversationId: ObjectId
+    conversationType: ConversationType
+    lastMessageTime: datetime
+    messages: list[MessageResponse]
+
+
+class FetchNewMessagesResponse(BaseModel):
+    chats: list[ConversationResponse]
+
+
 @chat_router.get("/fetch")
 async def fetch_messages(
     since: Optional[datetime] = None,
     user: User | None = Depends(get_user),
-):
+) -> FetchNewMessagesResponse:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     conversation_ids = await Conversation.find_conversation_ids(user)
     new_messages = []
     for conversation_id in conversation_ids:
-        log_debug(conversation_id)
         from odmantic.query import and_
 
         query = and_(
@@ -243,24 +316,30 @@ async def fetch_messages(
             {"timestamp": {"$gt": since}} if since else {},
             {"sender": {"$ne": user.id}},
         )
+        conversation = await engine.find_one(
+            Conversation, Conversation.id == conversation_id
+        )
         messages = await engine.find(
             Message,
             query,
-            sort=Message.timestamp.desc(),
+            sort=Message.timestamp.asc(),
         )
         if messages:
             new_chat_conversations = {
                 "conversationId": str(conversation_id),
+                "conversationType": conversation.type,
+                "lastMessageTime": messages[-1].timestamp,
                 "messages": [
                     {
                         "messageId": str(message.id),
                         "senderId": str(message.sender.id),
                         "message": message.message,
-                        "attachments": message.attachments,
                         "timestamp": message.timestamp,
+                        "attachments": message.attachments,
                     }
                     for message in messages
                 ],
             }
             new_messages.append(new_chat_conversations)
-    return ORJSONResponse(serialize_mongo_object(new_messages))
+    log_debug(new_messages)
+    return ORJSONResponse({"chats": serialize_mongo_object(new_messages)})

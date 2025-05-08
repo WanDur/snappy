@@ -3,16 +3,17 @@ import React, { useEffect, useState } from 'react'
 import Animated, { LinearTransition } from 'react-native-reanimated'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Crypto from 'expo-crypto'
-import { Stack } from 'expo-router'
+import { Stack, useRouter } from 'expo-router'
 
 import { Themed } from '@/components'
 import { ChatRow } from '@/components/chat'
 import { useBottomTabOverflow } from '@/components/ui/TabBarBackground'
-import { useChatStore, useUserStore, useStorage, useTheme } from '@/hooks'
+import { useChatStore, useUserStore, useStorage, useTheme, useFriendStore } from '@/hooks'
 import { ChatItem } from '@/types'
+import { bypassLogin, isAuthenticated, useSession } from '@/contexts/auth'
 // import { useSession } from '@/contexts/auth'
 // import { FetchNewMessageResponse } from '@/types/chats.type'
-// import { useSync } from '@/hooks/useSync'
+import { useSync } from '@/hooks/useSync'
 
 const avatars = [
   'https://i.pravatar.cc/150?u=aguilarduke@marketoid.com',
@@ -63,11 +64,14 @@ const getRandomItem = (arr: string[]) => arr[Math.floor(Math.random() * arr.leng
 const getRandomDate = () => new Date(Date.now() - Math.floor(Math.random() * 10000000000))
 
 export const ChatScreen = () => {
-  // const session = useSession()
+  const router = useRouter()
+  const session = useSession()
+  const { syncChats } = useSync()
 
   const { colors, theme } = useTheme()
   const { top } = useSafeAreaInsets()
   const tabBarHeight = useBottomTabOverflow()
+  const { friends } = useFriendStore()
 
   const { deleteItemFromStorage } = useStorage()
   const {
@@ -77,7 +81,6 @@ export const ChatScreen = () => {
     getLastFetchTime,
     updateLastFetchTime,
     getChat,
-    setChatInfo,
     addChat,
     addMessage,
     updateLastMessageTime,
@@ -85,7 +88,6 @@ export const ChatScreen = () => {
     addUnreadCount
   } = useChatStore()
   const { user } = useUserStore()
-  //const { syncChat } = useSync()
 
   const [isEdit, setIsEdit] = useState(false)
   const [selectedChats, setSelectedChats] = useState<string[]>([])
@@ -115,14 +117,19 @@ export const ChatScreen = () => {
 
   const refreshData = async () => {
     setLoading(true)
-    await fetchAllChatInfo()
+    await syncChats(session)
     setLoading(false)
   }
 
   useEffect(() => {
+    if (bypassLogin()) return;
+    if (!isAuthenticated(session)) {
+      router.push('/(auth)/LoginScreen')
+      return
+    }
     setLoading(true)
     refreshData()
-    // syncChat()
+    syncChats(session)
     setLoading(false)
   }, [])
 
@@ -150,11 +157,10 @@ export const ChatScreen = () => {
               activeOpacity={0.7}
               onPress={() =>
                 addChat({
-                  chatTitle: getRandomItem(usernames),
-                  chatSubtitle: getRandomLastOnline(),
+                  type: 'direct',
+                  participants: [friends[0]],
                   initialDate: getRandomDate(),
                   unreadCount: Math.floor(Math.random() * 6),
-                  iconUrl: avatars[Math.floor(Math.random() * avatars.length)],
                   lastMessageTime: getRandomDate(),
                   id: `${Crypto.randomUUID().substring(0, 18)}`,
                   messages: []
@@ -193,6 +199,7 @@ export const ChatScreen = () => {
             <ChatRow
               key={item.id}
               {...item!}
+              chatTitle={item.type == 'direct' ? item.participants[0].name : 'Group Chat (TODO)'}
               onSingleDelete={() => deleteSingleChat(item.id!)}
               onCheckChat={(chatID, checked) => {
                 if (checked) {

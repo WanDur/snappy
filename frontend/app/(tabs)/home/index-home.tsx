@@ -12,9 +12,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Constants } from '@/constants'
 import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { useRouter } from 'expo-router'
-import { FriendResponse } from '@/types/friend.types'
-import { syncFriends } from '@/utils/sync'
-import { syncUserData } from '@/utils/sync'
+import { useSync } from '@/hooks/useSync'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -199,6 +197,7 @@ const HomeScreen = () => {
   const session = useSession()
   const router = useRouter()
   const userStore = useUserStore()
+  const { syncUserData, syncFriends } = useSync()
 
   const { colors } = useTheme()
   const { friends, addFriend, clearFriends } = useFriendStore()
@@ -209,7 +208,6 @@ const HomeScreen = () => {
 
   useEffect(() => {
     if (bypassLogin()) {
-      
       return
     }
 

@@ -17,6 +17,7 @@ import { Constants } from '@/constants'
 import { useChatStore, useUserStore, useTheme } from '@/hooks'
 // import { useSession } from '@/contexts/auth'
 import { Attachment, MessageResponse, SYSTEM } from '@/types/chats.type'
+import { Avatar } from '@/components/Avatar'
 
 const ChatScreen = () => {
   // const session = useSession()
@@ -29,18 +30,19 @@ const ChatScreen = () => {
   const { user } = useUserStore()
   const { getChat, addMessage, clearUnreadCount } = useChatStore()
 
+  const chat = getChat(chatID)
+
   const [keyboardHeight, setKeyboardHeight] = useState(0)
-  const [isFirstLoad, setIsFirstLoad] = useState(true)
-  const [jobTitle, setJobTitle] = useState('Job Title')
-  const [chatCompany, setChatCompany] = useState('Company')
   const [allMessages, setAllMessages] = useState<TMessage[]>([])
   const [modalVisible, setModalVisible] = useState(false)
   const [menuVisible, setMenuVisible] = useState(false)
+  const [iconUrl, setIconUrl] = useState(chat.type == 'direct' ? chat.participants[0].avatar : undefined)
+  const [chatTitle, setChatTitle] = useState(chat.type == 'direct' ? chat.participants[0].name : 'Group Chat (TODO)')
 
   const textInputRef = useRef<TextInput>(null)
   const loadMessageRef = useRef<number>(0)
 
-  const { chatTitle, initialDate, messages, iconUrl } = getChat(chatID)
+  const { initialDate, messages } = getChat(chatID)
 
   const TempContextMenu = () => {
     const toggleMenu = () => {
@@ -257,7 +259,7 @@ const ChatScreen = () => {
               activeOpacity={0.7}
               onPress={() => router.push({ pathname: '/(modal)/ChatSettingModal', params: { chatID } })}
             >
-              <Image source={{ uri: iconUrl }} style={{ width: 36, height: 36, borderRadius: 40 }} />
+              <Avatar iconUrl={iconUrl} size={36} />
               <View>
                 <Themed.Text style={{ fontSize: 16, fontWeight: '500' }}>{chatTitle}</Themed.Text>
               </View>

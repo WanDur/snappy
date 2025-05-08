@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Annotated, Optional
 from odmantic import EmbeddedModel, Field, Model, ObjectId, Reference, query
@@ -31,7 +31,9 @@ class User(Model):
 
     async def is_premium(self) -> bool:
         if self.tier == UserTier.PREMIUM:
-            if self.premiumExpireTime and self.premiumExpireTime > datetime.now():
+            if self.premiumExpireTime and self.premiumExpireTime > datetime.now(
+                timezone.utc
+            ):
                 return True
             else:
                 self.tier = UserTier.FREEMIUM
@@ -44,7 +46,7 @@ class User(Model):
     async def redeemPremium(self, days: int):
         if self.tier == UserTier.FREEMIUM:
             self.tier = UserTier.PREMIUM
-            self.premiumExpireTime = datetime.now() + timedelta(days=days)
+            self.premiumExpireTime = datetime.now(timezone.utc) + timedelta(days=days)
         else:
             self.premiumExpireTime += timedelta(days=days)
         await engine.save(self)
@@ -116,7 +118,7 @@ class License(Model):
 
     async def redeem(self, user: User):
         self.redeemed = True
-        self.redeemedAt = datetime.now()
+        self.redeemedAt = datetime.now(timezone.utc)
         self.redeemedBy = user.id
         await user.redeemPremium(self.days)
         await engine.save(self)
@@ -212,7 +214,7 @@ class Photo(Model):
 
     async def comment(self, user: User, message: str):
         comment = PhotoComment(
-            user=user, photo=self, timestamp=datetime.now(), message=message
+            user=user, photo=self, timestamp=datetime.now(timezone.utc), message=message
         )
         await engine.save(comment)
 
