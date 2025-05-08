@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   View,
   Text,
@@ -132,24 +132,24 @@ const ProfileScreen = () => {
   const fetchProfileData = async () => {
     if (session.session) {
       session.apiWithToken.get('/user/profile/myself').then((res) => {
-              const userData = res.data
-              setUser({
-                id: userData.id,
-                email: userData.email,
-                username: userData.username,
-                name: userData.name,
-                phone: userData.phone,
-                iconUrl: userData.iconUrl,
-                bio: userData.bio,
-                notificationTokens: [], // TODO - to be implemented
-                tier: userData.tier,
-                premiumExpireTime: userData.premiumExpireTime
-              })
-              const iconUrl = parsePublicUrl(userData.iconUrl)
-              updateAvatar(iconUrl)
-              setPhotoCount(userData.photoCount)
-              setLastLocation(userData.lastLocation)
-            })
+        const userData = res.data
+        setUser({
+          id: userData.id,
+          email: userData.email,
+          username: userData.username,
+          name: userData.name,
+          phone: userData.phone,
+          iconUrl: userData.iconUrl,
+          bio: userData.bio,
+          notificationTokens: [], // TODO - to be implemented
+          tier: userData.tier,
+          premiumExpireTime: userData.premiumExpireTime
+        })
+        const iconUrl = parsePublicUrl(userData.iconUrl)
+        updateAvatar(iconUrl)
+        setPhotoCount(userData.photoCount)
+        setLastLocation(userData.lastLocation)
+      })
     }
   }
 
@@ -267,12 +267,12 @@ const ProfileScreen = () => {
           Alert.alert('Error', 'Failed to update profile. Please try again later.')
         })
 
-        updateName(name)
-  
-        setUserName(userName)
-        updateUsername(userName)
-  
-        updateBio(bio.trim())
+      updateName(name)
+
+      setUserName(userName)
+      updateUsername(userName)
+
+      updateBio(bio.trim())
     }
 
     Keyboard.dismiss()
@@ -325,10 +325,6 @@ const ProfileScreen = () => {
               <Themed.Text style={styles.usernameText} text70>
                 @{user.username}
               </Themed.Text>
-              <View style={styles.locationRow}>
-                <Feather name="map-pin" size={14} color="#fff" />
-                <Themed.Text style={styles.locationText}>user.location</Themed.Text>
-              </View>
               {user.bio !== '' && <Themed.Text style={styles.bioText}>{user.bio}</Themed.Text>}
             </View>
           </View>
@@ -361,7 +357,7 @@ const ProfileScreen = () => {
         </View>
 
         {/* Instagram-style Tabs Section */}
-        <View style={styles.tabsContainer}>
+        <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity
             style={[styles.tabButton, activeTab === 0 && styles.activeTabButton]}
             onPress={() => handleTabPress(0)}
@@ -538,11 +534,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8
   },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12
-  },
   bioText: {
     fontSize: 14,
     textAlign: 'center',
@@ -593,23 +584,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 6
   },
-  // Instagram-style tabs
-  tabsContainer: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#f0f0f0',
-    marginTop: 20
-  },
   tabButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12
+    paddingVertical: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent'
   },
   activeTabButton: {
-    borderBottomWidth: 2,
     borderBottomColor: '#6c5ce7'
   },
   tabText: {
@@ -627,7 +611,6 @@ const styles = StyleSheet.create({
     flexShrink: 0
   },
   tabPage: {
-    // Full width of the screen
     flex: 1
   },
   photosSection: {
@@ -763,12 +746,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     flexDirection: 'row',
     justifyContent: 'space-between'
-  },
-  nameInput: {
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16
   }
 })
 

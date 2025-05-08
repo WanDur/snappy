@@ -57,15 +57,9 @@ export default function SettingScreen() {
       />
       <Form.List>
         <Form.Section title="general">
-          <Form.Link href="/settingscreen/NotificationScreen" systemImage="bell">
-            Notifications
-          </Form.Link>
           <Form.Link href="/settingscreen/PermissionScreen" systemImage="hand.raised">
             Permissions
           </Form.Link>
-        </Form.Section>
-
-        <Form.Section title="Account">
           <Form.Text systemImage="phone" hint={user.phone}>
             Phone
           </Form.Text>
@@ -112,6 +106,7 @@ export default function SettingScreen() {
           <Form.Link href="/settingscreen/DevScreen" systemImage="wrench.and.screwdriver">
             Dev data
           </Form.Link>
+          <Form.Link href="/(modal)/PremiumInfoModal">Premium modal</Form.Link>
         </Form.Section>
       </Form.List>
     </Themed.ScrollView>
