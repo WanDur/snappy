@@ -1,5 +1,15 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, ListRenderItem, Alert } from 'react-native'
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  ListRenderItem,
+  Alert,
+  Modal
+} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
@@ -165,6 +175,13 @@ const FeedCard = ({ item, onSeen }: { item: FeedItem; onSeen: () => void }) => (
   </TouchableOpacity>
 )
 
+/**************** Image‑grid picker (filtered by week) ****************/
+const AssetTile = ({ asset, onSelect }: { asset: MediaLibrary.Asset; onSelect: (a: MediaLibrary.Asset) => void }) => (
+  <TouchableOpacity style={styles.assetTile} activeOpacity={0.8} onPress={() => onSelect(asset)}>
+    <Image source={{ uri: asset.uri }} style={styles.assetImg} contentFit="cover" />
+  </TouchableOpacity>
+)
+
 const WeekPage = ({
   bundle,
   markSeen,
@@ -261,6 +278,11 @@ const HomeScreen = () => {
   type PhotoInfo = { uri: string }
   const [mediaByDate, setMediaByDate] = useState<Record<string, PhotoInfo>>({})
 
+  /** picker modal state */
+  const [pickerAssets, setPickerAssets] = useState<MediaLibrary.Asset[]>([])
+  const [pickerVisible, setPickerVisible] = useState(false)
+  const pickerWeekRef = useRef<WeekBundle | null>(null)
+
   /** Ensure user logged in */
   useEffect(() => {
     if (bypassLogin()) {
@@ -324,84 +346,86 @@ const HomeScreen = () => {
     })
   }, [weeks, friends, mediaByDate])
 
-  /**
-   * Handle picking a photo → place onto the correct day tile based on capture date.
-   */
-  const handleAddMedia = useCallback(async () => {
-    /* 1 ▸ Ask for library permission (iOS/Android) */
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+  const openPicker = useCallback(async (week: WeekBundle) => {
+    const { status } = await MediaLibrary.requestPermissionsAsync()
     if (status !== 'granted') return
 
-    /* 2 ▸ Open the gallery – photos only */
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: false,
-      quality: 0.8,
-      exif: true
+    // Monday → Sunday boundaries
+    const mon = week.days.find((d) => !d.isAdd)?.date as Date
+    const sun = addDays(mon, 6)
+    const createdAfter = mon.getTime()
+    const createdBefore = sun.getTime() + 86400000 // end of Sunday
+
+    const assetsRes = await MediaLibrary.getAssetsAsync({
+      mediaType: MediaLibrary.MediaType.photo,
+      sortBy: MediaLibrary.SortBy.creationTime,
+      first: 500,
+      createdAfter,
+      createdBefore
     })
-    if (res.canceled) return
 
-    const asset = res.assets[0]
-
-    /* 3 ▸ Determine the photo's original capture date */
-    const captureDate = await getCaptureDate(asset)
-    captureDate.setHours(0, 0, 0, 0) // normalise to 00:00 for keying
-    const iso = captureDate.toISOString().split('T')[0]
-
-    /* 4 ▸ If user already has a photo for that day, do nothing */
-    if (mediaByDate[iso]) {
-      console.log('Photo already exists', 'You have already selected/uploaded a photo for this date.')
-      console.log('captureDate', captureDate)
+    if (assetsRes.totalCount === 0) {
+      Alert.alert('No photos', 'There are no photos captured in this week.')
       return
     }
 
-    /* 5 ▸ Register in local state */
-    setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
+    pickerWeekRef.current = week
+    setPickerAssets(assetsRes.assets)
+    setPickerVisible(true)
+  }, [])
 
-    /* 6 ▸ Make sure the corresponding week exists in state */
-    setWeeks((prevWeeks) => {
-      const captureWeekNum = getISOWeek(captureDate)
-      const currentWeekNum = getISOWeek()
-      let newWeeks = [...prevWeeks]
+  /** when an asset is selected from modal */
+  const handleAssetSelect = useCallback(
+    async (asset: MediaLibrary.Asset) => {
+      if (!pickerWeekRef.current) return
+      setPickerVisible(false)
+      const captureDate = new Date(asset.creationTime)
+      captureDate.setHours(0, 0, 0, 0)
+      const iso = captureDate.toISOString().split('T')[0]
 
-      // If the capture week isn't loaded yet, build it and insert at proper offset (older weeks at the end)
-      if (!newWeeks.some((w) => w.weekNum === captureWeekNum)) {
-        const offset = currentWeekNum - captureWeekNum
-        const newBundle: WeekBundle = {
-          weekNum: captureWeekNum,
-          key: `week-${captureWeekNum}`,
-          days: buildDays(offset).map((d) => {
-            const dIso = d.date.toISOString().split('T')[0]
-            if (dIso === iso) {
-              return { ...d, hasMedia: true, thumbnail: asset.uri }
-            }
-            return d
-          }),
-          feed: []
-        }
-        newWeeks.splice(offset, 0, newBundle) // place by offset so list remains in order
-      } else {
-        newWeeks = newWeeks.map((w) => {
-          if (w.weekNum !== captureWeekNum) return w
-          return {
-            ...w,
-            days: w.days.map((d) => {
-              const dIso = d.date.toISOString().split('T')[0]
-              if (dIso === iso) {
-                return { ...d, hasMedia: true, thumbnail: asset.uri }
-              }
-              return d
-            })
-          }
-        })
+      // duplicate check
+      if (mediaByDate[iso]) {
+        console.log('Photo exists', 'You have already selected a photo for this date.')
+        return
       }
 
-      return newWeeks
-    })
+      /* save to local */
+      setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
 
-    /* 7 ▸ OPTIONAL: upload to backend */
-    // await PhotoService.upload(asset, session.session?.accessToken, captureDate)
-  }, [mediaByDate, session])
+      /* ensure week bundle present & patch */
+      setWeeks((prev) => {
+        const captureWeek = pickerWeekRef.current!.weekNum
+        const current = getISOWeek()
+        const offset = current - captureWeek
+        const exists = prev.some((w) => w.weekNum === captureWeek)
+        if (!exists) {
+          // build and insert at correct offset
+          const newBundle: WeekBundle = {
+            weekNum: captureWeek,
+            key: `week-${captureWeek}`,
+            days: buildDays(offset).map((d) =>
+              ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+            ),
+            feed: []
+          }
+          const arr = [...prev]
+          arr.splice(offset, 0, newBundle)
+          return arr
+        }
+        return prev.map((w) =>
+          w.weekNum === captureWeek
+            ? {
+                ...w,
+                days: buildDays(offset).map((d) =>
+                  d.date.toISOString().split('T')[0] === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                )
+              }
+            : w
+        )
+      })
+    },
+    [mediaByDate]
+  )
 
   return (
     <Themed.View style={styles.container}>
@@ -423,7 +447,7 @@ const HomeScreen = () => {
         data={enrichedWeeks}
         pagingEnabled
         keyExtractor={(w) => w.key}
-        renderItem={({ item }) => <WeekPage bundle={item} markSeen={markSeen} addMedia={handleAddMedia} />}
+        renderItem={({ item }) => <WeekPage bundle={item} markSeen={markSeen} addMedia={() => openPicker(item)} />}
         getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
@@ -434,6 +458,23 @@ const HomeScreen = () => {
           setWeekListIndex(pageNum)
         }}
       />
+
+      {/* picker modal */}
+      <Modal visible={pickerVisible} animationType="slide" onRequestClose={() => setPickerVisible(false)}>
+        <View style={styles.pickerHeader}>
+          <TouchableOpacity onPress={() => setPickerVisible(false)}>
+            <Text style={{ fontSize: 16, fontWeight: '600' }}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: 16, fontWeight: '700' }}>Select a photo</Text>
+          <View style={{ width: 60 }} />
+        </View>
+        <FlatList
+          data={pickerAssets}
+          keyExtractor={(a) => a.id}
+          numColumns={3}
+          renderItem={({ item }) => <AssetTile asset={item} onSelect={handleAssetSelect} />}
+        />
+      </Modal>
     </Themed.View>
   )
 }
@@ -441,6 +482,7 @@ const HomeScreen = () => {
 /**************** Styles ****************/
 const tileWidth = 100
 const tileHeight = 120
+const assetSize = SCREEN_WIDTH / 3 - 2
 
 const styles = StyleSheet.create({
   container: {
@@ -520,7 +562,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12
-  }
+  },
+  // picker modal
+  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  assetTile: { width: assetSize, height: assetSize, margin: 1 },
+  assetImg: { width: '100%', height: '100%' }
+  //})
 })
 
 export default HomeScreen
