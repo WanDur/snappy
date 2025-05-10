@@ -100,15 +100,15 @@ const FriendsScreen = () => {
     const chatExist = hasChat(friendID)
     if (!chatExist) {
       const friend = getFriend(friendID)!
-      addChat({
-        id: friendID,
-        type: 'direct',
-        participants: [friend],
-        initialDate: new Date(),
-        lastMessageTime: new Date(),
-        unreadCount: 0,
-        messages: []
-      })
+      // addChat({
+      //   id: friendID,
+      //   type: 'direct',
+      //   participants: [friend],
+      //   initialDate: new Date(),
+      //   lastMessageTime: new Date(),
+      //   unreadCount: 0,
+      //   messages: []
+      // })
     }
     router.push({ pathname: '/screens/ChatScreen', params: { chatID: friendID } })
   }

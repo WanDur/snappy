@@ -16,11 +16,14 @@ import { MessageInput, AudioComponent, FileComponent, ImageComponent, ImagesComp
 import { Constants } from '@/constants'
 import { useChatStore, useUserStore, useTheme } from '@/hooks'
 // import { useSession } from '@/contexts/auth'
-import { Attachment, MessageResponse, SYSTEM } from '@/types/chats.type'
+import { Attachment, ChatItem, MessageResponse, SYSTEM } from '@/types/chats.type'
 import { Avatar } from '@/components/Avatar'
+import { getChatTitle } from '../(tabs)/chats/index-chats'
+import { getChatIcon } from '../(tabs)/chats/index-chats'
+import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 
 const ChatScreen = () => {
-  // const session = useSession()
+  const session = useSession()
   const headerHeight = useHeaderHeight()
   const { theme, colors, chatColors } = useTheme()
   const router = useRouter()
@@ -36,8 +39,8 @@ const ChatScreen = () => {
   const [allMessages, setAllMessages] = useState<TMessage[]>([])
   const [modalVisible, setModalVisible] = useState(false)
   const [menuVisible, setMenuVisible] = useState(false)
-  const [iconUrl, setIconUrl] = useState(chat.type == 'direct' ? chat.participants[0].avatar : undefined)
-  const [chatTitle, setChatTitle] = useState(chat.type == 'direct' ? chat.participants[0].name : 'Group Chat (TODO)')
+  const [iconUrl, setIconUrl] = useState(getChatIcon(chat, user))
+  const [chatTitle, setChatTitle] = useState(getChatTitle(chat, user))
 
   const textInputRef = useRef<TextInput>(null)
   const loadMessageRef = useRef<number>(0)
@@ -111,7 +114,17 @@ const ChatScreen = () => {
   const loadNewMessages = async () => {
     const chat = getChat(chatID)
     if (chat.messages.length + 1 != allMessages.length) {
-      setAllMessages(chat.messages)
+      setAllMessages([
+        ...chat.messages,
+        {
+          _id: 0,
+          system: true,
+          text: 'Start of the chat',
+          createdAt: initialDate,
+          user: SYSTEM,
+          attachments: []
+        }
+      ])
       clearUnreadCount(chatID)
     }
   }
@@ -124,6 +137,14 @@ const ChatScreen = () => {
   }, [])
 
   useEffect(() => {
+    if (bypassLogin()) {
+      return;
+    }
+    if (!isAuthenticated(session)) {
+      router.replace('/(auth)/LoginScreen')
+      return;
+    }
+    
     setAllMessages([
       ...messages,
       {
@@ -172,38 +193,26 @@ const ChatScreen = () => {
       const formData = new FormData()
       formData.append('message', message)
       for (const attachment of attachments) {
-        formData.append('files', {
+        formData.append('attachments', {
           uri: attachment.url,
           name: attachment.name,
           type: attachment
         } as any)
       }
-      if (false) {
-        // for testing purpose
-        const newMessage = {
-          _id: 'test-id',
-          user: {
-            _id: profile.user._id,
-            avatar: profile.user.avatar
-          },
-          text: message,
-          createdAt: new Date(),
-          attachments: attachments
-        } as TMessage
-        addMessage(chatID, [newMessage])
-        return
-      }
-      return
-      const messageRes: MessageResponse = (await session.apiWithToken.post(`/panda/chat/${chatID}/send`, formData)).data
+      const messageRes: MessageResponse = (await session.apiWithToken.post(`/chat/conversation/${chatID}/send`, formData)).data
       const newMessage = {
-        _id: messageRes.id,
+        _id: messageRes.messageId,
         user: {
-          _id: profile.user._id,
-          avatar: profile.user.avatar
+          _id: user.id,
+          avatar: user.iconUrl
         },
         text: message,
-        createdAt: messageRes.messageTime,
-        attachments: messageRes.attachments
+        createdAt: messageRes.timestamp,
+        attachments: messageRes.attachments.map((attachment) => ({
+          type: attachment.type,
+          url: parsePublicUrl(attachment.url),
+          name: attachment.name,
+        }))
       } as TMessage
 
       addMessage(chatID, [newMessage])

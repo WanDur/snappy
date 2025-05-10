@@ -22,7 +22,7 @@ import { useTheme } from '@/hooks'
 const ATouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity)
 
 interface MessageInputProps extends ComposerProps {
-  textInputRef: React.RefObject<TextInput>
+  textInputRef: React.RefObject<TextInput | null>
   onSend: (message: string, attachments?: Attachment[]) => void
 }
 

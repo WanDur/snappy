@@ -1,4 +1,6 @@
 import { BASE_URL } from '@/constants/server'
+import { useChatStore } from '@/hooks/stores/useChatStore'
+import { useFriendStore } from '@/hooks/stores/useFriendStore'
 import {
   AuthContextProps,
   LoginInfoResponse,
@@ -202,12 +204,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
       return
     }
 
+    // Close all open sockets
     createdSockets.current.forEach((ws) => {
       ws.close(1000)
     })
     createdSockets.current.clear()
 
-    // TODO here
+    // Clear user-specific storages
+    const { clearChats } = useChatStore.getState()
+    const { clearFriends } = useFriendStore.getState()
+    clearChats()
+    clearFriends()
+
+    // Revoke the refresh token
     await api
       .post('/auth/token/revoke', {}, {
         headers: {

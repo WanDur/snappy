@@ -139,6 +139,8 @@ interface ChatStore {
    * @param message array of `IMessage`, for single message, wrap it in an array
    */
   addMessage: (id: string, message: TMessage[]) => void;
+
+  clearChats: () => void;
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -196,12 +198,6 @@ export const useChatStore = create<ChatStore>()(
         });
       },
 
-      // setChatInfo(id, iconUrl?) {
-      //   set((state) => {
-      //     if (iconUrl) state.chats[id].iconUrl = iconUrl;
-      //   });
-      // },
-
       updateLastMessageTime(id, time) {
         set((state) => {
           state.chats[id].lastMessageTime = time;
@@ -230,6 +226,14 @@ export const useChatStore = create<ChatStore>()(
       addMessage(id, messages) {
         set((state) => {
           state.chats[id].messages = [...messages, ...state.chats[id].messages];
+        });
+      },
+
+      clearChats() {
+        set((state) => {
+          state.chats = {};
+          state.lastFetchTime = null;
+          state.allChatID = [];
         });
       },
     })),

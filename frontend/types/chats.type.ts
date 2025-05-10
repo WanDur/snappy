@@ -23,7 +23,7 @@ export interface TMessage extends IMessage {
 export interface ChatItem {
   id: string;
   type: "direct" | "group";
-  participants: Friend[];
+  participants: TUser[];
   lastMessageTime: Date;
   messages: TMessage[];
   initialDate: Date;

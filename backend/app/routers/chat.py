@@ -19,9 +19,10 @@ from fastapi import (
 )
 from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
+from yaml import serialize
 
 from internal.models import Attachment, ConversationType, Message, User, Conversation
-from utils.auth import get_user
+from utils.auth import get_user, get_user_from_token
 from utils.debug import log_debug
 from utils.minio import upload_file
 from utils.mongo import engine, serialize_mongo_object
@@ -109,10 +110,15 @@ active_connections: dict[ObjectId, list[WebSocket]] = {}
 
 
 @chat_router.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    user: User | None = Depends(get_user),
-):
+async def websocket_endpoint(websocket: WebSocket):
+    auth_header = websocket.headers.get("Authorization")
+    if not auth_header:
+        raise WebSocketException(code=1008, reason="Unauthorized")
+    token = auth_header.split(" ")[1]
+    if not token:
+        raise WebSocketException(code=1008, reason="Unauthorized")
+    user = await get_user_from_token(token)
+
     if user is None:
         raise WebSocketException(code=1008, reason="Unauthorized")
 
@@ -147,6 +153,9 @@ class ConversationInfoResponse(BaseModel):
     conversationId: ObjectId
     conversationType: ConversationType
     participants: list[ConversationParticipantInfo]
+    lastMessageTime: datetime
+    initialDate: datetime
+    # unreadCount: int
 
 
 @chat_router.get("/conversation/{conversation_id}/info")
@@ -186,6 +195,8 @@ async def get_conversation_info(
                 "conversationId": str(conversation.id),
                 "conversationType": conversation.type,
                 "participants": participants,
+                "lastMessageTime": await conversation.get_last_message_time(),
+                "initialDate": conversation.createdAt,
             }
         )
     )
@@ -235,9 +246,10 @@ async def send_message(
                     detail="Invalid file type.",
                 )
             filename = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{afile.filename}"
-            file_url = await upload_file(
+            file_data = await afile.read()
+            file_url = upload_file(
                 f"chat/{conversation.id}/{filename}",
-                afile.file,
+                file_data,
                 metadata={"messageId": str(msg.id), "originalName": afile.filename},
             )
             msg_attachments.append(
@@ -250,18 +262,23 @@ async def send_message(
         msg.attachments = msg_attachments
     await engine.save(msg)
 
-    # TODO: send notifications to participants
-
+    # Send messages to participants via WebSocket
     for participant in conversation.participants:
         if participant != user.id and participant in active_connections:
+            log_debug(f"Sending message to participant {participant}")
             for connection in active_connections[participant]:
+                log_debug(f"Sending message to connection {connection}")
                 await connection.send_json(
-                    {
-                        "messageId": str(msg.id),
-                        "senderId": str(user.id),
-                        "message": msg.message,
-                        "attachments": msg.attachments,
-                    }
+                    serialize_mongo_object(
+                        {
+                            "conversationId": str(conversation.id),
+                            "messageId": str(msg.id),
+                            "senderId": str(user.id),
+                            "message": msg.message,
+                            "timestamp": msg.timestamp,
+                            "attachments": msg.attachments,
+                        }
+                    )
                 )
 
     return ORJSONResponse(
@@ -270,6 +287,7 @@ async def send_message(
                 "messageId": str(msg.id),
                 "senderId": str(user.id),
                 "message": msg.message,
+                "timestamp": msg.timestamp,
                 "attachments": msg.attachments,
             }
         )
@@ -314,7 +332,6 @@ async def fetch_messages(
         query = and_(
             {"conversation": conversation_id},
             {"timestamp": {"$gt": since}} if since else {},
-            {"sender": {"$ne": user.id}},
         )
         conversation = await engine.find_one(
             Conversation, Conversation.id == conversation_id
@@ -322,7 +339,7 @@ async def fetch_messages(
         messages = await engine.find(
             Message,
             query,
-            sort=Message.timestamp.asc(),
+            sort=Message.timestamp.desc(),
         )
         if messages:
             new_chat_conversations = {

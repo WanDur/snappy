@@ -151,7 +151,7 @@ class Conversation(Model):
         return conversation
 
     @classmethod
-    async def find_conversation_ids(cls, user: User) -> list[Conversation]:
+    async def find_conversation_ids(cls, user: User) -> list[ObjectId]:
         convo_dicts = (
             await engine.get_collection(Conversation)
             .find(
@@ -165,6 +165,12 @@ class Conversation(Model):
         )
 
         return [convo["_id"] for convo in convo_dicts]
+
+    async def get_last_message_time(self) -> datetime:
+        messages = await engine.find(Message, Message.conversation == self.id)
+        if messages:
+            return max(messages, key=lambda x: x.timestamp).timestamp
+        return self.createdAt
 
 
 class AttachmentType(str, Enum):

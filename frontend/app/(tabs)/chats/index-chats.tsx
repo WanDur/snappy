@@ -9,7 +9,7 @@ import { Themed } from '@/components'
 import { ChatRow } from '@/components/chat'
 import { useBottomTabOverflow } from '@/components/ui/TabBarBackground'
 import { useChatStore, useUserStore, useStorage, useTheme, useFriendStore } from '@/hooks'
-import { ChatItem } from '@/types'
+import { ChatItem, User } from '@/types'
 import { bypassLogin, isAuthenticated, useSession } from '@/contexts/auth'
 // import { useSession } from '@/contexts/auth'
 // import { FetchNewMessageResponse } from '@/types/chats.type'
@@ -63,6 +63,20 @@ const getRandomLastOnline = () => {
 const getRandomItem = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)]
 const getRandomDate = () => new Date(Date.now() - Math.floor(Math.random() * 10000000000))
 
+export const getChatIcon = (chat: ChatItem, user: User): string | undefined => {
+  if (chat.type == 'direct') {
+    return chat.participants.find((participant) => participant._id !== user.id)?.avatar?.toString()
+  }
+  return undefined
+}
+
+export const getChatTitle = (chat: ChatItem, user: User): string => {
+  if (chat.type == 'direct') {
+    return chat.participants.find((participant) => participant._id !== user.id)!.name || "Error"
+  }
+  return 'Group Chat (TODO)'
+}
+
 export const ChatScreen = () => {
   const router = useRouter()
   const session = useSession()
@@ -94,27 +108,6 @@ export const ChatScreen = () => {
   const [loading, setLoading] = useState(true)
   const [allChats, setAllChats] = useState<ChatItem[]>([])
 
-  const fetchAllChatInfo = async () => {
-    return
-    for (const chatId of allChatID) {
-      const infoRes = await session.apiWithToken.get(`/panda/chat/${chatId}/info`)
-      let chatTitle, chatSubtitle
-      let iconUrl = ''
-      if (infoRes.data.employerId === profile.user._id) {
-        const { firstName, lastName } = infoRes.data.providerRealName
-        chatTitle = `${firstName} ${lastName}`
-        chatSubtitle = ''
-        iconUrl = infoRes.data.providerIconUrl
-      } else if (infoRes.data.providerId === profile.user._id) {
-        const { firstName, lastName } = infoRes.data.employerRealName
-        chatTitle = `${firstName} ${lastName}`
-        chatSubtitle = infoRes.data.employerCompanyName || ''
-        iconUrl = infoRes.data.employerIconUrl
-      }
-      setChatInfo(chatId, chatTitle, chatSubtitle, iconUrl)
-    }
-  }
-
   const refreshData = async () => {
     setLoading(true)
     await syncChats(session)
@@ -124,7 +117,7 @@ export const ChatScreen = () => {
   useEffect(() => {
     if (bypassLogin()) return;
     if (!isAuthenticated(session)) {
-      router.push('/(auth)/LoginScreen')
+      router.replace('/(auth)/LoginScreen')
       return
     }
     setLoading(true)
@@ -158,7 +151,18 @@ export const ChatScreen = () => {
               onPress={() =>
                 addChat({
                   type: 'direct',
-                  participants: [friends[0]],
+                  participants: [
+                    {
+                      _id: '1',
+                      name: 'John Doe',
+                      avatar: 'https://i.pravatar.cc/150?u=aguilarduke@marketoid.com'
+                    },
+                    {
+                      _id: '2',
+                      name: 'Jane Doe',
+                      avatar: 'https://i.pravatar.cc/150?u=baxterduke@marketoid.com'
+                    }
+                  ],
                   initialDate: getRandomDate(),
                   unreadCount: Math.floor(Math.random() * 6),
                   lastMessageTime: getRandomDate(),
@@ -199,7 +203,8 @@ export const ChatScreen = () => {
             <ChatRow
               key={item.id}
               {...item!}
-              chatTitle={item.type == 'direct' ? item.participants[0].name : 'Group Chat (TODO)'}
+              chatTitle={getChatTitle(item, user)}
+              iconUrl={getChatIcon(item, user)}
               onSingleDelete={() => deleteSingleChat(item.id!)}
               onCheckChat={(chatID, checked) => {
                 if (checked) {
