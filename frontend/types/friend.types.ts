@@ -1,5 +1,6 @@
 import { Album } from "./album.types";
 import { Photo } from "./photo.types";
+import { User as TUser } from "react-native-gifted-chat";
 
 export interface Friend {
   /**

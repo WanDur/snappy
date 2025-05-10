@@ -8,6 +8,7 @@ import os
 import time
 
 from odmantic import ObjectId
+from urllib3 import HTTPResponse
 
 if __name__ == "__main__":
     import sys
@@ -19,7 +20,7 @@ if __name__ == "__main__":
     sys.path.append(_proj_path)
     __package__ = "routers.auth"
 
-from fastapi import APIRouter, HTTPException, Security
+from fastapi import APIRouter, HTTPException, Response, Security
 from fastapi.responses import ORJSONResponse
 from fastapi_jwt import JwtAccessBearer, JwtAuthorizationCredentials, JwtRefreshBearer
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -164,7 +165,7 @@ async def revoke_token(
     It invalidates the provided refresh token and ensures it cannot be used again.
     (To be implemented)
     """
-    return ORJSONResponse(status_code=204, content={"success": True})
+    return Response(status_code=204)
 
 
 # endregion

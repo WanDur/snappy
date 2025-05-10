@@ -8,11 +8,11 @@ import BouncyCheckbox from 'react-native-bouncy-checkbox'
 import { Themed, SwipeableRow } from '@/components'
 import { formatChatDate } from '@/utils'
 import { useChatStore, useTheme } from '@/hooks'
+import { Avatar } from '@/components/Avatar'
 
 export interface ChatRowProps {
   id: string
   chatTitle: string
-  chatSubtitle: string
   unreadCount: number
   iconUrl?: string
 
@@ -24,7 +24,6 @@ export interface ChatRowProps {
 const ChatRow = ({
   id: chatId,
   chatTitle,
-  chatSubtitle,
   unreadCount,
   iconUrl,
   onCheckChat,
@@ -59,7 +58,7 @@ const ChatRow = ({
       >
         <Themed.View style={styles.container}>
           <View style={{ position: 'relative' }}>
-            <Image source={{ uri: iconUrl }} style={styles.image} />
+            <Avatar iconUrl={iconUrl} size={54} />
             {unreadCount > 0 && (
               <BlurView tint={reverseTheme} intensity={40} style={styles.unreadBadge}>
                 <Text style={{ fontWeight: '800', color: 'white' }}>{unreadCount}</Text>
@@ -92,8 +91,6 @@ const ChatRow = ({
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Themed.Text style={{ fontSize: 18, fontWeight: 'bold' }}>{chatTitle}</Themed.Text>
             </View>
-
-            {chatSubtitle && <Themed.Text style={{ color: '#6E6E73' }}>{chatSubtitle}</Themed.Text>}
           </View>
         </Themed.View>
       </TouchableHighlight>

@@ -2,7 +2,7 @@
 Component for all photos related logics and routes
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, Optional
 import bcrypt
@@ -36,7 +36,7 @@ async def upload_photo(
 
     # Optimize and upload the image
     optimized_image = optimize_image(await file.read())
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     file_path = upload_file_stream(
         f"users/{user.id}/photos/{timestamp}.jpg", optimized_image
     )
@@ -46,7 +46,7 @@ async def upload_photo(
         user=user,
         caption=caption,
         url=file_path,
-        timestamp=datetime.now(),
+        timestamp=datetime.now(timezone.utc),
     )
     # Save the photo to the database
     await engine.save(photo)

@@ -13,7 +13,7 @@ if __name__ == "__main__":
     sys.path.append(_proj_path)
     __package__ = "routers.user"
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, Optional
 import bcrypt
@@ -201,7 +201,7 @@ async def invite_friend(target_user_id: str, user: User | None = Depends(get_use
         else:
             raise HTTPException(status_code=400, detail="Already invited")
     friendship = Friendship(
-        user1=user, user2=target_user, inviteTimestamp=datetime.now()
+        user1=user, user2=target_user, inviteTimestamp=datetime.now(timezone.utc)
     )
     await engine.save(friendship)
     return ORJSONResponse({"status": "success", "friendshipId": str(friendship.id)})

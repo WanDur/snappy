@@ -14,7 +14,7 @@ import { Friend } from '@/types'
 import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { FriendResponse } from '@/types/friend.types'
 import { set } from 'zod'
-import { syncFriends } from '@/utils/sync'
+import { useSync } from '@/hooks/useSync'
 
 const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
   const names = [
@@ -53,6 +53,7 @@ const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
 const FriendsScreen = () => {
   const router = useRouter()
   const session = useSession()
+  const { syncFriends } = useSync()
 
   const { colors, isDark } = useTheme()
   const { friends, addFriend, getFriend, removeFriend, changeFriendType } = useFriendStore()
@@ -99,16 +100,15 @@ const FriendsScreen = () => {
     const chatExist = hasChat(friendID)
     if (!chatExist) {
       const friend = getFriend(friendID)!
-      addChat({
-        id: friendID,
-        chatTitle: friend.name,
-        chatSubtitle: friend.username,
-        iconUrl: friend.avatar,
-        initialDate: new Date(),
-        lastMessageTime: new Date(),
-        unreadCount: 0,
-        messages: []
-      })
+      // addChat({
+      //   id: friendID,
+      //   type: 'direct',
+      //   participants: [friend],
+      //   initialDate: new Date(),
+      //   lastMessageTime: new Date(),
+      //   unreadCount: 0,
+      //   messages: []
+      // })
     }
     router.push({ pathname: '/screens/ChatScreen', params: { chatID: friendID } })
   }
