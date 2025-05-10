@@ -16,6 +16,8 @@ import { FriendResponse } from '@/types/friend.types'
 import { syncFriends } from '@/utils/sync'
 import { syncUserData } from '@/utils/sync'
 
+import * as ImagePicker from 'expo-image-picker'
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface DayTile {
@@ -108,11 +110,14 @@ const buildWeeks = (count = 4): WeekBundle[] => {
 }
 
 /**************** Components ****************/
-const DayCell = ({ day }: { day: DayTile }) => {
+const DayCell = ({ day, onAdd }: { day: DayTile; onAdd: (date: Date) => void }) => {
   const { colors } = useTheme()
   return (
     <TouchableOpacity
       activeOpacity={0.8}
+      onPress={() => {
+        day.isAdd ? onAdd(day.date) : null
+      }}
       style={[
         styles.dayCell,
         {
@@ -152,7 +157,15 @@ const FeedCard = ({ item, onSeen }: { item: FeedItem; onSeen: () => void }) => (
   </TouchableOpacity>
 )
 
-const WeekPage = ({ bundle, markSeen }: { bundle: WeekBundle; markSeen: (id: string) => void }) => {
+const WeekPage = ({
+  bundle,
+  markSeen,
+  addMedia
+}: {
+  bundle: WeekBundle
+  markSeen: (id: string) => void
+  addMedia: (date: Date) => void
+}) => {
   const headerHeight = useHeaderHeight()
   const tabHeight = useBottomTabBarHeight()
 
@@ -160,7 +173,7 @@ const WeekPage = ({ bundle, markSeen }: { bundle: WeekBundle; markSeen: (id: str
   const ADAPTIVE_MARGIN = Constants.isIOS ? 0 : headerHeight
   const ADAPTIVE_PADDING = Constants.isIOS ? headerHeight : 0
 
-  const renderDay: ListRenderItem<DayTile> = ({ item }) => <DayCell day={item} />
+  const renderDay: ListRenderItem<DayTile> = ({ item }) => <DayCell day={item} onAdd={addMedia} />
   const renderFeed: ListRenderItem<FeedItem> = ({ item }) => <FeedCard item={item} onSeen={() => markSeen(item.id)} />
   return (
     <View
@@ -207,9 +220,11 @@ const HomeScreen = () => {
   const [weekListIndex, setWeekListIndex] = useState(0)
   const listRef = useRef<FlatList>(null)
 
+  type PhotoInfo = { uri: string }
+  const [mediaByDate, setMediaByDate] = useState<Record<string, PhotoInfo[]>>({})
+
   useEffect(() => {
     if (bypassLogin()) {
-      
       return
     }
 
@@ -244,7 +259,7 @@ const HomeScreen = () => {
   /* -------- map Zustand data → feed cards (runs every store change) -------- */
   const enrichedWeeks = useMemo(() => {
     if (weeks.length === 0) return weeks
-    if (bypassLogin()) return weeks
+    //if (bypassLogin()) return weeks
 
     // Build a single “local feed” list once
     const localFeed = friends.map((f, i) => {
@@ -264,6 +279,35 @@ const HomeScreen = () => {
       feed: localFeed // overwrite the feed for this week
     }))
   }, [weeks, friends])
+
+  /**
+   * Add a photo to the tapped day-cell
+   * @param targetDate – the date of the tile that showed the “+” (usually today)
+   */
+  const handleAddMedia = useCallback(
+    async (targetDate: Date) => {
+      /* 1 ▸ Ask for library permission (iOS/Android) */
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (status !== 'granted') return
+
+      /* 2 ▸ Open the gallery – photos only */
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: false,
+        quality: 0.8
+      })
+      if (res.canceled) return
+      const asset = res.assets[0]
+
+      /* 3 ▸ Use the tapped date as key (diary style) */
+      const iso = targetDate.toISOString().split('T')[0] // e.g. "2025-05-10"
+      setMediaByDate((prev) => ({ ...prev, [iso]: [...(prev[iso] ?? []), { uri: asset.uri }] }))
+
+      /* 4 ▸ OPTIONAL: upload to backend */
+      // await PhotoService.upload(asset, session.session?.accessToken)
+    },
+    [session]
+  )
 
   return (
     <Themed.View style={styles.container}>
@@ -285,7 +329,7 @@ const HomeScreen = () => {
         data={enrichedWeeks}
         pagingEnabled
         keyExtractor={(w) => w.key}
-        renderItem={({ item }) => <WeekPage bundle={item} markSeen={markSeen} />}
+        renderItem={({ item }) => <WeekPage bundle={item} markSeen={markSeen} addMedia={handleAddMedia} />}
         getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
