@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, ListRenderItem } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions, ListRenderItem, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
@@ -17,6 +17,7 @@ import { syncFriends } from '@/utils/sync'
 import { syncUserData } from '@/utils/sync'
 
 import * as ImagePicker from 'expo-image-picker'
+import * as MediaLibrary from 'expo-media-library'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -44,7 +45,16 @@ interface WeekBundle {
   feed: FeedItem[]
 }
 
-/**************** ISO‑week helpers ****************/
+/**************** Helpers ****************/
+/** Local YYYY-MM-DD (no TZ offset) */
+const ymd = (d: Date): string => {
+  const y = d.getFullYear()
+  const m = `0${d.getMonth() + 1}`.slice(-2)
+  const day = `0${d.getDate()}`.slice(-2)
+  return `${y}-${m}-${day}`
+}
+
+/**************** ISO-week helpers ****************/
 const getISOWeek = (d: Date = new Date()): number => {
   const copy = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
   const dayNr = copy.getUTCDay() || 7 // Mon=1 … Sun=7
@@ -65,7 +75,7 @@ const addDays = (d: Date, n: number) => {
   return dupe
 }
 
-/**************** Mock generators ****************/
+/**************** Mock generators (for feed demo only) ****************/
 const randomThumb = () => `https://picsum.photos/seed/${Math.floor(Math.random() * 10000)}/800`
 
 const buildDays = (weekOffset: number): DayTile[] => {
@@ -78,13 +88,13 @@ const buildDays = (weekOffset: number): DayTile[] => {
   for (let i = 0; i < 7; i++) {
     const date = addDays(mon, i)
     const id = date.toISOString().split('T')[0]
-    const hasMedia = Math.random() < 0.4
+    const hasMedia = false // will be patched later based on uploads
     const label = `${date.toLocaleString('en', { month: 'short' })} ${date.getDate()}\n${date.toLocaleString('en', {
       weekday: 'short'
     })}`
-    tiles.push({ id, label, date, hasMedia, thumbnail: hasMedia ? randomThumb() : undefined })
+    tiles.push({ id, label, date, hasMedia })
   }
-  // Insert the “+” tile after Monday (index 1) to match screenshot
+  // Insert the “+” tile after Monday (index 1)
   tiles.unshift({ id: `add-${weekOffset}`, label: '+', hasMedia: false, isAdd: true, date: mon })
 
   return tiles
@@ -110,13 +120,13 @@ const buildWeeks = (count = 4): WeekBundle[] => {
 }
 
 /**************** Components ****************/
-const DayCell = ({ day, onAdd }: { day: DayTile; onAdd: (date: Date) => void }) => {
+const DayCell = ({ day, onAdd }: { day: DayTile; onAdd: () => void }) => {
   const { colors } = useTheme()
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={() => {
-        day.isAdd ? onAdd(day.date) : null
+        day.isAdd ? onAdd() : null
       }}
       style={[
         styles.dayCell,
@@ -164,7 +174,7 @@ const WeekPage = ({
 }: {
   bundle: WeekBundle
   markSeen: (id: string) => void
-  addMedia: (date: Date) => void
+  addMedia: () => void
 }) => {
   const headerHeight = useHeaderHeight()
   const tabHeight = useBottomTabBarHeight()
@@ -182,7 +192,6 @@ const WeekPage = ({
         height: ADAPTIVE_HEIGHT,
         marginTop: ADAPTIVE_MARGIN,
         paddingTop: ADAPTIVE_PADDING
-        // backgroundColor: bundle.weekNum % 2 === 0 ? 'pink' : 'lightblue'
       }}
     >
       <View style={{ height: 16 }} />
@@ -207,6 +216,36 @@ const WeekPage = ({
   )
 }
 
+/**************** Helper – Extract capture date from picker asset ****************/
+const getCaptureDate = async (asset: ImagePicker.ImagePickerAsset): Promise<Date> => {
+  // 1 ▸ Try EXIF first (works on iOS, some Android devices)
+  const exifDate = (asset.exif as any)?.DateTimeOriginal || (asset.exif as any)?.DateTime
+  if (exifDate && typeof exifDate === 'string') {
+    // EXIF datetime format "YYYY:MM:DD HH:MM:SS"
+    const parsed = exifDate.replace(/:/g, '-').replace(' ', 'T')
+    const d = new Date(parsed)
+    if (!isNaN(d.getTime())) return d
+  }
+
+  // 2 ▸ MediaLibrary (works reliably on Android & iOS)
+  if (asset.assetId) {
+    try {
+      const info = await MediaLibrary.getAssetInfoAsync(asset.assetId)
+      if (info && typeof info.creationTime === 'number') {
+        return new Date(info.creationTime)
+      }
+    } catch (e) {
+      console.warn('Failed to fetch MediaLibrary info', e)
+    }
+  }
+
+  // 3 ▸ Fallback to file modification time (Android legacy)
+  // Omitted because 'modificationTime' is not part of 'ImagePickerAsset'.
+
+  // 4 ▸ Last resort – now
+  return new Date()
+}
+
 /**************** HomeScreen ****************/
 const HomeScreen = () => {
   const session = useSession()
@@ -216,13 +255,14 @@ const HomeScreen = () => {
   const { colors } = useTheme()
   const { friends, addFriend, clearFriends } = useFriendStore()
 
-  const [weeks, setWeeks] = useState(buildWeeks())
+  const [weeks, setWeeks] = useState<WeekBundle[]>(buildWeeks())
   const [weekListIndex, setWeekListIndex] = useState(0)
   const listRef = useRef<FlatList>(null)
 
   type PhotoInfo = { uri: string }
-  const [mediaByDate, setMediaByDate] = useState<Record<string, PhotoInfo[]>>({})
+  const [mediaByDate, setMediaByDate] = useState<Record<string, PhotoInfo>>({})
 
+  /** Ensure user logged in */
   useEffect(() => {
     if (bypassLogin()) {
       return
@@ -241,8 +281,6 @@ const HomeScreen = () => {
     }
   }, [])
 
-  const myFriends = friends.filter((f) => f.type === 'friend')
-
   const markSeen = useCallback((id: string) => {
     setWeeks((prev) =>
       prev.map((w) => ({
@@ -254,66 +292,123 @@ const HomeScreen = () => {
 
   const getItemLayout = (_: any, index: number) => ({ length: SCREEN_HEIGHT, offset: SCREEN_HEIGHT * index, index })
 
-  const BLANK_IMG = 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo'
-
-  /* -------- map Zustand data → feed cards (runs every store change) -------- */
+  /* -------- Combine Zustand data & local uploads to week bundles -------- */
   const enrichedWeeks = useMemo(() => {
     if (weeks.length === 0) return weeks
-    //if (bypassLogin()) return weeks
 
-    // Build a single “local feed” list once
-    const localFeed = friends.map((f, i) => {
+    // Build feed from friend list (placeholder: use their first photo or blank)
+    const localFeed: FeedItem[] = friends.map((f, i) => {
       const first = f.albumList.flatMap((al) => al.images ?? [])[0]?.uri
       return {
         id: `local-${f.id}-${i}`,
         user: f.username ?? f.name,
-        avatar: f.avatar,
+        avatar: f.avatar ?? 'https://placehold.co/400x400/CCCCCC/000000?text=No+Avatar',
         mediaUri: first ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
         seen: false
       }
     })
 
-    // Patch *all* generated weeks, not just the current one
-    return weeks.map((w) => ({
-      ...w,
-      feed: localFeed // overwrite the feed for this week
-    }))
-  }, [weeks, friends])
+    // Patch every week bundle with user-uploaded photos stored in mediaByDate
+    return weeks.map((w) => {
+      const patchedDays = w.days.map((d) => {
+        const iso = d.date.toISOString().split('T')[0]
+        if (mediaByDate[iso]) {
+          return { ...d, hasMedia: true, thumbnail: mediaByDate[iso].uri }
+        }
+        return d
+      })
+      return {
+        ...w,
+        days: patchedDays,
+        feed: localFeed // replace demo feed
+      }
+    })
+  }, [weeks, friends, mediaByDate])
 
   /**
-   * Add a photo to the tapped day-cell
-   * @param targetDate – the date of the tile that showed the “+” (usually today)
+   * Handle picking a photo → place onto the correct day tile based on capture date.
    */
-  const handleAddMedia = useCallback(
-    async (targetDate: Date) => {
-      /* 1 ▸ Ask for library permission (iOS/Android) */
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (status !== 'granted') return
+  const handleAddMedia = useCallback(async () => {
+    /* 1 ▸ Ask for library permission (iOS/Android) */
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (status !== 'granted') return
 
-      /* 2 ▸ Open the gallery – photos only */
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: false,
-        quality: 0.8
-      })
-      if (res.canceled) return
-      const asset = res.assets[0]
+    /* 2 ▸ Open the gallery – photos only */
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: false,
+      quality: 0.8,
+      exif: true
+    })
+    if (res.canceled) return
 
-      /* 3 ▸ Use the tapped date as key (diary style) */
-      const iso = targetDate.toISOString().split('T')[0] // e.g. "2025-05-10"
-      setMediaByDate((prev) => ({ ...prev, [iso]: [...(prev[iso] ?? []), { uri: asset.uri }] }))
+    const asset = res.assets[0]
 
-      /* 4 ▸ OPTIONAL: upload to backend */
-      // await PhotoService.upload(asset, session.session?.accessToken)
-    },
-    [session]
-  )
+    /* 3 ▸ Determine the photo's original capture date */
+    const captureDate = await getCaptureDate(asset)
+    captureDate.setHours(0, 0, 0, 0) // normalise to 00:00 for keying
+    const iso = captureDate.toISOString().split('T')[0]
+
+    /* 4 ▸ If user already has a photo for that day, do nothing */
+    if (mediaByDate[iso]) {
+      console.log('Photo already exists', 'You have already selected/uploaded a photo for this date.')
+      console.log('captureDate', captureDate)
+      return
+    }
+
+    /* 5 ▸ Register in local state */
+    setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
+
+    /* 6 ▸ Make sure the corresponding week exists in state */
+    setWeeks((prevWeeks) => {
+      const captureWeekNum = getISOWeek(captureDate)
+      const currentWeekNum = getISOWeek()
+      let newWeeks = [...prevWeeks]
+
+      // If the capture week isn't loaded yet, build it and insert at proper offset (older weeks at the end)
+      if (!newWeeks.some((w) => w.weekNum === captureWeekNum)) {
+        const offset = currentWeekNum - captureWeekNum
+        const newBundle: WeekBundle = {
+          weekNum: captureWeekNum,
+          key: `week-${captureWeekNum}`,
+          days: buildDays(offset).map((d) => {
+            const dIso = d.date.toISOString().split('T')[0]
+            if (dIso === iso) {
+              return { ...d, hasMedia: true, thumbnail: asset.uri }
+            }
+            return d
+          }),
+          feed: []
+        }
+        newWeeks.splice(offset, 0, newBundle) // place by offset so list remains in order
+      } else {
+        newWeeks = newWeeks.map((w) => {
+          if (w.weekNum !== captureWeekNum) return w
+          return {
+            ...w,
+            days: w.days.map((d) => {
+              const dIso = d.date.toISOString().split('T')[0]
+              if (dIso === iso) {
+                return { ...d, hasMedia: true, thumbnail: asset.uri }
+              }
+              return d
+            })
+          }
+        })
+      }
+
+      return newWeeks
+    })
+
+    /* 7 ▸ OPTIONAL: upload to backend */
+    // await PhotoService.upload(asset, session.session?.accessToken, captureDate)
+  }, [mediaByDate, session])
 
   return (
     <Themed.View style={styles.container}>
       <Stack.Screen
         options={{
-          headerTitle: `Week ${weeks[weekListIndex].weekNum}`,
+          headerTitle: `Week ${enrichedWeeks[weekListIndex]?.weekNum ?? ''}`,
           headerRight: () => (
             <TouchableOpacity activeOpacity={0.7}>
               <IconSymbol name="bell" color={colors.text} size={26} />
@@ -335,7 +430,7 @@ const HomeScreen = () => {
         onMomentumScrollEnd={(e) => {
           const pageNum = Math.min(
             Math.max(Math.floor(e.nativeEvent.contentOffset.y / SCREEN_HEIGHT + 0.5), 0),
-            weeks.length
+            enrichedWeeks.length
           )
           setWeekListIndex(pageNum)
         }}
@@ -351,17 +446,6 @@ const tileHeight = 120
 const styles = StyleSheet.create({
   container: {
     flex: 1
-  },
-  pageHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 12
-  },
-  pageTitle: {
-    fontSize: 38,
-    fontWeight: '700'
   },
   daysRow: {
     paddingLeft: 16,
