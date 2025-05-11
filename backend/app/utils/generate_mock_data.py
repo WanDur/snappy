@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import random
 from faker import Faker
 
@@ -52,7 +52,7 @@ async def main():
         email="johndoe123@example.com",
         phone=f"(+852) 999",
         tier=UserTier.PREMIUM,
-        premiumExpireTime=datetime.now() + timedelta(days=365),
+        premiumExpireTime=datetime.now(timezone.utc) + timedelta(days=365),
     )
     await engine.save(login_user)
     print("Generated sample user for login:")

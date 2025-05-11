@@ -75,3 +75,11 @@ async def get_user(
     credentials: JwtAuthorizationCredentials = Security(access_auth),
 ) -> User | None:
     return await engine.find_one(User, User.id == ObjectId(credentials.subject["id"]))
+
+
+async def get_user_from_token(token: str) -> User | None:
+    payload = access_auth.jwt_backend.decode(
+        token,
+        access_auth.secret_key,
+    )
+    return await engine.find_one(User, User.id == ObjectId(payload["subject"]["id"]))
