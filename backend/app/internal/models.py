@@ -6,7 +6,6 @@ from odmantic import AIOEngine, EmbeddedModel, Field, Model, ObjectId, Reference
 from pydantic import EmailStr, StringConstraints
 
 from utils.mongo import engine
-from utils.debug import log_debug
 
 # section user
 
@@ -102,8 +101,8 @@ class Friendship(Model):
     async def get_mutual_friends_count(
         cls, engine: AIOEngine, user1: User, user2: User
     ) -> int:
-        friends1 = await user1.get_friends()
-        friends2 = await user2.get_friends()
+        friends1 = await user1.get_friends(engine)
+        friends2 = await user2.get_friends(engine)
         mutual_friends = [friend for friend in friends1 if friend in friends2]
         return len(mutual_friends)
 
@@ -116,7 +115,7 @@ class License(Model):
     redeemedBy: Optional[ObjectId] = None
 
     @classmethod
-    async def get_license(cls, key: str) -> License | None:
+    async def get_license(cls, engine: AIOEngine, key: str) -> License | None:
         license = await engine.find_one(License, License.key == key)
         return license
 

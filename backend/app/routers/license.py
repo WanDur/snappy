@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from internal.models import License, User, UserTier
 from utils.auth import get_user
 from utils.debug import log_debug
-from utils.mongo import engine, get_prod_database
+from utils.mongo import get_prod_database
 
 license_router = APIRouter(prefix="/license", tags=["license"])
 
@@ -35,14 +35,16 @@ class RedeemLicenseFailureResponse(BaseModel):
 
 @license_router.post("/redeem")
 async def redeem_license(
-    body: RedeemLicenseBody, user: User | None = Depends(get_user)
+    body: RedeemLicenseBody,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ) -> RedeemLicenseSuccessResponse | RedeemLicenseFailureResponse:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     licenses = {"valid": [], "invalid": [], "redeemed": []}
     for key in body.keys:
-        license = await License.get_license(key)
+        license = await License.get_license(engine, key)
         if license:
             if license.redeemed:
                 licenses["redeemed"].append(key)
@@ -81,7 +83,7 @@ async def generate_license_keys(
                 for _ in range(4)
             ]
         )
-        if await License.get_license(key) is None:
+        if await License.get_license(engine, key) is None:
             license = License(key=key, days=days)
             licenses.append(license)
     await engine.save_all(licenses)
@@ -99,10 +101,12 @@ class GenerateLicenseResponse(BaseModel):
 
 @license_router.post("/generate")
 async def generate_license(
-    body: GenerateLicenseBody, user: User | None = Depends(get_user)
+    body: GenerateLicenseBody,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ) -> GenerateLicenseResponse:
     if user is None or user.tier != UserTier.ADMIN:
         log_debug(user.tier)
         raise HTTPException(status_code=401, detail="Unauthorized")
-    keys = await generate_license_keys(body.days, body.count)
+    keys = await generate_license_keys(engine, body.days, body.count)
     return GenerateLicenseResponse(keys=keys)
