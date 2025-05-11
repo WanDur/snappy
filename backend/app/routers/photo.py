@@ -3,19 +3,16 @@ Component for all photos related logics and routes
 """
 
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Annotated, Optional
-import bcrypt
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Security, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import ORJSONResponse
-from fastapi_jwt import JwtAuthorizationCredentials
-from odmantic import ObjectId
-from pydantic import BaseModel, StringConstraints
+from odmantic import AIOEngine, ObjectId
+from pydantic import BaseModel
 
 from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
-from utils.mongo import engine, serialize_mongo_object
+from utils.mongo import serialize_mongo_object, get_prod_database
 from internal.models import Photo, PhotoComment, User
 
 photo_router = APIRouter(prefix="/photo", tags=["photo"])
@@ -25,6 +22,7 @@ photo_router = APIRouter(prefix="/photo", tags=["photo"])
 async def upload_photo(
     file: UploadFile,
     caption: Annotated[Optional[str], Form()] = None,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> dict[str, str]:
     if not user:
@@ -58,7 +56,9 @@ async def upload_photo(
 
 
 @photo_router.get("/{photo_id}/fetch")
-async def fetch_photo(photo_id: str) -> dict[str, str]:
+async def fetch_photo(
+    photo_id: str, engine: AIOEngine = Depends(get_prod_database)
+) -> dict[str, str]:
     # Fetch the photo from the database
     photo = await engine.find_one(Photo, Photo.id == ObjectId(photo_id))
     if not photo:
@@ -77,6 +77,7 @@ async def fetch_photo(photo_id: str) -> dict[str, str]:
 @photo_router.delete("/{photo_id}/delete")
 async def delete_photo(
     photo_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> dict[str, str]:
     if not user:
@@ -100,6 +101,7 @@ async def delete_photo(
 @photo_router.post("/{photo_id}/like")
 async def like_photo(
     photo_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> dict[str, str]:
     if not user:
@@ -112,7 +114,7 @@ async def like_photo(
 
     # Like the photo
     try:
-        await photo.like(user)
+        await photo.like(engine, user)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -122,6 +124,7 @@ async def like_photo(
 @photo_router.post("/{photo_id}/unlike")
 async def unlike_photo(
     photo_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> dict[str, str]:
     if not user:
@@ -134,7 +137,7 @@ async def unlike_photo(
 
     # Unlike the photo
     try:
-        await photo.unlike(user)
+        await photo.unlike(engine, user)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -149,6 +152,7 @@ class CommentBody(BaseModel):
 async def comment_photo(
     photo_id: str,
     body: CommentBody,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> dict[str, str]:
     if not user:
@@ -160,7 +164,7 @@ async def comment_photo(
         raise HTTPException(status_code=404, detail="Photo not found")
 
     # Comment on the photo
-    await photo.comment(user, body.message)
+    await photo.comment(engine, user, body.message)
 
     return ORJSONResponse(status_code=200, content={"success": True})
 
@@ -168,6 +172,7 @@ async def comment_photo(
 @photo_router.get("/{photo_id}/comments")
 async def get_comments(
     photo_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> dict[str, list[dict[str, str]]]:
     if not user:
@@ -199,6 +204,7 @@ async def get_comments(
 @photo_router.delete("/comment/{comment_id}/delete")
 async def delete_comment(
     comment_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> dict[str, str]:
     if not user:
@@ -223,7 +229,10 @@ async def delete_comment(
 
 @photo_router.get("/feed")
 async def get_feed(
-    year: int, week: int, user: User | None = Depends(get_user)
+    year: int,
+    week: int,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ) -> dict[str, list[dict[str, str]]]:
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -231,7 +240,7 @@ async def get_feed(
         raise HTTPException(status_code=400, detail="Invalid week number")
 
     # Fetch the photos uploaded by the user's friends in the specified year & week
-    users = [user, *await User.get_friends(user)]
+    users = [user, *await User.get_friends(engine, user)]
     feed = []
     for view_user in users:
         photos = await engine.find(

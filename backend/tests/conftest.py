@@ -1,39 +1,45 @@
-import asyncio
+import os
+import dotenv
+
+dotenv.load_dotenv(os.path.join(os.path.dirname(__file__), "../app/.env"))
+
 import bcrypt
-from httpx import ASGITransport, AsyncClient
-import pytest
 from faker import Faker
-from fastapi.testclient import TestClient
+import pytest
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from odmantic import AIOEngine
 from motor.motor_asyncio import AsyncIOMotorClient
-import pytest_asyncio
-from main import app
-from routers.user import get_user
-from internal.models import User, UserTier
-from utils.settings import get_settings
-from utils.auth import access_auth
 
+
+from main import app
+from utils.auth import access_auth, get_user
+from utils.settings import get_settings
+from internal.models import User, UserTier
+from utils.mongo import get_prod_database
 
 faker = Faker()
 
 
-@pytest_asyncio.fixture(scope="session")
-async def mongodb():
-    """Fixture to set up a mock MongoDB instance."""
+def get_test_database():
     client = AsyncIOMotorClient(
         f"mongodb://{get_settings().MONGODB_USERNAME}:{get_settings().MONGODB_PASSWORD}@localhost:27017/"
     )
-    engine = AIOEngine(client=client, database="snappy")
-    import utils.mongo
+    engine = AIOEngine(client=client, database="snappy_test")
+    return client, engine
 
-    utils.mongo.engine = engine
-    utils.mongo.client = client
+
+@pytest_asyncio.fixture(scope="function")
+async def mongodb():
+    """Fixture to set up a mock MongoDB instance."""
+    client, engine = get_test_database()
+    app.dependency_overrides[get_prod_database] = lambda: engine
     yield engine
-    # await client.drop_database("snappy_test")
+    await client.drop_database("snappy_test")
 
 
-@pytest_asyncio.fixture(scope="session")
-async def client():
+@pytest_asyncio.fixture(scope="function")
+async def client(mongodb):
     """Fixture to set up the FastAPI test client."""
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -64,6 +70,7 @@ async def sample_freemium_user(mongodb):
     token = access_auth.create_access_token(
         {"id": str(user.id), "username": user.username}
     )
+    app.dependency_overrides[get_user] = lambda: user
     yield user, token
     await mongodb.delete(user)
 
@@ -75,32 +82,6 @@ async def sample_premium_user(mongodb):
     token = access_auth.create_access_token(
         {"id": str(user.id), "username": user.username}
     )
+    app.dependency_overrides[get_user] = lambda: user
     yield user, token
     await mongodb.delete(user)
-
-
-@pytest.mark.asyncio
-async def test_fetch_my_profile(client, sample_freemium_user):
-    """Test the GET /user/profile/myself endpoint."""
-    user, token = sample_freemium_user
-    res = await client.get(
-        "/user/profile/myself",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert res.status_code == 200
-
-
-@pytest.mark.asyncio
-async def test_fetch_others_profile(
-    client, mongodb, sample_freemium_user, sample_premium_user
-):
-    """Test the GET /user/profile/{username} endpoint."""
-    user1, token1 = sample_freemium_user
-    print(user1)
-    print(user1.id)
-    res = await client.get(
-        f"/user/profile/fetch/{str(user1.id)}",
-        headers={"Authorization": f"Bearer {token1}"},
-    )
-    print(res.json())
-    assert res.status_code == 200

@@ -57,12 +57,6 @@ const PermissionScreen = () => {
       disc: 'Required for voice messages',
       status: false,
       onPress: () => {}
-    },
-    {
-      name: 'Notifications',
-      disc: 'Keeps you updated about new job matches',
-      status: false,
-      onPress: () => {}
     }
   ]
 

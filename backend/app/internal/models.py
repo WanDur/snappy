@@ -2,11 +2,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Annotated, Optional
-from odmantic import EmbeddedModel, Field, Model, ObjectId, Reference, query
+from odmantic import AIOEngine, EmbeddedModel, Field, Model, ObjectId, Reference, query
 from pydantic import EmailStr, StringConstraints
 
 from utils.mongo import engine
-from utils.debug import log_debug
 
 # section user
 
@@ -29,7 +28,7 @@ class User(Model):
     isAdmin: bool = False
     bio: str = ""
 
-    async def is_premium(self) -> bool:
+    async def is_premium(self, engine: AIOEngine) -> bool:
         if self.tier == UserTier.PREMIUM:
             if self.premiumExpireTime and self.premiumExpireTime > datetime.now(
                 timezone.utc
@@ -43,7 +42,7 @@ class User(Model):
         else:
             return False
 
-    async def redeemPremium(self, days: int):
+    async def redeemPremium(self, engine: AIOEngine, days: int):
         if self.tier == UserTier.FREEMIUM:
             self.tier = UserTier.PREMIUM
             self.premiumExpireTime = datetime.now(timezone.utc) + timedelta(days=days)
@@ -51,7 +50,7 @@ class User(Model):
             self.premiumExpireTime += timedelta(days=days)
         await engine.save(self)
 
-    async def get_friends(self) -> list[User]:
+    async def get_friends(self, engine: AIOEngine) -> list[User]:
         friendships = await engine.find(
             Friendship,
             query.or_(
@@ -74,12 +73,14 @@ class Friendship(Model):
     inviteTimestamp: datetime
     accepted: bool = False
 
-    async def accept(self):
+    async def accept(self, engine: AIOEngine):
         self.accepted = True
         await engine.save(self)
 
     @classmethod
-    async def get_friendship(cls, user1: User, user2: User) -> Friendship | None:
+    async def get_friendship(
+        cls, engine: AIOEngine, user1: User, user2: User
+    ) -> Friendship | None:
         friendship = await engine.find_one(
             Friendship,
             (
@@ -90,16 +91,18 @@ class Friendship(Model):
         return friendship
 
     @classmethod
-    async def are_friends(cls, user1: User, user2: User) -> bool:
-        fdship = await Friendship.get_friendship(user1, user2)
+    async def are_friends(cls, engine: AIOEngine, user1: User, user2: User) -> bool:
+        fdship = await Friendship.get_friendship(engine, user1, user2)
         if fdship:
             return fdship.accepted
         return False
 
     @classmethod
-    async def get_mutual_friends_count(cls, user1: User, user2: User) -> int:
-        friends1 = await user1.get_friends()
-        friends2 = await user2.get_friends()
+    async def get_mutual_friends_count(
+        cls, engine: AIOEngine, user1: User, user2: User
+    ) -> int:
+        friends1 = await user1.get_friends(engine)
+        friends2 = await user2.get_friends(engine)
         mutual_friends = [friend for friend in friends1 if friend in friends2]
         return len(mutual_friends)
 
@@ -112,15 +115,15 @@ class License(Model):
     redeemedBy: Optional[ObjectId] = None
 
     @classmethod
-    async def get_license(cls, key: str) -> License | None:
+    async def get_license(cls, engine: AIOEngine, key: str) -> License | None:
         license = await engine.find_one(License, License.key == key)
         return license
 
-    async def redeem(self, user: User):
+    async def redeem(self, engine: AIOEngine, user: User):
         self.redeemed = True
         self.redeemedAt = datetime.now(timezone.utc)
         self.redeemedBy = user.id
-        await user.redeemPremium(self.days)
+        await user.redeemPremium(engine, self.days)
         await engine.save(self)
 
 
@@ -138,7 +141,7 @@ class Conversation(Model):
 
     @classmethod
     async def find_direct_conversation(
-        cls, user1: User, user2: User
+        cls, engine: AIOEngine, user1: User, user2: User
     ) -> Conversation | None:
         conversation = await engine.get_collection(Conversation).find_one(
             {
@@ -151,7 +154,9 @@ class Conversation(Model):
         return conversation
 
     @classmethod
-    async def find_conversation_ids(cls, user: User) -> list[ObjectId]:
+    async def find_conversation_ids(
+        cls, engine: AIOEngine, user: User
+    ) -> list[ObjectId]:
         convo_dicts = (
             await engine.get_collection(Conversation)
             .find(
@@ -166,7 +171,7 @@ class Conversation(Model):
 
         return [convo["_id"] for convo in convo_dicts]
 
-    async def get_last_message_time(self) -> datetime:
+    async def get_last_message_time(self, engine: AIOEngine) -> datetime:
         messages = await engine.find(Message, Message.conversation == self.id)
         if messages:
             return max(messages, key=lambda x: x.timestamp).timestamp
@@ -200,7 +205,7 @@ class Photo(Model):
     caption: Optional[str] = None
     taggedUserIds: list[ObjectId] = Field(default_factory=list)
 
-    async def like(self, user: User):
+    async def like(self, engine: AIOEngine, user: User):
         like = await engine.find_one(
             PhotoLike, query.and_(PhotoLike.user == user.id, PhotoLike.photo == self.id)
         )
@@ -209,7 +214,7 @@ class Photo(Model):
         like = PhotoLike(user=user, photo=self)
         await engine.save(like)
 
-    async def unlike(self, user: User):
+    async def unlike(self, engine: AIOEngine, user: User):
         like = await engine.find_one(
             PhotoLike, query.and_(PhotoLike.user == user.id, PhotoLike.photo == self.id)
         )
@@ -218,7 +223,7 @@ class Photo(Model):
         else:
             raise Exception("Not liked yet")
 
-    async def comment(self, user: User, message: str):
+    async def comment(self, engine: AIOEngine, user: User, message: str):
         comment = PhotoComment(
             user=user, photo=self, timestamp=datetime.now(timezone.utc), message=message
         )
@@ -235,3 +240,20 @@ class PhotoComment(Model):
     photo: Photo = Reference()
     timestamp: datetime
     message: str
+
+
+class Album(Model):
+    name: str
+    participants: list[ObjectId]
+    createdAt: datetime
+    createdBy: User = Reference()
+    photos: list[ObjectId] = Field(default_factory=list)
+
+
+class AlbumPhoto(Model):
+    album: Album = Reference()
+    user: User = Reference()
+    timestamp: datetime
+    url: str
+    caption: Optional[str] = None
+    taggedUserIds: list[ObjectId] = Field(default_factory=list)

@@ -50,7 +50,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 )
 
             token = auth_header.split("Bearer ")[1]
-
+            log_debug(f"Token: {token}")
             payload = access_auth.jwt_backend.decode(
                 token,
                 access_auth.secret_key,

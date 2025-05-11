@@ -11,10 +11,18 @@ from utils.settings import get_settings
 
 
 settings = get_settings()
-mongodb_connection_string = f"mongodb://{settings.MONGODB_USERNAME}:{settings.MONGODB_PASSWORD}@localhost:27017/"
-log_debug(mongodb_connection_string)
+# mongodb is the docker name of the mongodb container
+hostname = "mongodb"
+if os.environ.get("RUN_MODE") == "dev":
+    hostname = "localhost"
+mongodb_connection_string = f"mongodb://{settings.MONGODB_USERNAME}:{settings.MONGODB_PASSWORD}@{hostname}:27017/"
+log_debug("Connecting to MongoDB at " + mongodb_connection_string)
 client = AsyncIOMotorClient(mongodb_connection_string)
 engine = AIOEngine(client=client, database="snappy")
+
+
+def get_prod_database() -> AIOEngine:
+    return engine
 
 
 def serialize_mongo_object(

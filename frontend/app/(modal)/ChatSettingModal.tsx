@@ -2,11 +2,13 @@
  * Screen Params:
  * chatID: string
  */
-import { View, Text, Switch } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native'
+import { useState, useRef } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
 
 import { Stack, Form } from '@/components/router-form'
+import { IconSymbol } from '@/components/ui/IconSymbol'
 import { ModalCloseButton } from '@/components/ui'
 import { Themed } from '@/components'
 import { useChatStore, useUserStore } from '@/hooks'
@@ -14,13 +16,26 @@ import { useChatStore, useUserStore } from '@/hooks'
 const ChatProfileScreen = () => {
   const { chatID } = useLocalSearchParams<{ chatID: string }>()
   const { user } = useUserStore()
-  const { getChat } = useChatStore()
+  const { getChat, setChatInfo } = useChatStore()
 
   const { chatTitle, iconUrl, chatSubtitle } = getChat(chatID)
   const members = [
     { name: user.name, username: user.username, icon: user.iconUrl },
     { name: chatTitle, username: `@${chatTitle.toLowerCase()}`, icon: iconUrl }
   ]
+
+  const inputRef = useRef<TextInput>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(chatTitle)
+
+  const toggleEdit = () => {
+    if (isEditing) {
+      setChatInfo(chatID, titleDraft.trim() || chatTitle)
+    } else {
+      setTimeout(() => inputRef.current?.focus(), 0)
+    }
+    setIsEditing(!isEditing)
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -38,16 +53,24 @@ const ChatProfileScreen = () => {
                 borderRadius: 50
               }}
             />
-            <Form.Text style={{ fontSize: 20, fontWeight: '600' }}>{chatTitle}</Form.Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {isEditing ? (
+                <TextInput
+                  ref={inputRef}
+                  style={styles.inputGhost}
+                  onChangeText={setTitleDraft}
+                  placeholder={chatTitle}
+                  returnKeyType="done"
+                  onSubmitEditing={toggleEdit}
+                />
+              ) : (
+                <Form.Text style={{ fontSize: 20, fontWeight: '600', flexShrink: 1 }}>{chatTitle}</Form.Text>
+              )}
+              <TouchableOpacity style={{ padding: 2 }} onPress={toggleEdit}>
+                <IconSymbol name={isEditing ? 'checkmark' : 'square.and.pencil'} size={20} color="gray" />
+              </TouchableOpacity>
+            </View>
           </View>
-
-          <Form.Section title="Notifications">
-            <Form.HStack>
-              <Form.Text>Mute Notifications</Form.Text>
-              <View style={{ flex: 1 }} />
-              <Switch />
-            </Form.HStack>
-          </Form.Section>
 
           <Form.Section title="Members">
             {members.length > 0 ? (
@@ -104,5 +127,16 @@ const ChatProfileScreen = () => {
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  inputGhost: {
+    fontSize: 20,
+    fontWeight: '600',
+    flexShrink: 1,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
+    borderWidth: 0
+  }
+})
 
 export default ChatProfileScreen
