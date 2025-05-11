@@ -1,8 +1,4 @@
 services:
-  api-server:
-    build: './backend'
-    ports:
-    - '8000:8000'
   mongodb:
     image: 'mongodb/mongodb-community-server:latest'
     ports:
@@ -34,6 +30,16 @@ services:
       /usr/bin/mc mb minio/snappy;
       exit 0;
       "
+  
+  api-server:
+    build: './backend'
+    depends_on:
+      mongodb:
+        condition: service_started
+      minio:
+        condition: service_started
+    ports:
+    - '8000:8000'
 
 
 volumes:
