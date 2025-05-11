@@ -98,6 +98,20 @@ class Friendship(Model):
         return False
 
     @classmethod
+    async def get_friend_status(
+        cls, engine: AIOEngine, user1: User, user2: User
+    ) -> str:
+        friendship = await Friendship.get_friendship(engine, user1, user2)
+        if friendship:
+            if friendship.accepted:
+                return "friend"
+            elif friendship.user1 == user1:
+                return "outgoing"
+            else:
+                return "pending"
+        return "suggested"
+
+    @classmethod
     async def get_mutual_friends_count(
         cls, engine: AIOEngine, user1: User, user2: User
     ) -> int:
@@ -248,6 +262,13 @@ class Album(Model):
     createdAt: datetime
     createdBy: User = Reference()
     photos: list[ObjectId] = Field(default_factory=list)
+
+    @classmethod
+    async def get_user_accessible_albums(
+        cls, engine: AIOEngine, user: User
+    ) -> list[Album]:
+        albums = await engine.find(Album, Album.participants.contains(user.id))
+        return albums
 
 
 class AlbumPhoto(Model):

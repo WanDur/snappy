@@ -94,6 +94,7 @@ export default function SettingScreen() {
             systemImage="rectangle.portrait.and.arrow.right"
             onPress={() => {
               session.signOut().then(() => {
+                router.dismissAll()
                 router.replace('/(auth)/LoginScreen')
               })
             }}

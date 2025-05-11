@@ -201,7 +201,7 @@ async def get_conversation_info(
                 "conversationId": str(conversation.id),
                 "conversationType": conversation.type,
                 "participants": participants,
-                "lastMessageTime": await conversation.get_last_message_time(),
+                "lastMessageTime": await conversation.get_last_message_time(engine),
                 "initialDate": conversation.createdAt,
             }
         )
@@ -353,7 +353,7 @@ async def fetch_messages(
             new_chat_conversations = {
                 "conversationId": str(conversation_id),
                 "conversationType": conversation.type,
-                "lastMessageTime": messages[-1].timestamp,
+                "lastMessageTime": await conversation.get_last_message_time(engine),
                 "messages": [
                     {
                         "messageId": str(message.id),
@@ -366,5 +366,46 @@ async def fetch_messages(
                 ],
             }
             new_messages.append(new_chat_conversations)
-    log_debug(new_messages)
     return ORJSONResponse({"chats": serialize_mongo_object(new_messages)})
+
+
+@chat_router.get("/fetch_history")
+async def fetch_history(
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    conversation_ids = await Conversation.find_conversation_ids(engine, user)
+
+    response = []
+
+    for conversation_id in conversation_ids:
+        conversation = await engine.find_one(
+            Conversation, Conversation.id == conversation_id
+        )
+        messages = await engine.find(
+            Message,
+            Message.conversation == conversation_id,
+            sort=Message.timestamp.desc(),
+        )
+        response.append(
+            {
+                "conversationId": str(conversation_id),
+                "conversationType": conversation.type,
+                "lastMessageTime": await conversation.get_last_message_time(engine),
+                "messages": [
+                    {
+                        "messageId": str(message.id),
+                        "senderId": str(message.sender.id),
+                        "message": message.message,
+                        "timestamp": message.timestamp,
+                        "attachments": message.attachments,
+                    }
+                    for message in messages
+                ],
+            }
+        )
+
+    return ORJSONResponse({"chats": serialize_mongo_object(response)})

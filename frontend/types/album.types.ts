@@ -18,5 +18,5 @@ export interface AlbumPreview {
   id: string;
   name: string;
   count: number;
-  coverUrl: string;
+  coverUrl?: string;
 }

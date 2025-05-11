@@ -27,7 +27,7 @@ from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
 from utils.mongo import serialize_mongo_object, get_prod_database
-from internal.models import Friendship, User, UserTier, Photo, Album
+from internal.models import AlbumPhoto, Friendship, User, UserTier, Photo, Album
 
 # region routes
 
@@ -98,17 +98,24 @@ async def fetch_user_profile(
             limit=6,
             sort=Photo.timestamp.desc(),
         )
-        shared_albums = await engine.find(
-            Album,
-            Album.createdBy == target_user.id,
-            limit=6,
-            sort=Album.createdAt.desc(),
-        )
+        shared_albums = await engine.find(Album, Album.createdBy == target_user.id)
+
+        async def get_album_info(album: Album) -> dict:
+            album_photos = await engine.find(AlbumPhoto, AlbumPhoto.album == album.id)
+            return {
+                **serialize_mongo_object(album, project=["id", "name"]),
+                "count": len(album_photos),
+                "coverUrl": album_photos[0].url if album_photos else None,
+            }
+
         return ORJSONResponse(
             {
                 **serialize_mongo_object(
                     target_user,
                     project=["id", "username", "bio", "name", "iconUrl", "tier"],
+                ),
+                "friendStatus": await Friendship.get_friend_status(
+                    engine, user, target_user
                 ),
                 "mutualFriends": mutual_friends,
                 "postsCount": posts_count,
@@ -119,10 +126,7 @@ async def fetch_user_profile(
                     for photo in recent_photos
                 ],
                 "sharedAlbums": [
-                    serialize_mongo_object(
-                        album, project=["id", "name", "count", "coverUrl"]
-                    )
-                    for album in shared_albums
+                    await get_album_info(album) for album in shared_albums
                 ],
             }
         )
@@ -231,11 +235,7 @@ async def search_user(
     responseUsers = []
     for query_user in query_users:
         if user.id != query_user.id:
-            friendship = await Friendship.get_friendship(engine, user, query_user)
-            if friendship:
-                friend_status = "friend" if friendship.accepted else "pending"
-            else:
-                friend_status = "suggested"
+            friend_status = await Friendship.get_friend_status(engine, user, query_user)
             responseUsers.append(
                 {
                     "friendStatus": friend_status,
@@ -299,7 +299,7 @@ async def accept_friend(
         raise HTTPException(
             status_code=400, detail="Cannot accept invitation of yourself"
         )
-    await friendship.accept()
+    await friendship.accept(engine)
     return ORJSONResponse({"status": "success"})
 
 

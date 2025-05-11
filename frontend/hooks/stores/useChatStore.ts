@@ -62,6 +62,11 @@ interface ChatStore {
   hasChat: (id: string) => boolean;
 
   /**
+   * return true if chat with provided friendID exists
+   */
+  hasChatWithFriend: (friendID: string) => boolean;
+
+  /**
    * timestamp of last fetched message from server
    */
   lastFetchTime: string | null;
@@ -93,6 +98,13 @@ interface ChatStore {
   getChat: (id: string) => ChatItem;
 
   /**
+   * return chat with provided friendID
+   * @param friendID friendID
+   * @returns `ChatItem`
+   */
+  getChatWithFriend: (friendID: string) => ChatItem | undefined;
+
+  /**
    * add a chat to the storage with empty message, chatID is generated automatically
    * @required `companyName`
    * @required `chatTitle`
@@ -100,7 +112,7 @@ interface ChatStore {
    * @optional `unreadCount`, defaults to 0
    * @optional `avatar`, default to '
    */
-  addChat: ({ id, initialDate, messages, unreadCount }: ChatItem) => void;
+  addChat: (chat: ChatItem) => void;
 
   /**
    * update chat info
@@ -153,6 +165,24 @@ export const useChatStore = create<ChatStore>()(
 
       hasChat(id) {
         return get().allChatID.includes(id);
+      },
+
+      hasChatWithFriend(friendID) {
+        return Object.values(get().chats).some(
+          (chat) =>
+            chat.participants.some(
+              (participant) => participant._id === friendID
+            ) && chat.type === "direct"
+        );
+      },
+
+      getChatWithFriend(friendID) {
+        return Object.values(get().chats).find(
+          (chat) =>
+            chat.participants.some(
+              (participant) => participant._id === friendID
+            ) && chat.type === "direct"
+        );
       },
 
       setChatSyncTimeout(timeout) {

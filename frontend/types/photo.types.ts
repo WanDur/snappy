@@ -35,6 +35,6 @@ export interface Photo {
 
 export interface PhotoPreview {
   id: string;
-  imageUrl: string;
+  url: string;
   timestamp: Date;
 }

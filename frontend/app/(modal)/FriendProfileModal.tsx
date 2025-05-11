@@ -3,18 +3,19 @@
  * friendID: string
  */
 import { useState, useMemo, useEffect } from 'react'
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Dimensions } from 'react-native'
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Dimensions, Alert } from 'react-native'
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 
 import { Themed, SectionHeader } from '@/components'
 import { Stack, ContentUnavailable } from '@/components/router-form'
-import { useFriendStore, useTheme, useUserStore } from '@/hooks'
+import { useChatStore, useFriendStore, useTheme, useUserStore } from '@/hooks'
 import { Friend } from '@/types'
 import { PhotoPreview } from '@/types/photo.types'
 import { AlbumPreview } from '@/types/album.types'
-import { bypassLogin, isAuthenticated, useSession } from '@/contexts/auth'
+import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
+import { FriendDetailResponse, FriendStatus } from '@/types/friend.types'
 
 const { width } = Dimensions.get('window')
 const PHOTO_SIZE = (width - 48) / 3
@@ -23,7 +24,7 @@ interface ProfileData {
   name: string
   username: string
   avatar?: string
-  bio: string;
+  bio?: string;
   postsCount: number;
   friendsCount: number;
   albumsCount: number;
@@ -45,10 +46,10 @@ const sample_user = {
   albumsCount: 15,
   recentPhotos: [
     // your original four
-    { id: '1', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131', timestamp: new Date() },
-    { id: '2', imageUrl: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e', timestamp: new Date() },
-    { id: '3', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5', timestamp: new Date() },
-    { id: '4', imageUrl: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e', timestamp: new Date() },
+    { id: '1', url: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131', timestamp: new Date() },
+    { id: '2', url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e', timestamp: new Date() },
+    { id: '3', url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5', timestamp: new Date() },
+    { id: '4', url: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e', timestamp: new Date() },
     // now 100 more, ids 5…104
     ...Array.from({ length: 10 }, (_, i) => ({
       id: `${i + 5}`,
@@ -82,10 +83,12 @@ const FriendProfileModal = () => {
   const { colors } = useTheme()
 
   const { user } = useUserStore()
-  const { friends } = useFriendStore()
+  const { friends, removeFriend, changeFriendType } = useFriendStore()
   const { friendID } = useLocalSearchParams<{ friendID: string }>()
+  const { hasChatWithFriend, getChatWithFriend, addChat } = useChatStore()
+  
 
-  const [isFriend, setIsFriend] = useState(true)
+  const [friendStatus, setFriendStatus] = useState(FriendStatus.SUGGESTED)
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoPreview | null>(null)
   const [shownUser, setShownUser] = useState<ProfileData>(sample_user);
 
@@ -99,35 +102,114 @@ const FriendProfileModal = () => {
       return;
     }
     session.apiWithToken.get(`/user/profile/fetch/${friendID}?detail=true`).then((res) => {
-      console.log('res', res.data)
-      setShownUser(res.data)
+      const data = res.data as FriendDetailResponse
+      const parsedData = {
+        ...data,
+        avatar: data.iconUrl ? parsePublicUrl(data.iconUrl) : undefined,
+        recentPhotos: data.recentPhotos.map((photo: PhotoPreview) => ({
+          ...photo,
+          url: parsePublicUrl(photo.url)
+        })),
+        sharedAlbums: data.sharedAlbums.map((album: AlbumPreview) => ({
+          ...album,
+          coverUrl: album.coverUrl ? parsePublicUrl(album.coverUrl) : undefined
+        }))
+      }
+      setShownUser(parsedData)
+      setFriendStatus(data.friendStatus as FriendStatus)
     })
   }, [friendID])
 
 
   // Function to toggle friend status (for demo purposes)
   const toggleFriendStatus = () => {
-    setIsFriend(!isFriend)
+    setFriendStatus(friendStatus === FriendStatus.SUGGESTED ? FriendStatus.FRIEND : FriendStatus.SUGGESTED)
   }
 
   // Function to handle adding friend
   const handleAddFriend = () => {
-    console.log('Send friend request')
     // Friend request logic here
-    setIsFriend(true)
+    session.apiWithToken.post(`/user/friends/invite/${friendID}`)
+      .then(() => {
+        setFriendStatus(FriendStatus.OUTGOING)
+        changeFriendType(friendID, FriendStatus.OUTGOING)
+
+      })
+      .catch((err) => {
+        console.log('Error sending friend request', err)
+      })
   }
 
   // Function to handle removing friend
   const handleRemoveFriend = () => {
-    console.log('Remove friend')
     // Remove friend logic here
-    setIsFriend(false)
+    Alert.alert('Remove friend', 'Are you sure you want to remove this friend?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', onPress: () => {
+        session.apiWithToken.post(`/user/friends/remove/${friendID}`)
+          .then(() => {
+            setFriendStatus(FriendStatus.SUGGESTED)
+            removeFriend(friendID)
+          })
+          .catch((err) => {
+            console.log('Error removing friend', err)
+          })
+      }
+    }])
+  }
+
+  const handleCancelFriendRequest = () => {
+    session.apiWithToken.post(`/user/friends/remove/${friendID}`)
+      .then(() => {
+        setFriendStatus(FriendStatus.SUGGESTED)
+        changeFriendType(friendID, FriendStatus.SUGGESTED)
+      })
+      .catch((err) => {
+        console.log('Error canceling friend request', err)
+      })
+  }
+
+  const handleAcceptFriendRequest = () => {
+    session.apiWithToken.post(`/user/friends/accept/${friendID}`)
+      .then(() => {
+        setFriendStatus(FriendStatus.FRIEND)
+        changeFriendType(friendID, FriendStatus.FRIEND)
+      })
+      .catch((err) => {
+        console.log('Error accepting friend request', err)
+      })
   }
 
   // Function to handle messaging friend
   const handleMessage = () => {
-    console.log('Navigate to messages with this friend')
     // Navigation logic here
+    if (hasChatWithFriend(friendID)) {
+      router.dismiss()
+      router.push({ pathname: '/screens/ChatScreen', params: { chatID: getChatWithFriend(friendID)?.id } })
+    } else {
+      session.apiWithToken.post(`/chat/create/direct`, {
+        targetUserId: friendID
+      }).then((res) => {
+        addChat({
+          id: res.data.conversationId,
+          type: "direct",
+          participants: [{
+            _id: friendID,
+            name: shownUser.name,
+            avatar: shownUser.avatar
+          }],
+          initialDate: new Date(),
+          messages: [],
+          unreadCount: 0,
+          lastMessageTime: new Date()
+        })
+        router.dismiss()
+        router.push({ pathname: '/screens/ChatScreen', params: { chatID: res.data.conversationId } })
+      })
+      .catch((err) => {
+        console.error('Error creating chat', err)
+      })
+    }
   }
 
   // Render album item
@@ -146,6 +228,44 @@ const FriendProfileModal = () => {
       </View>
     </TouchableOpacity>
   )
+
+  const renderFriendActionBar = () => {
+    if (friendStatus === FriendStatus.FRIEND) {
+      return (
+        <>
+          <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
+            <Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.messageButtonText}>Message</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.unfriendButton} onPress={handleRemoveFriend}>
+            <Feather name="user-x" size={18} color="#FF6B6B" />
+            <Text style={styles.unfriendButtonText}>Unfriend</Text>
+          </TouchableOpacity>
+        </>
+      )
+    } else if (friendStatus === FriendStatus.OUTGOING) {
+      return (
+        <TouchableOpacity style={[styles.addFriendButton, { backgroundColor: colors.gray }]} onPress={handleCancelFriendRequest}>
+          <Feather name="user-plus" size={18} color="#FFFFFF" />
+          <Text style={styles.addFriendButtonText}>Request Sent</Text>
+        </TouchableOpacity>
+      )
+    } else if (friendStatus === FriendStatus.PENDING) {
+      return (
+        <TouchableOpacity style={[styles.addFriendButton]} onPress={handleAcceptFriendRequest}>
+          <Feather name="user-plus" size={18} color="#FFFFFF" />
+          <Text style={styles.addFriendButtonText}>Accept Friend Request</Text>
+        </TouchableOpacity>
+      )
+    } else {
+      return (
+        <TouchableOpacity style={styles.addFriendButton} onPress={handleAddFriend}>
+          <Feather name="user-plus" size={18} color="#FFFFFF" />
+          <Text style={styles.addFriendButtonText}>Add Friend</Text>
+        </TouchableOpacity>
+      )
+    }
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -174,28 +294,12 @@ const FriendProfileModal = () => {
         </View>
 
         <View style={styles.actionSection}>
-          {isFriend ? (
-            <>
-              <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-                <Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.messageButtonText}>Message</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.unfriendButton} onPress={handleRemoveFriend}>
-                <Feather name="user-x" size={18} color="#FF6B6B" />
-                <Text style={styles.unfriendButtonText}>Unfriend</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity style={styles.addFriendButton} onPress={handleAddFriend}>
-              <Feather name="user-plus" size={18} color="#FFFFFF" />
-              <Text style={styles.addFriendButtonText}>Add Friend</Text>
-            </TouchableOpacity>
-          )}
+          {renderFriendActionBar()}
         </View>
 
         <Themed.View type="divider" />
 
-        {isFriend ? (
+        {friendStatus === FriendStatus.FRIEND ? (
           <>
             {/* Recent photos section */}
             <View style={styles.sectionContainer}>
@@ -209,7 +313,7 @@ const FriendProfileModal = () => {
                     activeOpacity={0.8}
                     onPress={() => setSelectedPhoto(photo)}
                   >
-                    <Image source={{ uri: photo.imageUrl }} style={styles.photoGridThumbnail} />
+                    <Image source={{ uri: photo.url }} style={styles.photoGridThumbnail} />
                     {index === 5 && shownUser.recentPhotos.length > 6 && (
                       <View style={styles.morePhotosOverlay}>
                         <Text style={styles.morePhotosText}>+{shownUser.recentPhotos.length - 6}</Text>
