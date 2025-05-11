@@ -24,9 +24,20 @@ import { Stack, Form, ContentUnavailable } from '@/components/router-form'
 import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { AlbumCover } from '../album/index-album'
-import { useTheme, useAlbumStore, useUserStore } from '@/hooks'
+import { useTheme, useAlbumStore, useUserStore, usePhotoStore } from '@/hooks'
 import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { Album } from '@/types'
+import { PhotoPreview } from '@/types/photo.types'
+import { useSync } from '@/hooks/useSync'
+
+interface PhotoWeek {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  year: number;
+  week: number;
+  photos: PhotoPreview[];
+}
 
 const generateMockPhotos = () => {
   const weeks = []
@@ -49,11 +60,11 @@ const generateMockPhotos = () => {
 
       photos.push({
         id: `week${i}_photo${j}`,
-        uri: `https://via.placeholder.com/${width}x${height}`,
+        url: `https://via.placeholder.com/${width}x${height}`,
         caption: j % 3 === 0 ? 'Enjoying the weekend vibes! #photography' : '',
         location: j % 4 === 0 ? 'Golden Gate Park' : '',
-        date: new Date(weekStart.getTime() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000))
-      })
+        timestamp: new Date(weekStart.getTime() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000))
+      } as PhotoPreview)
     }
 
     weeks.push({
@@ -65,6 +76,30 @@ const generateMockPhotos = () => {
   }
 
   return weeks
+}
+
+/**
+ * Returns the Date of the Monday of the given ISO week and year.
+ */
+function getWeekStart(year: number, week: number): Date {
+  // January 4th is always in the first ISO week of the year
+  const simple = new Date(Date.UTC(year, 0, 4));
+  // Get the Monday of the first ISO week
+  const dayOfWeek = simple.getUTCDay() || 7; // 1 (Mon) ... 7 (Sun)
+  const monday = new Date(simple);
+  monday.setUTCDate(simple.getUTCDate() - dayOfWeek + 1 + (week - 1) * 7);
+  // Return as local date (remove UTC if you want UTC)
+  return new Date(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate());
+}
+
+/**
+ * Returns the Date of the Sunday of the given ISO week and year.
+ */
+function getWeekEnd(year: number, week: number): Date {
+  const monday = getWeekStart(year, week);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return sunday;
 }
 
 const photosByWeek = generateMockPhotos()
@@ -80,6 +115,8 @@ const ProfileScreen = () => {
   const { user, setUser, updateName, updateUsername, updateBio, updateAvatar } = useUserStore()
   const { albumList } = useAlbumStore()
   const { colors } = useTheme()
+  const { syncPhotos } = useSync()
+  const { getUserPhotos } = usePhotoStore()
 
   const bottomSheetModalRef = useRef<BottomSheetModal>(null)
   const scrollViewRef = useRef<ScrollView>(null)
@@ -89,6 +126,7 @@ const ProfileScreen = () => {
   const [userName, setUserName] = useState(user.username)
   const [bio, setBio] = useState(user.bio)
   const [photoCount, setPhotoCount] = useState(0)
+  const [photoWeeks, setPhotoWeeks] = useState<PhotoWeek[]>([])
 
   const fetchProfileData = async () => {
     if (session.session) {
@@ -120,6 +158,26 @@ const ProfileScreen = () => {
     }
 
     fetchProfileData()
+    syncPhotos(session, user.id).then(() => {
+      const photos = getUserPhotos(user.id)
+      const weeks: PhotoWeek[] = []
+      photos.forEach((photo) => {
+        const week = weeks.find((week) => week.year === photo.year && week.week === photo.week)
+        if (week) {
+          week.photos.push(photo)
+        } else {
+          weeks.push({
+            id: `${photo.year}-${photo.week}`,
+            startDate: getWeekStart(photo.year, photo.week),
+            endDate: getWeekEnd(photo.year, photo.week),
+            year: photo.year,
+            week: photo.week,
+            photos: [photo]
+          })
+        }
+      })
+      setPhotoWeeks(weeks)
+    })
   }, [])
 
   // Handle tab change from tab press
@@ -138,7 +196,7 @@ const ProfileScreen = () => {
   }
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
   const formatWeekRange = (start: Date, end: Date) => {
@@ -170,9 +228,9 @@ const ProfileScreen = () => {
           snapToInterval={photoCardWidth + photoMargin}
           snapToAlignment="start"
         >
-          {item.photos.map((photo) => (
+          {item.photos.map((photo: PhotoPreview) => (
             <TouchableOpacity key={photo.id} style={styles.photoCard} activeOpacity={0.9}>
-              <Image source={{ uri: photo.uri }} style={styles.photoImage} />
+              <Image source={{ uri: photo.url }} style={styles.photoImage} />
 
               {(photo.caption || photo.location) && (
                 <View style={styles.photoInfo}>
@@ -217,7 +275,7 @@ const ProfileScreen = () => {
           />
         </View>
         <Themed.Text style={{ fontSize: 15, fontWeight: '500', marginTop: 8 }} numberOfLines={1}>
-          {item.title}
+          {item.name}
         </Themed.Text>
         <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
           {item.images.length} photos
@@ -384,7 +442,7 @@ const ProfileScreen = () => {
           <View style={[styles.tabPage, { width }]}>
             <View style={styles.photosSection}>
               <FlatList
-                data={photosByWeek}
+                data={photoWeeks}
                 renderItem={renderWeekSection}
                 keyExtractor={(item) => item.id}
                 scrollEnabled={false}

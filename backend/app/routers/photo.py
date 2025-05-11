@@ -263,7 +263,9 @@ async def get_feed(
                             "photoId": str(photo.id),
                             "url": str(photo.url),
                             "caption": photo.caption,
+                            "location": photo.location,
                             "timestamp": photo.timestamp,
+                            "taggedUserIds": photo.taggedUserIds,
                         }
                         for photo in photos
                     ],
@@ -271,3 +273,48 @@ async def get_feed(
             )
 
     return ORJSONResponse(status_code=200, content=feed)
+
+
+@photo_router.get("/fetch/{user_id}")
+async def fetch_photos(
+    user_id: ObjectId,
+    fromYear: int,
+    fromWeek: int,
+    toYear: int,
+    toWeek: int,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+) -> dict[str, list[dict[str, str]]]:
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Fetch the photos from the database
+    photos = await engine.find(
+        Photo,
+        {
+            "user": user_id,
+            "timestamp": {
+                "$gte": datetime.strptime(f"{fromYear}-W{fromWeek - 1}-1", "%Y-W%W-%w"),
+                "$lt": datetime.strptime(f"{toYear}-W{toWeek}-1", "%Y-W%W-%w"),
+            },
+        },
+    )
+
+    return ORJSONResponse(
+        status_code=200,
+        content=serialize_mongo_object(
+            {
+                "photos": [
+                    {
+                        "id": str(photo.id),
+                        "url": str(photo.url),
+                        "caption": photo.caption,
+                        "location": photo.location,
+                        "timestamp": photo.timestamp,
+                        "taggedUserIds": photo.taggedUserIds,
+                    }
+                    for photo in photos
+                ]
+            }
+        ),
+    )

@@ -279,8 +279,8 @@ const getCaptureDate = async (asset: ImagePicker.ImagePickerAsset): Promise<Date
 const HomeScreen = () => {
   const session = useSession()
   const router = useRouter()
-  const userStore = useUserStore()
-  const { syncUserData, syncFriends } = useSync()
+  const { user } = useUserStore()
+  const { syncUserData, syncFriends, syncPhotos } = useSync()
 
   const { colors } = useTheme()
   const { friends, addFriend, clearFriends } = useFriendStore()
@@ -309,8 +309,11 @@ const HomeScreen = () => {
       return
     }
     if (session.session) {
-      syncUserData(session)
-      syncFriends(session)
+      syncUserData(session).then(() => {
+        syncFriends(session)
+        console.log(user.id)
+        syncPhotos(session, user.id)
+      })
     } else {
       console.log('Session is null')
     }

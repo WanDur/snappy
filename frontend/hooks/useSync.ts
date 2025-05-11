@@ -1,7 +1,12 @@
 import { parsePublicUrl } from "@/contexts/auth";
 import { AuthContextProps } from "@/types/auth.type";
 import { Friend, FriendResponse, FriendStatus } from "@/types/friend.types";
-import { useChatStore, useFriendStore, useUserStore } from "@/hooks";
+import {
+  useChatStore,
+  useFriendStore,
+  useUserStore,
+  usePhotoStore,
+} from "@/hooks";
 import {
   FetchNewMessageResponse,
   FetchChatInfoResponse,
@@ -11,6 +16,14 @@ import {
 } from "@/types/chats.type";
 import { Message } from "react-native-gifted-chat";
 import { getMessageUserFromFriendId } from "../utils/chatAdapter";
+import { PhotoPreview, FetchUserPhotosResponse } from "@/types/photo.types";
+
+const isoWeek = (d: Date) => {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil((1 + (t.getTime() - yearStart.getTime()) / 86400000) / 7);
+};
 
 const getLocalTime = (timestamp: Date) => {
   if (timestamp.toString().endsWith("Z")) {
@@ -33,6 +46,7 @@ export const useSync = () => {
     updateLastMessageTime,
     addUnreadCount,
   } = useChatStore();
+  const { addPhoto } = usePhotoStore();
 
   const syncUserData = async (session: AuthContextProps) => {
     try {
@@ -290,9 +304,40 @@ export const useSync = () => {
     }
   };
 
+  const syncPhotos = async (session: AuthContextProps, userId: string) => {
+    try {
+      const now = new Date();
+      const fourWeeksBefore = new Date(
+        now.getTime() - 4 * 7 * 24 * 60 * 60 * 1000
+      );
+      const res = await session.apiWithToken.get(`/photo/fetch/${userId}`, {
+        params: {
+          fromYear: fourWeeksBefore.getFullYear(),
+          fromWeek: isoWeek(fourWeeksBefore),
+          toYear: now.getFullYear(),
+          toWeek: isoWeek(now),
+        },
+      });
+      const data: FetchUserPhotosResponse = res.data;
+      data.photos.forEach((photo) => {
+        addPhoto(userId, {
+          id: photo.id,
+          uri: parsePublicUrl(photo.url),
+          caption: photo.caption,
+          taggedUserIds: photo.taggedUserIds,
+          timestamp: getLocalTime(photo.timestamp),
+          location: photo.location,
+        });
+      });
+    } catch (error) {
+      console.error("Error fetching photos:", error);
+    }
+  };
+
   return {
     syncUserData,
     syncFriends,
     syncChats,
+    syncPhotos,
   };
 };

@@ -37,4 +37,4 @@ def public_file(file_path: str):
 
 if __name__ == "__main__":
     reload = "--reload" in sys.argv
-    uvicorn.run("main:app", log_level="debug", reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, log_level="debug", reload=True)
