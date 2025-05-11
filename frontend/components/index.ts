@@ -4,7 +4,6 @@ import ListHeader from './headers/ListHeader'
 import Bounceable from './Bounceable'
 import CheckBox from './CheckBox'
 import SwipeableRow from './SwipeableRow'
-import ExpandableRow from './ExpandibleRow'
 import Dot from './Dot'
 import FilterSortButton from './FliterSortButton'
 import TouchableBounce from './TouchableBounce'
@@ -21,7 +20,6 @@ export {
   Bounceable,
   CheckBox,
   SwipeableRow,
-  ExpandableRow,
   Dot,
   FilterSortButton,
   TouchableBounce,

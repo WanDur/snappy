@@ -9,19 +9,24 @@ import {
   FlatList,
   Dimensions,
   Keyboard,
-  Alert
+  Alert,
+  ListRenderItem,
+  NativeSyntheticEvent,
+  NativeScrollEvent
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons'
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet'
 
 import { Themed, TouchableBounce } from '@/components'
-import { Stack } from '@/components/router-form'
+import { Stack, Form, ContentUnavailable } from '@/components/router-form'
 import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
 import { IconSymbol } from '@/components/ui/IconSymbol'
-import { useTheme, useUserStore } from '@/hooks'
+import { AlbumCover } from '../album/index-album'
+import { useTheme, useAlbumStore, useUserStore } from '@/hooks'
 import { isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
+import { Album } from '@/types'
 
 const generateMockPhotos = () => {
   const weeks = []
@@ -62,51 +67,7 @@ const generateMockPhotos = () => {
   return weeks
 }
 
-// Generate mock albums
-const generateMockAlbums = () => {
-  const albums = [
-    {
-      id: 'album1',
-      title: 'Vacation 2024',
-      coverImage: 'https://via.placeholder.com/400x400',
-      photoCount: 24
-    },
-    {
-      id: 'album2',
-      title: 'Family',
-      coverImage: 'https://via.placeholder.com/400x400',
-      photoCount: 37
-    },
-    {
-      id: 'album3',
-      title: 'Nature',
-      coverImage: 'https://via.placeholder.com/400x400',
-      photoCount: 18
-    },
-    {
-      id: 'album4',
-      title: 'Food',
-      coverImage: 'https://via.placeholder.com/400x400',
-      photoCount: 12
-    },
-    {
-      id: 'album5',
-      title: 'Travel',
-      coverImage: 'https://via.placeholder.com/400x400',
-      photoCount: 42
-    },
-    {
-      id: 'album6',
-      title: 'Pets',
-      coverImage: 'https://via.placeholder.com/400x400',
-      photoCount: 15
-    }
-  ]
-  return albums
-}
-
 const photosByWeek = generateMockPhotos()
-const albums = generateMockAlbums()
 
 const { width } = Dimensions.get('window')
 const photoCardWidth = width * 0.75
@@ -117,6 +78,7 @@ const ProfileScreen = () => {
   const router = useRouter()
   const session = useSession()
   const { user, setUser, updateName, updateUsername, updateBio, updateAvatar } = useUserStore()
+  const { albumList } = useAlbumStore()
   const { colors } = useTheme()
 
   const bottomSheetModalRef = useRef<BottomSheetModal>(null)
@@ -127,7 +89,6 @@ const ProfileScreen = () => {
   const [userName, setUserName] = useState(user.username)
   const [bio, setBio] = useState(user.bio)
   const [photoCount, setPhotoCount] = useState(0)
-  const [lastLocation, setLastLocation] = useState('')
 
   const fetchProfileData = async () => {
     if (session.session) {
@@ -148,7 +109,6 @@ const ProfileScreen = () => {
         const iconUrl = parsePublicUrl(userData.iconUrl)
         updateAvatar(iconUrl)
         setPhotoCount(userData.photoCount)
-        setLastLocation(userData.lastLocation)
       })
     }
   }
@@ -169,7 +129,7 @@ const ProfileScreen = () => {
   }
 
   // Handle scroll event to update active tab
-  const handleScroll = (event) => {
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const contentOffsetX = event.nativeEvent.contentOffset.x
     const tabIndex = Math.round(contentOffsetX / width)
     if (activeTab !== tabIndex) {
@@ -185,18 +145,21 @@ const ProfileScreen = () => {
     return `${formatDate(start)} to ${formatDate(end)}`
   }
 
-  const renderWeekSection = ({ item }) => {
+  // region weekly post tab
+  const renderWeekSection: ListRenderItem<any> = ({ item }) => {
     return (
       <View style={styles.weekContainer}>
         <View style={styles.weekHeader}>
           <View style={styles.weekDateContainer}>
-            <MaterialCommunityIcons name="calendar-week" size={18} color="#6c5ce7" />
+            <MaterialCommunityIcons name="calendar-week" size={18} color="#007AFF" />
             <Themed.Text style={styles.weekTitle}>{formatWeekRange(item.startDate, item.endDate)}</Themed.Text>
           </View>
-          <TouchableOpacity style={styles.memoryButton}>
-            <Text style={styles.memoryButtonText}>Create Memory</Text>
-            <Feather name="film" size={14} color="#6c5ce7" />
-          </TouchableOpacity>
+          {false && (
+            <TouchableOpacity style={styles.memoryButton}>
+              <Text style={styles.memoryButtonText}>Create Memory</Text>
+              <Feather name="film" size={14} color="#007AFF" />
+            </TouchableOpacity>
+          )}
         </View>
 
         <ScrollView
@@ -234,18 +197,50 @@ const ProfileScreen = () => {
       </View>
     )
   }
+  // #endregion
 
-  const renderAlbum = ({ item }) => {
+  // #region album tab
+  const renderAlbum: ListRenderItem<Album> = ({ item }) => {
     return (
-      <TouchableOpacity activeOpacity={0.8} style={styles.albumCard}>
-        <Image source={{ uri: item.coverImage }} style={styles.albumCover} />
-        <View style={styles.albumInfo}>
-          <Themed.Text style={styles.albumTitle}>{item.title}</Themed.Text>
-          <Themed.Text style={styles.albumCount}>{item.photoCount} photos</Themed.Text>
+      <TouchableOpacity
+        style={styles.gridAlbumItem}
+        activeOpacity={1}
+        onPress={() => router.push({ pathname: '/screens/AlbumScreen', params: { albumId: item.id } })}
+      >
+        <View style={styles.albumCoverContainer}>
+          <AlbumCover
+            coverImage={item.coverImage}
+            isShared={item.isShared}
+            contributors={item.contributors}
+            style={{ width: '100%', height: '100%' }}
+            placeholderStyle={{ width: '100%', height: '100%' }}
+          />
         </View>
+        <Themed.Text style={{ fontSize: 15, fontWeight: '500', marginTop: 8 }} numberOfLines={1}>
+          {item.title}
+        </Themed.Text>
+        <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
+          {item.images.length} photos
+        </Themed.Text>
       </TouchableOpacity>
     )
   }
+
+  const renderNoAlbum = () => (
+    <Form.Section style={{ marginHorizontal: -16 }}>
+      <ContentUnavailable
+        title="No Albums"
+        systemImage="photo.stack"
+        actions={
+          <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/CreateAlbumModal')}>
+            <Themed.Text type="link">Create new album</Themed.Text>
+          </TouchableOpacity>
+        }
+      />
+    </Form.Section>
+  )
+
+  // #endregion
 
   // #region save profile changes
   const handleSave = () => {
@@ -338,7 +333,7 @@ const ProfileScreen = () => {
                 ]}
                 onPress={() => bottomSheetModalRef.current?.present()}
               >
-                <Feather name="edit-2" size={16} color="#6c5ce7" />
+                <Feather name="edit-2" size={16} color="#007AFF" />
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableBounce>
             </View>
@@ -362,7 +357,7 @@ const ProfileScreen = () => {
             style={[styles.tabButton, activeTab === 0 && styles.activeTabButton]}
             onPress={() => handleTabPress(0)}
           >
-            <Feather name="grid" size={20} color={activeTab === 0 ? '#6c5ce7' : '#999'} />
+            <Feather name="grid" size={20} color={activeTab === 0 ? '#007AFF' : '#999'} />
             <Themed.Text style={[styles.tabText, activeTab === 0 && styles.activeTabText]}>Photos</Themed.Text>
           </TouchableOpacity>
 
@@ -370,7 +365,7 @@ const ProfileScreen = () => {
             style={[styles.tabButton, activeTab === 1 && styles.activeTabButton]}
             onPress={() => handleTabPress(1)}
           >
-            <Feather name="folder" size={20} color={activeTab === 1 ? '#6c5ce7' : '#999'} />
+            <Feather name="folder" size={20} color={activeTab === 1 ? '#007AFF' : '#999'} />
             <Themed.Text style={[styles.tabText, activeTab === 1 && styles.activeTabText]}>Albums</Themed.Text>
           </TouchableOpacity>
         </View>
@@ -401,8 +396,9 @@ const ProfileScreen = () => {
           <View style={[styles.tabPage, { width }]}>
             <View style={styles.albumsSection}>
               <FlatList
-                data={albums}
+                data={albumList}
                 renderItem={renderAlbum}
+                ListEmptyComponent={renderNoAlbum}
                 keyExtractor={(item) => item.id}
                 numColumns={2}
                 scrollEnabled={false}
@@ -516,11 +512,22 @@ const styles = StyleSheet.create({
   postCountText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#6c5ce7'
+    color: '#007AFF'
   },
   postLabel: {
     fontSize: 10,
-    color: '#6c5ce7'
+    color: '#007AFF'
+  },
+  gridAlbumItem: {
+    flex: 1,
+    margin: 4,
+    marginBottom: 16
+  },
+  albumCoverContainer: {
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+    aspectRatio: 1
   },
   profileInfo: {
     alignItems: 'center'
@@ -561,7 +568,7 @@ const styles = StyleSheet.create({
     borderWidth: 1
   },
   editButtonText: {
-    color: '#6c5ce7',
+    color: '#007AFF',
     fontWeight: '600',
     fontSize: 14,
     marginLeft: 6
@@ -594,7 +601,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent'
   },
   activeTabButton: {
-    borderBottomColor: '#6c5ce7'
+    borderBottomColor: '#007AFF'
   },
   tabText: {
     fontSize: 14,
@@ -602,7 +609,7 @@ const styles = StyleSheet.create({
     marginLeft: 8
   },
   activeTabText: {
-    color: '#6c5ce7',
+    color: '#007AFF',
     fontWeight: '600'
   },
   // Tab content container
@@ -684,7 +691,7 @@ const styles = StyleSheet.create({
   },
   memoryButtonText: {
     fontSize: 12,
-    color: '#6c5ce7',
+    color: '#007AFF',
     fontWeight: '500',
     marginRight: 6
   },

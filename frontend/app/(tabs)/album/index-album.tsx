@@ -10,7 +10,7 @@ import { IconSymbolName } from '@/components/ui/IconSymbolFallback'
 import { Form, Stack, ContentUnavailable } from '@/components/router-form'
 import { Album } from '@/types'
 
-const AlbumCover = memo(
+export const AlbumCover = memo(
   ({
     coverImage,
     style,
