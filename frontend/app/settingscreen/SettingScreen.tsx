@@ -107,6 +107,7 @@ export default function SettingScreen() {
             Dev data
           </Form.Link>
           <Form.Link href="/(modal)/PremiumInfoModal">Premium modal</Form.Link>
+          <Form.Link href="/(modal)/RedeemCodeModal">Redeem code</Form.Link>
         </Form.Section>
       </Form.List>
     </Themed.ScrollView>

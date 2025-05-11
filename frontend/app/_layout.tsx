@@ -67,6 +67,7 @@ export default function RootLayout() {
                   sheet
                 />
                 <Stack.Screen name="(modal)/FriendProfileModal" sheet />
+                <Stack.Screen name="(modal)/RedeemCodeModal" options={{ headerShown: false }} sheet />
                 <Stack.Screen
                   name="(modal)/PremiumInfoModal"
                   options={{ presentation: 'transparentModal', headerShown: false }}

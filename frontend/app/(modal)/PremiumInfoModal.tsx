@@ -1,17 +1,36 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Pressable } from 'react-native'
+import { useState, ReactNode } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
 import { AntDesign, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 
-import { Themed, TouchableBounce } from '@/components'
+import { TouchableBounce } from '@/components'
 import { useTheme } from '@/hooks'
+
+const FeatureItem = ({ icon, title, description }: { icon: ReactNode; title: string; description: string }) => {
+  return (
+    <View style={styles.featureItem}>
+      <View style={styles.featureIconContainer}>{icon}</View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.featureTitle}>{title}</Text>
+        <Text style={styles.featureDescription}>{description}</Text>
+      </View>
+    </View>
+  )
+}
 
 const PremiumInfoModal = () => {
   const router = useRouter()
   const { reverseTheme } = useTheme()
 
+  const [isMonthly, setIsMonthly] = useState(false)
+
   const handleUpgradePress = () => {}
+
+  const togglePlan = () => {
+    setIsMonthly((prev) => !prev)
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -20,14 +39,24 @@ const PremiumInfoModal = () => {
           <AntDesign name="close" size={24} color="white" />
         </TouchableOpacity>
 
-        <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.contentContainer}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.headerContainer}>
             <MaterialCommunityIcons name="crown" size={40} color="#FFD700" />
             <Text style={styles.title}>Upgrade to Premium</Text>
             <Text style={styles.subtitle}>Unlock the full experience</Text>
           </View>
 
-          <View style={styles.featuresContainer}>
+          <View style={{ paddingBottom: 10 }}>
+            <FeatureItem
+              icon={<Ionicons name="ribbon" size={24} color="#FFD700" />}
+              title="Premium Badge"
+              description="Showcase your premium with a badge"
+            />
+
             <FeatureItem
               icon={<Ionicons name="albums" size={24} color="#FFD700" />}
               title="Unlimited Albums"
@@ -35,41 +64,31 @@ const PremiumInfoModal = () => {
             />
 
             <FeatureItem
-              icon={<Ionicons name="eye" size={24} color="#FFD700" />}
-              title="Sneak Peek"
-              description="Exclusive access to view premium content from other users"
-            />
-
-            <FeatureItem
-              icon={<MaterialCommunityIcons name="image-filter-hdr" size={24} color="#FFD700" />}
-              title="Advanced Filters"
-              description="Access to our premium collection of photo filters"
-            />
-
-            <FeatureItem
-              icon={<AntDesign name="cloudupload" size={24} color="#FFD700" />}
-              title="Cloud Storage"
-              description="5GB of cloud storage for your high-quality photos"
-            />
-
-            <FeatureItem
-              icon={<AntDesign name="tag" size={24} color="#FFD700" />}
-              title="Ad-Free Experience"
-              description="Enjoy the app without any advertisements"
+              icon={<Ionicons name="infinite" size={24} color="#FFD700" />}
+              title="Unlimited Group Chat Members"
+              description="Add as many members as you want to your group chats"
             />
           </View>
 
-          <View style={styles.pricingContainer}>
+          <View style={{ paddingBottom: 30 }}>
             <Text style={styles.pricingTitle}>Choose Your Plan</Text>
 
             <View style={styles.planContainer}>
-              <TouchableOpacity style={[styles.planOption, styles.planSelected]} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={[styles.planOption, !isMonthly && styles.planSelected]}
+                onPress={togglePlan}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.planDuration}>Annual</Text>
                 <Text style={styles.planPrice}>$49.99</Text>
                 <Text style={styles.planSaving}>Save 30%</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.planOption} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={[styles.planOption, isMonthly && styles.planSelected]}
+                onPress={togglePlan}
+                activeOpacity={0.7}
+              >
                 <Text style={styles.planDuration}>Monthly</Text>
                 <Text style={styles.planPrice}>$5.99</Text>
               </TouchableOpacity>
@@ -87,27 +106,15 @@ const PremiumInfoModal = () => {
             </LinearGradient>
           </TouchableBounce>
 
-          <TouchableOpacity>
-            <Themed.Text style={{ textAlign: 'center', marginBottom: 14 }} text70>
-              Restore purchase/Have code already?
-            </Themed.Text>
+          <TouchableOpacity onPress={() => router.push('/(modal)/RedeemCodeModal')} activeOpacity={0.7}>
+            <Text style={{ textAlign: 'center', marginBottom: 14, color: 'white' }}>
+              Restore purchase / Redeem code
+            </Text>
           </TouchableOpacity>
 
           <Text style={styles.termsText}>By continuing, you agree to our Terms of Service and Privacy Policy</Text>
         </ScrollView>
       </BlurView>
-    </View>
-  )
-}
-
-const FeatureItem = ({ icon, title, description }) => {
-  return (
-    <View style={styles.featureItem}>
-      <View style={styles.featureIconContainer}>{icon}</View>
-      <View style={styles.featureTextContainer}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDescription}>{description}</Text>
-      </View>
     </View>
   )
 }
@@ -145,9 +152,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 5
   },
-  featuresContainer: {
-    marginBottom: 30
-  },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -165,9 +169,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 15
   },
-  featureTextContainer: {
-    flex: 1
-  },
   featureTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -178,14 +179,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)'
   },
-  pricingContainer: {
-    marginBottom: 30
-  },
   pricingTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: 'white',
-    marginBottom: 15,
+    marginBottom: 20,
     textAlign: 'center'
   },
   planContainer: {
@@ -198,11 +196,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
-    marginHorizontal: 5
+    marginHorizontal: 5,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)'
   },
   planSelected: {
     backgroundColor: 'rgba(255, 215, 0, 0.2)',
-    borderWidth: 2,
     borderColor: '#FFD700'
   },
   planDuration: {
