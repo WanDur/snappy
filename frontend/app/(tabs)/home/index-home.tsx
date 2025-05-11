@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { format } from 'date-fns'
 import {
   View,
   Text,
@@ -130,32 +131,45 @@ const buildWeeks = (count = 4): WeekBundle[] => {
 /**************** Components ****************/
 const DayCell = ({ day, onAdd }: { day: DayTile; onAdd: () => void }) => {
   const { colors } = useTheme()
+  const isAdd = !!day.isAdd
+  const isPhoto = day.hasMedia
+
+  /** helpers for the empty-day label */
+  const month = format(day.date, 'LLL') // Jul
+  const dateNum = format(day.date, 'd') // 10
+  const weekday = format(day.date, 'EEE') // Mon
+
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={() => {
-        day.isAdd ? onAdd() : null
-      }}
+      activeOpacity={0.85}
+      onPress={isAdd ? onAdd : undefined}
       style={[
         styles.dayCell,
-        {
-          backgroundColor: colors.secondaryBg,
-          shadowColor: colors.text,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.2,
-          shadowRadius: 1,
-          elevation: 2
-        }
+        { backgroundColor: colors.secondaryBg },
+        isAdd && styles.center // centre the “+”
       ]}
     >
-      {day.hasMedia ? (
-        <Image source={{ uri: day.thumbnail! }} style={styles.dayThumb} contentFit="cover" />
-      ) : (
-        <View style={styles.dayPlaceholder} />
+      {/* 1️  PLUS TILE  */}
+      {isAdd && <Text style={styles.plus}>＋</Text>}
+
+      {/* 2️⃣ PHOTO TILE – image + centered weekday at bottom */}
+      {!isAdd && isPhoto && (
+        <View style={styles.thumbContainer}>
+          <Image source={{ uri: day.thumbnail! }} style={styles.thumb} contentFit="cover" />
+          <View style={styles.weekdayOverlay}>
+            <Text style={styles.weekdayText}>{weekday}</Text>
+          </View>
+        </View>
       )}
-      <View style={styles.dayLabelWrap}>
-        <Text style={[styles.dayLabel, day.isAdd && styles.dayAdd]}>{day.label}</Text>
-      </View>
+
+      {/* 3️  EMPTY TILE  */}
+      {!isAdd && !isPhoto && (
+        <View style={styles.emptyLabelWrap}>
+          <Text style={styles.month}>{month}</Text>
+          <Text style={styles.dateNum}>{dateNum}</Text>
+          <Text style={styles.weekday}>{weekday}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   )
 }
@@ -332,6 +346,7 @@ const HomeScreen = () => {
     // Patch every week bundle with user-uploaded photos stored in mediaByDate
     return weeks.map((w) => {
       const patchedDays = w.days.map((d) => {
+        if (d.isAdd) return d // skip the “+” tile
         const iso = d.date.toISOString().split('T')[0]
         if (mediaByDate[iso]) {
           return { ...d, hasMedia: true, thumbnail: mediaByDate[iso].uri }
@@ -404,7 +419,7 @@ const HomeScreen = () => {
             weekNum: captureWeek,
             key: `week-${captureWeek}`,
             days: buildDays(offset).map((d) =>
-              ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+              !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
             ),
             feed: []
           }
@@ -417,7 +432,9 @@ const HomeScreen = () => {
             ? {
                 ...w,
                 days: buildDays(offset).map((d) =>
-                  d.date.toISOString().split('T')[0] === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                  !d.isAdd && d.date.toISOString().split('T')[0] === iso
+                    ? { ...d, hasMedia: true, thumbnail: asset.uri }
+                    : d
                 )
               }
             : w
@@ -483,6 +500,8 @@ const HomeScreen = () => {
 const tileWidth = 100
 const tileHeight = 120
 const assetSize = SCREEN_WIDTH / 3 - 2
+const grey = '#9EA0A6' // light grey used for empty text
+const pillBg = 'rgba(0,0,0,0.45)'
 
 const styles = StyleSheet.create({
   container: {
@@ -497,7 +516,17 @@ const styles = StyleSheet.create({
     width: tileWidth,
     height: tileHeight,
     borderRadius: 16,
-    marginRight: 12
+    marginRight: 12,
+    overflow: 'hidden'
+  },
+  dayCellAddContainer: {
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  addIcon: {
+    fontSize: 42,
+    fontWeight: '300',
+    color: '#000'
   },
   dayThumb: {
     width: '100%',
@@ -510,17 +539,86 @@ const styles = StyleSheet.create({
   dayLabelWrap: {
     position: 'absolute',
     bottom: 8,
-    left: 8
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
   },
   dayLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff'
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
   },
   dayAdd: {
     fontSize: 40,
-    fontWeight: '300',
-    color: '#000'
+    fontWeight: '300'
+  },
+  /* ↓ reusable centre helper */
+  center: {
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  /* PLUS */
+  plus: {
+    fontSize: 42,
+    color: '#000',
+    lineHeight: 46,
+    fontWeight: '400'
+  },
+  /* PHOTO */
+  thumb: { width: '100%', height: '100%' },
+  thumbContainer: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative'
+  },
+  /* bottom-center overlay */
+  weekdayOverlay: {
+    position: 'absolute',
+    bottom: 15,
+    left: 0,
+    right: 0,
+    alignItems: 'center'
+  },
+  weekdayText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4
+  },
+
+  /* EMPTY (no photo)  —  three-line centred label */
+  emptyLabelWrap: {
+    ...StyleSheet.absoluteFillObject, // fill tile
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  month: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: grey,
+    marginBottom: 2
+  },
+  dateNum: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: grey,
+    marginBottom: 2,
+    lineHeight: 32
+  },
+  weekday: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: grey
   },
   feedRow: {
     paddingLeft: 16
