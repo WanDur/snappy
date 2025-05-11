@@ -23,13 +23,13 @@ async def mongodb():
     client = AsyncIOMotorClient(
         f"mongodb://{get_settings().MONGODB_USERNAME}:{get_settings().MONGODB_PASSWORD}@localhost:27017/"
     )
-    engine = AIOEngine(client=client, database="snappy")
+    engine = AIOEngine(client=client, database="snappy_test")
     import utils.mongo
 
     utils.mongo.engine = engine
     utils.mongo.client = client
     yield engine
-    # await client.drop_database("snappy_test")
+    await client.drop_database("snappy_test")
 
 
 @pytest_asyncio.fixture(scope="session")

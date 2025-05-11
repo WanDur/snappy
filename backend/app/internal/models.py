@@ -235,3 +235,20 @@ class PhotoComment(Model):
     photo: Photo = Reference()
     timestamp: datetime
     message: str
+
+
+class Album(Model):
+    name: str
+    participants: list[ObjectId]
+    createdAt: datetime
+    createdBy: User = Reference()
+    photos: list[ObjectId] = Field(default_factory=list)
+
+
+class AlbumPhoto(Model):
+    album: Album = Reference()
+    user: User = Reference()
+    timestamp: datetime
+    url: str
+    caption: Optional[str] = None
+    taggedUserIds: list[ObjectId] = Field(default_factory=list)
