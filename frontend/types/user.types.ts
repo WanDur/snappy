@@ -1,4 +1,4 @@
-export interface UserTier {}
+import { UserTier } from "./auth.type";
 
 export interface User {
   id: string;

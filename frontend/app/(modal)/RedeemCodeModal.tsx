@@ -5,23 +5,50 @@ import { MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
+import { bypassLogin, isAuthenticated, useSession } from '@/contexts/auth'
+import { useUserStore } from '@/hooks'
+import { UserTier } from '@/types/auth.type'
 
 const RedeemCodeModal = () => {
+  const session = useSession()
+
+  const { user, updateTier, updatePremiumExpireTime } = useUserStore()
+
   const [code, setCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  if (!isAuthenticated(session)) {
+    router.replace('/(auth)/LoginScreen')
+    return
+  }
+
   const handleSubmit = () => {
     setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      if (code === 'code') {
+    if (bypassLogin()) {
+      // For development testing purposes
+      setTimeout(() => {
+        setIsLoading(false)
+        if (code === 'code') {
+          Alert.alert('Success', 'Your code has been redeemed successfully!', [
+            { text: 'OK', onPress: () => router.back() }
+          ])
+        } else {
+          Alert.alert('Error', 'Invalid code. Please try again.', [{ text: 'OK', onPress: () => setCode('') }])
+        }
+      }, 2000)
+    } else {
+      session.apiWithToken.post('/license/redeem', {
+        keys: [code]
+      }).then((res) => {
+        updatePremiumExpireTime(new Date(res.data.premiumExpireTime))
+        updateTier(UserTier.PREMIUM)
         Alert.alert('Success', 'Your code has been redeemed successfully!', [
           { text: 'OK', onPress: () => router.back() }
         ])
-      } else {
-        Alert.alert('Error', 'Invalid code. Please try again.', [{ text: 'OK', onPress: () => setCode('') }])
-      }
-    }, 2000)
+      }).catch((err) => {
+        console.error('Error', err.response?.data.detail)
+      })
+    }
   }
 
   return (

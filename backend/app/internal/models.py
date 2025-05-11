@@ -14,6 +14,7 @@ from utils.mongo import engine
 class UserTier(str, Enum):
     FREEMIUM = "freemium"
     PREMIUM = "premium"
+    ADMIN = "admin"
 
 
 class User(Model):
@@ -47,8 +48,10 @@ class User(Model):
         if self.tier == UserTier.FREEMIUM:
             self.tier = UserTier.PREMIUM
             self.premiumExpireTime = datetime.now(timezone.utc) + timedelta(days=days)
-        else:
+        elif self.tier == UserTier.PREMIUM:
             self.premiumExpireTime += timedelta(days=days)
+        elif self.tier == UserTier.ADMIN:
+            raise Exception("Admin cannot redeem premium")
         await engine.save(self)
 
     async def get_friends(self, engine: AIOEngine) -> list[User]:

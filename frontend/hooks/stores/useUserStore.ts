@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import Storage from "expo-sqlite/kv-store";
 
-import { User } from "@/types";
+import { User, UserTier } from "@/types";
 
 interface UserStore {
   /**
@@ -19,8 +19,9 @@ interface UserStore {
   updateName: (name: string) => void;
   updatePhone: (phone: string) => void;
   updateAvatar: (avatar: string) => void;
-  updateTier: (tier: string) => void;
+  updateTier: (tier: UserTier) => void;
   updateBio: (bio: string) => void;
+  updatePremiumExpireTime: (premiumExpireTime: Date) => void;
 }
 
 export const useUserStore = create<UserStore>()(
@@ -35,7 +36,7 @@ export const useUserStore = create<UserStore>()(
         avatar: "",
         bio: "",
         notificationTokens: [],
-        tier: {},
+        tier: UserTier.FREEMIUM,
         premiumExpireTime: undefined,
       },
 
@@ -78,6 +79,12 @@ export const useUserStore = create<UserStore>()(
       updateBio(bio) {
         set((state) => {
           state.user.bio = bio;
+        });
+      },
+
+      updatePremiumExpireTime(premiumExpireTime) {
+        set((state) => {
+          state.user.premiumExpireTime = premiumExpireTime;
         });
       },
     })),
