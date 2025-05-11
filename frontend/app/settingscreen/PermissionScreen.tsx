@@ -1,24 +1,31 @@
 import { useState, useEffect } from 'react'
 import { Stack } from 'expo-router'
-import { View, Switch, StyleSheet, Pressable, Linking } from 'react-native'
+import { View, StyleSheet, Pressable, Alert } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import * as Contacts from 'expo-contacts'
+import { PermissionResponse } from 'expo-image-picker'
+import { requestRecordingPermissionsAsync, getRecordingPermissionsAsync } from 'expo-audio'
 
 import { useTheme } from '@/hooks'
 import { Themed } from '@/components'
+import { IconSymbol } from '@/components/ui/IconSymbol'
 
 const PermissionScreen = () => {
   const { colors } = useTheme()
 
   const [dummy, setDummy] = useState(false)
   const [contactsGranted, setContactsGranted] = useState(false)
+  const [micGranted, setMicGranted] = useState(false)
   const [cameraPermission, requestCameraPermission] = ImagePicker.useCameraPermissions()
   const [mediaPermission, requestMediaPermission] = ImagePicker.useMediaLibraryPermissions()
 
   useEffect(() => {
     const fetchPermissions = async () => {
-      const { granted } = await Contacts.getPermissionsAsync()
-      setContactsGranted(granted)
+      const { granted: contactsGranted } = await Contacts.requestPermissionsAsync()
+      setContactsGranted(contactsGranted)
+
+      const { granted: micGranted } = await getRecordingPermissionsAsync()
+      setMicGranted(micGranted)
     }
 
     fetchPermissions()
@@ -28,37 +35,64 @@ const PermissionScreen = () => {
     {
       name: 'Camera',
       disc: 'Allows capturing photos',
-      status: cameraPermission?.granted,
-      onPress: requestCameraPermission
+      status: cameraPermission?.granted
     },
     {
       name: 'Contacts',
       disc: 'Enables sharing with your contacts',
-      status: contactsGranted,
-      onPress: Contacts.requestPermissionsAsync
-    },
-    {
-      name: 'Location',
-      disc: 'Enables finding jobs based on your location',
-      status: false,
-      onPress: () => {
-        requestCameraPermission()
-        setDummy((prev) => !prev)
-      }
+      status: contactsGranted
     },
     {
       name: 'Media',
       disc: 'Allows uploading photos or files',
-      status: mediaPermission?.granted,
-      onPress: requestMediaPermission
+      status: mediaPermission?.granted
     },
     {
       name: 'Microphone',
       disc: 'Required for voice messages',
-      status: false,
-      onPress: () => {}
+      status: micGranted
     }
   ]
+
+  const openSettings = () => {
+    Alert.alert('Open Settings', 'Please open the app settings to change permissions.')
+  }
+
+  const onPress = async (feature: string) => {
+    const permissionConfig: Record<string, { check?: boolean; request: () => Promise<PermissionResponse> }> = {
+      Camera: {
+        check: cameraPermission?.granted,
+        request: requestCameraPermission
+      },
+      Contacts: {
+        check: contactsGranted,
+        request: Contacts.requestPermissionsAsync
+      },
+      Media: {
+        check: mediaPermission?.granted,
+        request: requestMediaPermission
+      },
+      Microphone: {
+        check: micGranted,
+        request: requestRecordingPermissionsAsync
+      }
+    }
+
+    const { check, request } = permissionConfig[feature]
+
+    if (check) return
+
+    // Request permission
+    const permission = await request()
+    setDummy(!dummy) // Trigger re-render
+
+    if (permission.granted) return // Permission granted
+    if (permission.canAskAgain) {
+      onPress(feature)
+    } else {
+      openSettings()
+    }
+  }
 
   return (
     <Themed.ScrollView>
@@ -85,21 +119,31 @@ const PermissionScreen = () => {
               <Themed.Text style={styles.subText}>{permission.disc}</Themed.Text>
             </View>
 
-            <Switch value={permission.status} onTouchEnd={permission.onPress} trackColor={{ true: '#007AFF' }} />
+            <Pressable
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: 'rgba(120, 120, 120, 0.1)',
+                padding: 6,
+                paddingHorizontal: 10,
+                borderRadius: 16
+              }}
+              onPress={() => onPress(permission.name)}
+            >
+              <IconSymbol
+                name={permission.status ? 'checkmark' : 'exclamationmark.triangle.fill'}
+                color={permission.status ? colors.blue : '#FF2D55'}
+                size={14}
+              />
+              <Themed.Text
+                style={{ fontSize: 13, fontWeight: '500', color: permission.status ? colors.blue : '#FF2D55' }}
+              >
+                {permission.status ? 'Working' : 'Denied'}
+              </Themed.Text>
+            </Pressable>
           </View>
         ))}
-      </View>
-      <Themed.View type="divider" />
-      <View style={{ flexDirection: 'row', paddingHorizontal: 26, paddingTop: 20 }}>
-        <Themed.Text style={{ lineHeight: 30, fontSize: 16 }}>Open </Themed.Text>
-        <Pressable
-          onPress={() => {
-            // TODO: android open settings, this only works on ios
-            Linking.openURL('app-settings:')
-          }}
-        >
-          <Themed.Text type="link">Settings</Themed.Text>
-        </Pressable>
       </View>
     </Themed.ScrollView>
   )
