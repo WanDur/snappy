@@ -120,6 +120,7 @@ export const useSync = () => {
     session: AuthContextProps,
     conversationId: string
   ) => {
+    console.log("Fetching chat info for", conversationId);
     const res = await session.apiWithToken.get(
       `/chat/conversation/${conversationId}/info`
     );
@@ -339,5 +340,6 @@ export const useSync = () => {
     syncFriends,
     syncChats,
     syncPhotos,
+    fetchChatInfo,
   };
 };

@@ -5,6 +5,7 @@ from typing import Annotated, Optional
 from odmantic import AIOEngine, EmbeddedModel, Field, Model, ObjectId, Reference, query
 from pydantic import EmailStr, StringConstraints
 
+from utils.debug import log_debug
 from utils.mongo import engine
 
 # section user
@@ -154,10 +155,10 @@ class Conversation(Model):
     name: Optional[str] = Field(default=None, min_length=3, max_length=32)
 
     @classmethod
-    async def find_direct_conversation(
+    async def find_direct_conversation_id(
         cls, engine: AIOEngine, user1: User, user2: User
-    ) -> Conversation | None:
-        conversation = await engine.get_collection(Conversation).find_one(
+    ) -> ObjectId | None:
+        conversation_raw = await engine.get_collection(Conversation).find_one(
             {
                 "type": ConversationType.DIRECT,
                 "participants": {
@@ -165,7 +166,7 @@ class Conversation(Model):
                 },
             }
         )
-        return conversation
+        return conversation_raw["_id"] if conversation_raw else None
 
     @classmethod
     async def find_conversation_ids(
