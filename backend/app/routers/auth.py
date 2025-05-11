@@ -7,8 +7,8 @@ import math
 import os
 import time
 
-from odmantic import ObjectId
-from urllib3 import HTTPResponse
+from fastapi.params import Depends
+from odmantic import AIOEngine
 
 if __name__ == "__main__":
     import sys
@@ -28,7 +28,7 @@ from pydantic import BaseModel
 import bcrypt
 
 from utils.settings import get_settings
-from utils.mongo import engine
+from utils.mongo import get_prod_database
 from utils.debug import log_debug
 from utils.auth import (
     access_auth,
@@ -59,7 +59,9 @@ class AuthLoginResponse(BaseModel):
 
 
 @auth_router.post("/login")
-async def user_login(body: AuthLoginBody) -> AuthLoginResponse:
+async def user_login(
+    body: AuthLoginBody, engine: AIOEngine = Depends(get_prod_database)
+) -> AuthLoginResponse:
     user = await engine.find_one(
         User,
         (User.email == body.emailUsernamePhone)
@@ -98,7 +100,9 @@ class AuthRegisterResponse(BaseModel):
 
 
 @auth_router.post("/register")
-async def user_register(body: AuthRegisterBody) -> AuthRegisterResponse:
+async def user_register(
+    body: AuthRegisterBody, engine: AIOEngine = Depends(get_prod_database)
+) -> AuthRegisterResponse:
     """
     This route is used for registering new accounts.
     It checks for any duplicated email / username / phone.

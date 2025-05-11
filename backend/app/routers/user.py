@@ -20,13 +20,13 @@ import bcrypt
 from fastapi import APIRouter, Depends, File, HTTPException, Security
 from fastapi.responses import ORJSONResponse
 from fastapi_jwt import JwtAuthorizationCredentials
-from odmantic import ObjectId
+from odmantic import AIOEngine, ObjectId
 from pydantic import BaseModel, StringConstraints
 
 from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
-from utils.mongo import engine, serialize_mongo_object
+from utils.mongo import serialize_mongo_object, get_prod_database
 from internal.models import Friendship, User, UserTier
 
 # region routes
@@ -43,7 +43,10 @@ class UserFetchProfileResponse(BaseModel):
 
 
 @user_router.get("/profile/myself")
-async def fetch_my_profile(user: User | None = Depends(get_user)):
+async def fetch_my_profile(
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
     response = serialize_mongo_object(
@@ -66,7 +69,9 @@ async def fetch_my_profile(user: User | None = Depends(get_user)):
 
 
 @user_router.get("/profile/fetch/{user_id}")
-async def fetch_user_profile(user_id: str) -> UserFetchProfileResponse:
+async def fetch_user_profile(
+    user_id: str, engine: AIOEngine = Depends(get_prod_database)
+) -> UserFetchProfileResponse:
     user = await engine.find_one(User, User.id == ObjectId(user_id))
     if not user:
         raise HTTPException(status_code=400, detail="User not found")
@@ -92,7 +97,9 @@ class UserEditProfileBody(BaseModel):
 
 @user_router.post("/profile/edit")
 async def edit_user_profile(
-    body: UserEditProfileBody, user: User | None = Depends(get_user)
+    body: UserEditProfileBody,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
@@ -110,7 +117,9 @@ async def edit_user_profile(
 
 @user_router.post("/profile/icon/upload")
 async def upload_user_icon(
-    file: Annotated[bytes, File()], user: User | None = Depends(get_user)
+    file: Annotated[bytes, File()],
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
@@ -122,7 +131,10 @@ async def upload_user_icon(
 
 
 @user_router.delete("/profile/icon/remove")
-async def remove_user_icon(user: User | None = Depends(get_user)):
+async def remove_user_icon(
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
     if not user.iconUrl:
@@ -137,7 +149,11 @@ async def remove_user_icon(user: User | None = Depends(get_user)):
 
 
 @user_router.get("/search")
-async def search_user(query: str, user: User | None = Depends(get_user)):
+async def search_user(
+    query: str,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         return HTTPException(status_code=401, detail="Unauthorized")
     if len(query) < 3:
@@ -163,7 +179,7 @@ async def search_user(query: str, user: User | None = Depends(get_user)):
     responseUsers = []
     for query_user in query_users:
         if user.id != query_user.id:
-            friendship = await Friendship.get_friendship(user, query_user)
+            friendship = await Friendship.get_friendship(engine, user, query_user)
             if friendship:
                 friend_status = "friend" if friendship.accepted else "pending"
             else:
@@ -185,7 +201,11 @@ async def search_user(query: str, user: User | None = Depends(get_user)):
 
 
 @user_router.post("/friends/invite/{target_user_id}")
-async def invite_friend(target_user_id: str, user: User | None = Depends(get_user)):
+async def invite_friend(
+    target_user_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     target_user = await engine.find_one(User, User.id == ObjectId(target_user_id))
@@ -194,7 +214,7 @@ async def invite_friend(target_user_id: str, user: User | None = Depends(get_use
     if target_user.id == user.id:
         raise HTTPException(status_code=400, detail="Cannot invite yourself")
     log_debug(target_user.id)
-    existing_friendship = await Friendship.get_friendship(user, target_user)
+    existing_friendship = await Friendship.get_friendship(engine, user, target_user)
     if existing_friendship:
         if existing_friendship.accepted:
             raise HTTPException(status_code=400, detail="Already friends")
@@ -208,13 +228,17 @@ async def invite_friend(target_user_id: str, user: User | None = Depends(get_use
 
 
 @user_router.post("/friends/accept/{target_user_id}")
-async def accept_friend(target_user_id: str, user: User | None = Depends(get_user)):
+async def accept_friend(
+    target_user_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     target_user = await engine.find_one(User, User.id == ObjectId(target_user_id))
     if not target_user:
         raise HTTPException(status_code=400, detail="Target user not found")
-    friendship = await Friendship.get_friendship(user, target_user)
+    friendship = await Friendship.get_friendship(engine, user, target_user)
     if not friendship:
         raise HTTPException(status_code=400, detail="Invitation not found")
     if friendship.accepted:
@@ -228,13 +252,17 @@ async def accept_friend(target_user_id: str, user: User | None = Depends(get_use
 
 
 @user_router.post("/friends/remove/{target_user_id}")
-async def remove_friend(target_user_id: str, user: User | None = Depends(get_user)):
+async def remove_friend(
+    target_user_id: str,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     target_user = await engine.find_one(User, User.id == ObjectId(target_user_id))
     if not target_user:
         raise HTTPException(status_code=400, detail="Target user not found")
-    friendship = await Friendship.get_friendship(user, target_user)
+    friendship = await Friendship.get_friendship(engine, user, target_user)
     if not friendship:
         raise HTTPException(status_code=400, detail="Not friends")
     await engine.delete(friendship)
@@ -242,7 +270,10 @@ async def remove_friend(target_user_id: str, user: User | None = Depends(get_use
 
 
 @user_router.get("/friends/list")
-async def list_friends(user: User | None = Depends(get_user)):
+async def list_friends(
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     log_debug(user.id)
@@ -286,16 +317,20 @@ async def list_friends(user: User | None = Depends(get_user)):
 
 
 @user_router.get("/friends/suggested")
-async def get_suggested_friends(limit: int = 10, user: User | None = Depends(get_user)):
+async def get_suggested_friends(
+    limit: int = 10,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+):
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
     suggested_friends = await engine.find(User, User.id != user.id, limit=100)
     result = []
     for suggested_friend in suggested_friends:
-        if await Friendship.are_friends(user, suggested_friend):
+        if await Friendship.are_friends(engine, user, suggested_friend):
             continue
         mutual_friends_count = await Friendship.get_mutual_friends_count(
-            user, suggested_friend
+            engine, user, suggested_friend
         )
         result.append((mutual_friends_count, suggested_friend))
     result.sort(key=lambda x: x[0], reverse=True)
