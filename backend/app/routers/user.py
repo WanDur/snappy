@@ -27,7 +27,7 @@ from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
 from utils.mongo import serialize_mongo_object, get_prod_database
-from internal.models import Friendship, User, UserTier
+from internal.models import AlbumPhoto, Friendship, User, UserTier, Photo, Album
 
 # region routes
 
@@ -70,11 +70,67 @@ async def fetch_my_profile(
 
 @user_router.get("/profile/fetch/{user_id}")
 async def fetch_user_profile(
-    user_id: str, engine: AIOEngine = Depends(get_prod_database)
+    user_id: str,
+    detail: bool = False,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ) -> UserFetchProfileResponse:
-    user = await engine.find_one(User, User.id == ObjectId(user_id))
     if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    target_user = await engine.find_one(User, User.id == ObjectId(user_id))
+    if not target_user:
         raise HTTPException(status_code=400, detail="User not found")
+    if detail:
+        mutual_friends = await Friendship.get_mutual_friends_count(
+            engine, user, target_user
+        )
+        posts_count = await engine.count(Photo, Photo.user == target_user.id)
+        friends_count = await engine.count(
+            Friendship,
+            (Friendship.user1 == target_user.id)
+            | (Friendship.user2 == target_user.id) & (Friendship.accepted == True),
+        )
+        albums_count = await engine.count(Album, Album.createdBy == target_user.id)
+        recent_photos = await engine.find(
+            Photo,
+            Photo.user == target_user.id,
+            limit=6,
+            sort=Photo.timestamp.desc(),
+        )
+        shared_albums = await engine.find(Album, Album.createdBy == target_user.id)
+
+        async def get_album_info(album: Album) -> dict:
+            album_photos = await engine.find(AlbumPhoto, AlbumPhoto.album == album.id)
+            return {
+                **serialize_mongo_object(album, project=["id", "name"]),
+                "count": len(album_photos),
+                "coverUrl": album_photos[0].url if album_photos else None,
+            }
+
+        return ORJSONResponse(
+            {
+                **serialize_mongo_object(
+                    target_user,
+                    project=["id", "username", "bio", "name", "iconUrl", "tier"],
+                ),
+                "friendStatus": await Friendship.get_friend_status(
+                    engine, user, target_user
+                ),
+                "mutualFriends": mutual_friends,
+                "postsCount": posts_count,
+                "friendsCount": friends_count,
+                "albumsCount": albums_count,
+                "recentPhotos": [
+                    serialize_mongo_object(photo, project=["id", "url", "timestamp"])
+                    for photo in recent_photos
+                ],
+                "sharedAlbums": [
+                    await get_album_info(album) for album in shared_albums
+                ],
+            }
+        )
+
     return ORJSONResponse(
         serialize_mongo_object(
             user, project=["id", "username", "name", "iconUrl", "tier"]
@@ -179,11 +235,7 @@ async def search_user(
     responseUsers = []
     for query_user in query_users:
         if user.id != query_user.id:
-            friendship = await Friendship.get_friendship(engine, user, query_user)
-            if friendship:
-                friend_status = "friend" if friendship.accepted else "pending"
-            else:
-                friend_status = "suggested"
+            friend_status = await Friendship.get_friend_status(engine, user, query_user)
             responseUsers.append(
                 {
                     "friendStatus": friend_status,
@@ -247,7 +299,7 @@ async def accept_friend(
         raise HTTPException(
             status_code=400, detail="Cannot accept invitation of yourself"
         )
-    await friendship.accept()
+    await friendship.accept(engine)
     return ORJSONResponse({"status": "success"})
 
 

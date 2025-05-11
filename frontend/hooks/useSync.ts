@@ -1,6 +1,6 @@
 import { parsePublicUrl } from "@/contexts/auth";
 import { AuthContextProps } from "@/types/auth.type";
-import { Friend, FriendResponse } from "@/types/friend.types";
+import { Friend, FriendResponse, FriendStatus } from "@/types/friend.types";
 import { useChatStore, useFriendStore, useUserStore } from "@/hooks";
 import {
   FetchNewMessageResponse,
@@ -21,7 +21,8 @@ const getLocalTime = (timestamp: Date) => {
 
 export const useSync = () => {
   const { user, setUser, updateAvatar } = useUserStore();
-  const { addFriend, clearFriends, hasFriend, updateFriend } = useFriendStore();
+  const { friends, addFriend, removeFriend, hasFriend, updateFriend } =
+    useFriendStore();
   const {
     addChat,
     hasChat,
@@ -61,22 +62,23 @@ export const useSync = () => {
     try {
       const res = await session.apiWithToken.get("/user/friends/list");
       const data = res.data;
+      console.log("Fetching friends");
       data.friends.forEach((user: FriendResponse) => {
         if (hasFriend(user.id)) {
           updateFriend(user.id, {
             ...user,
             avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
-            type: "friend",
+            type: FriendStatus.FRIEND,
             albumList: [],
-            photolist: [],
+            photoList: [],
           });
         } else {
           addFriend({
             ...user,
             avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
-            type: "friend",
+            type: FriendStatus.FRIEND,
             albumList: [],
-            photolist: [],
+            photoList: [],
           });
         }
       });
@@ -84,10 +86,16 @@ export const useSync = () => {
         addFriend({
           ...user,
           avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
-          type: "pending",
+          type: FriendStatus.PENDING,
           albumList: [],
-          photolist: [],
+          photoList: [],
         });
+      });
+      const removedFriends = friends.filter(
+        (friend) => !data.friends.some((user: Friend) => user.id === friend.id)
+      );
+      removedFriends.forEach((friend) => {
+        removeFriend(friend.id);
       });
     } catch (error) {
       console.error("Error fetching friends:", error);
@@ -184,16 +192,15 @@ export const useSync = () => {
     try {
       const url = getLastFetchTime()
         ? `/chat/fetch?since=${getLastFetchTime()}`
-        : "/chat/fetch";
+        : "/chat/fetch_history";
       updateLastFetchTime();
       connectChatWebSocket(session);
       // Fetch new messages with GET endpoint
+      console.log("Fetching chats from", url);
       session.apiWithToken.get(url).then((res) => {
         const data: FetchNewMessageResponse = res.data;
-        console.log("data", data);
         data.chats.forEach((chat) => {
           // If this is a new chat, fetch the chat info
-          console.log("chat", chat);
           session.apiWithToken
             .get(`/chat/conversation/${chat.conversationId}/info`)
             .then((res) => {
@@ -208,9 +215,9 @@ export const useSync = () => {
                   avatar: participant.iconUrl
                     ? parsePublicUrl(participant.iconUrl)
                     : undefined,
-                  type: "suggested", // TODO: change to the correct type
+                  type: FriendStatus.SUGGESTED,
                   albumList: [],
-                  photolist: [],
+                  photoList: [],
                 })
               );
               participants.forEach((participant) => {
@@ -228,12 +235,13 @@ export const useSync = () => {
 
               if (!hasChat(chat.conversationId)) {
                 // Add the chat to the chat store
+                console.log("Adding new chat to the chat store");
                 addChat({
                   id: chat.conversationId,
                   type: chat.conversationType,
                   participants: users,
                   lastMessageTime: chat.lastMessageTime,
-                  initialDate: getLocalTime(chat.messages[0].timestamp),
+                  initialDate: getLocalTime(chatInfo.initialDate),
                   unreadCount: chat.messages.length,
                   messages: chat.messages.map((message) => ({
                     _id: message.messageId,
@@ -249,8 +257,6 @@ export const useSync = () => {
                 });
               } else {
                 // If the conversation is previously stored, just append the new messages
-
-                console.log("Appending new messages to existing chat");
                 const messages = chat.messages
                   .filter(
                     (message) =>
@@ -273,7 +279,6 @@ export const useSync = () => {
                   chat.conversationId,
                   getLocalTime(chat.lastMessageTime)
                 );
-                console.log("messages", messages);
                 addMessage(chat.conversationId, messages);
                 addUnreadCount(chat.conversationId, messages.length);
               }

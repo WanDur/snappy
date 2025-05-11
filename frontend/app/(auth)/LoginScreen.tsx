@@ -8,7 +8,6 @@ import { Constants } from '@/constants'
 import { Themed, Bounceable } from '@/components'
 import { useTheme } from '@/hooks'
 import { useSession } from '@/contexts/auth'
-// import { useSession } from '@/contexts/auth'
 
 const LoginScreen = () => {
   const router = useRouter()

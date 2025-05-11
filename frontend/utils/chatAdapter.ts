@@ -27,7 +27,7 @@ export const getMessageUserFromFriendId = async (
       avatar: user.iconUrl,
       type: "friend",
       albumList: [],
-      photolist: [],
+      photoList: [],
     });
     return {
       _id: user.id,

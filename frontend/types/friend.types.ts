@@ -1,6 +1,13 @@
-import { Album } from "./album.types";
-import { Photo } from "./photo.types";
+import { Album, AlbumPreview } from "./album.types";
+import { Photo, PhotoPreview } from "./photo.types";
 import { User as TUser } from "react-native-gifted-chat";
+
+export enum FriendStatus {
+  FRIEND = "friend",
+  PENDING = "pending",
+  SUGGESTED = "suggested",
+  OUTGOING = "outgoing",
+}
 
 export interface Friend {
   /**
@@ -12,10 +19,10 @@ export interface Friend {
   username: string;
   avatar?: string;
   albumList: Album[];
-  type: "friend" | "pending" | "suggested" | "outgoing";
+  type: FriendStatus;
   lastActive?: string;
   mutualFriends?: number;
-  photolist: Photo[];
+  photoList: Photo[];
 }
 
 export interface FriendResponse {
@@ -23,5 +30,20 @@ export interface FriendResponse {
   name: string;
   username: string;
   iconUrl: string;
-  friendStatus: "friend" | "pending" | "suggested" | "outgoing";
+  friendStatus: FriendStatus;
+}
+
+export interface FriendDetailResponse {
+  id: string;
+  name: string;
+  username: string;
+  iconUrl?: string;
+  bio?: string;
+  friendStatus: FriendStatus;
+  mutualFriends: number;
+  postsCount: number;
+  friendsCount: number;
+  albumsCount: number;
+  sharedAlbums: AlbumPreview[];
+  recentPhotos: PhotoPreview[];
 }

@@ -12,11 +12,11 @@ import { HeaderText } from '@/components/ui'
 import { useTheme, useFriendStore, useChatStore } from '@/hooks'
 import { Friend } from '@/types'
 import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
-import { FriendResponse } from '@/types/friend.types'
+import { FriendResponse, FriendStatus } from '@/types/friend.types'
 import { set } from 'zod'
 import { useSync } from '@/hooks/useSync'
 
-const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
+const generateUser = (type: FriendStatus) => {
   const names = [
     'Sara Johnson',
     'Mike Chen',
@@ -42,7 +42,7 @@ const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
   const name = names[Math.floor(Math.random() * names.length)]
   const username = name.toLowerCase().replace(/\s+/g, '').slice(0, 10)
 
-  const item: Friend = { id, name, avatar, type, username, albumList: [], photolist: [] }
+  const item: Friend = { id, name, avatar, type, username, albumList: [], photoList: [] }
   const lastActiveOptions = ['Just now', '2h ago', '4h ago', '1d ago', '3d ago']
   item.lastActive = lastActiveOptions[Math.floor(Math.random() * lastActiveOptions.length)]
   item.mutualFriends = Math.floor(Math.random() * 10)
@@ -66,9 +66,9 @@ const FriendsScreen = () => {
   const [searchResults, setSearchResults] = useState<Friend[]>([])
   
 
-  const myFriend = friends.filter((f) => f.type === 'friend')
-  const pendingRequests = friends.filter((f) => f.type === 'pending')
-  const suggestedFriends = friends.filter((f) => f.type === 'suggested')
+  const myFriend = friends.filter((f) => f.type === FriendStatus.FRIEND)
+  const pendingRequests = friends.filter((f) => f.type === FriendStatus.PENDING)
+  const suggestedFriends = friends.filter((f) => f.type === FriendStatus.SUGGESTED)
 
   useEffect(() => {
     if (bypassLogin()) {
@@ -87,7 +87,7 @@ const FriendsScreen = () => {
         const parsedData = data.map((user: FriendResponse) => ({
           ...user,
           avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
-          type: "suggested",
+          type: FriendStatus.SUGGESTED,
           albumList: [],
         }))
         parsedData.forEach((friend: Friend) => addFriend(friend))
@@ -124,10 +124,10 @@ const FriendsScreen = () => {
           username: 'alexj',
           avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
           albumList: [],
-          type: 'suggested',
+          type: FriendStatus.SUGGESTED,
           lastActive: 'Just now',
           mutualFriends: 3,
-          photolist: []
+          photoList: []
         },
         {
           id: '2',
@@ -135,10 +135,10 @@ const FriendsScreen = () => {
           username: 'sarahw',
           avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
           albumList: [],
-          type: 'suggested',
+          type: FriendStatus.SUGGESTED,
           lastActive: 'Just now',
           mutualFriends: 2,
-          photolist: []
+          photoList: []
         },
         {
           id: '3',
@@ -146,10 +146,10 @@ const FriendsScreen = () => {
           username: 'michaelb',
           avatar: 'https://randomuser.me/api/portraits/men/22.jpg',
           albumList: [],
-          type: 'suggested',
+          type: FriendStatus.SUGGESTED,
           lastActive: 'Just now',
           mutualFriends: 1,
-          photolist: []
+          photoList: []
         },
         {
           id: '4',
@@ -157,10 +157,10 @@ const FriendsScreen = () => {
           username: 'jessicad',
           avatar: 'https://randomuser.me/api/portraits/women/17.jpg',
           albumList: [],
-          type: 'suggested',
+          type: FriendStatus.SUGGESTED,
           lastActive: 'Just now',
           mutualFriends: 5,
-          photolist: []
+          photoList: []
         }
       ]
   
@@ -175,12 +175,13 @@ const FriendsScreen = () => {
       session.apiWithToken.get('/user/search', { params: { query } })
         .then((res) => {
           const data = res.data.users
-          const parsedData = data.map((user: FriendResponse) => ({
-            ...user,
-            avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
-            type: user.friendStatus,  
+          const parsedData = data.map((resultUser: FriendResponse) => ({
+            ...resultUser,
+            avatar: resultUser.iconUrl ? parsePublicUrl(resultUser.iconUrl) : undefined,
+            type: resultUser.friendStatus,  
             albumList: [],
           }))
+          console.log("parsedData", parsedData);
           setSearchResults(parsedData)
           setIsLoading(false)
         })
@@ -214,12 +215,12 @@ const FriendsScreen = () => {
         // Update the friend type in the searchResults state
         setSearchResults((prevResults) =>
           prevResults.map((friend) =>
-            friend.id === id ? { ...friend, type: 'outgoing' } : friend
+            friend.id === id ? { ...friend, type: FriendStatus.OUTGOING } : friend
           )
         );
 
         // Update the friend type in the global store (optional)
-        changeFriendType(id, 'pending');
+        changeFriendType(id, FriendStatus.PENDING);
       })
       .catch((error) => {
         console.error('Error sending friend request:', error);
@@ -231,7 +232,11 @@ const FriendsScreen = () => {
     session.apiWithToken.post(`/user/friends/remove/${id}`)
       .then((res) => {
         Alert.alert('Success', 'Friend request canceled successfully.');
-        setSearchResults((prevResults) => prevResults.filter((friend) => friend.id !== id));
+        setSearchResults((prevResults) =>
+          prevResults.map((friend) =>
+            friend.id === id ? { ...friend, type: FriendStatus.SUGGESTED } : friend
+          )
+        );
         removeFriend(id)
       })
       .catch((error) => {
@@ -245,7 +250,7 @@ const FriendsScreen = () => {
       session.apiWithToken.post(`/user/friends/accept/${id}`)
         .then((res) => {
           Alert.alert('Success', 'Friend request accepted successfully.');
-          changeFriendType(id, 'friend')
+          changeFriendType(id, FriendStatus.FRIEND)
         })
         .catch((error) => {
           console.error('Error accepting friend request:', error);
@@ -373,7 +378,7 @@ const FriendsScreen = () => {
             title="Friend Requests"
             style={styles.sectionHeader}
             buttonText="$add"
-            onPress={() => addFriend(generateUser('pending'))}
+            onPress={() => addFriend(generateUser(FriendStatus.PENDING))}
           />
           <Themed.View type="divider" />
           <Animated.FlatList
@@ -391,7 +396,7 @@ const FriendsScreen = () => {
         title="Your Friends"
         style={styles.sectionHeader}
         buttonText="$add"
-        onPress={() => addFriend(generateUser('friend'))}
+        onPress={() => addFriend(generateUser(FriendStatus.FRIEND))}
       />
 
       {myFriend.length > 0 ? (
@@ -419,7 +424,7 @@ const FriendsScreen = () => {
         title="Suggested Friends"
         style={styles.sectionHeader}
         buttonText="$add"
-        onPress={() => addFriend(generateUser('suggested'))}
+        onPress={() => addFriend(generateUser(FriendStatus.SUGGESTED))}
       />
       <Themed.View type="divider" />
       <Animated.FlatList
@@ -455,7 +460,7 @@ const FriendsScreen = () => {
         </Themed.Text>
       </View>
       {
-        item.type === 'suggested' && (  
+        item.type === FriendStatus.SUGGESTED && (  
           <TouchableOpacity
             style={{ backgroundColor: '#007AFF', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
             onPress={() => sendFriendRequest(item.id)}
@@ -465,7 +470,7 @@ const FriendsScreen = () => {
         )
       }
       {
-        item.type === 'pending' && (  
+        item.type === FriendStatus.OUTGOING && (  
           <TouchableOpacity
             style={{ backgroundColor: colors.orange, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
             onPress={() => {
@@ -482,7 +487,7 @@ const FriendsScreen = () => {
         )
       }
       {
-        item.type === 'friend' && (
+        item.type === FriendStatus.FRIEND && (
           <TouchableOpacity
             style={{ backgroundColor: colors.green, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20 }}
           >
@@ -521,7 +526,7 @@ const FriendsScreen = () => {
             <HeaderText
               text="add pending"
               textProps={{ state: true }}
-              onPress={() => addFriend(generateUser('pending'))}
+              onPress={() => addFriend(generateUser(FriendStatus.PENDING))}
             />
           ),
           headerSearchBarOptions: {

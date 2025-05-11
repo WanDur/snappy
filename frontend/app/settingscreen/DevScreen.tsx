@@ -84,7 +84,7 @@ const DevScreen = () => {
           <SettingsGroup.Button
             title="Delete all chat data"
             onPress={() => {
-              cs.allChatID.forEach((id) => cs.deleteChat(id))
+              cs.clearChats()
               Alert.alert('Deleted all chat data')
             }}
             titleStyle={{ color: 'red' }}

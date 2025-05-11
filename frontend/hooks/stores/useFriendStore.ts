@@ -4,6 +4,7 @@ import { immer } from "zustand/middleware/immer";
 import Storage from "expo-sqlite/kv-store";
 
 import { Friend } from "@/types";
+import { FriendStatus } from "@/types/friend.types";
 
 interface FriendStore {
   friends: Friend[];
@@ -11,10 +12,7 @@ interface FriendStore {
   addFriend: (friend: Friend) => void;
   getFriend: (id: string) => Friend | undefined;
   removeFriend: (id: string) => void;
-  changeFriendType: (
-    id: string,
-    type: "friend" | "pending" | "suggested" | "outgoing"
-  ) => void;
+  changeFriendType: (id: string, type: FriendStatus) => void;
   clearFriends: () => void;
   updateFriend: (id: string, friend: Friend) => void;
 }
