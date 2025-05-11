@@ -16,7 +16,7 @@ import { Image } from 'expo-image'
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs'
 import { useHeaderHeight } from '@react-navigation/elements'
 
-import { useTheme, useUserStore, useFriendStore } from '@/hooks'
+import { useTheme, useUserStore, useFriendStore, usePhotoStore } from '@/hooks'
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
 import { IconSymbol } from '@/components/ui/IconSymbol'
@@ -27,6 +27,9 @@ import { useSync } from '@/hooks/useSync'
 
 import * as ImagePicker from 'expo-image-picker'
 import * as MediaLibrary from 'expo-media-library'
+import * as FileSystem from 'expo-file-system'
+
+import { id as makeId } from 'utils'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -86,7 +89,7 @@ const addDays = (d: Date, n: number) => {
 
 /**************** Mock generators (for feed demo only) ****************/
 const randomThumb = () => `https://picsum.photos/seed/${Math.floor(Math.random() * 10000)}/800`
-
+/***************building day tiles and feed logics */
 const buildDays = (weekOffset: number): DayTile[] => {
   // Monday of the target week
   const today = new Date()
@@ -129,7 +132,7 @@ const buildWeeks = (count = 4): WeekBundle[] => {
 }
 
 /**************** Components ****************/
-const DayCell = ({ day, onAdd }: { day: DayTile; onAdd: () => void }) => {
+const DayCell = ({ day, onAdd, onOpenPhoto }: { day: DayTile; onAdd: () => void; onOpenPhoto: () => void }) => {
   const { colors } = useTheme()
   const isAdd = !!day.isAdd
   const isPhoto = day.hasMedia
@@ -142,7 +145,7 @@ const DayCell = ({ day, onAdd }: { day: DayTile; onAdd: () => void }) => {
   return (
     <TouchableOpacity
       activeOpacity={0.85}
-      onPress={isAdd ? onAdd : undefined}
+      onPress={isAdd ? onAdd : isPhoto ? onOpenPhoto : undefined}
       style={[
         styles.dayCell,
         { backgroundColor: colors.secondaryBg },
@@ -199,11 +202,13 @@ const AssetTile = ({ asset, onSelect }: { asset: MediaLibrary.Asset; onSelect: (
 const WeekPage = ({
   bundle,
   markSeen,
-  addMedia
+  addMedia,
+  openPhotoModal
 }: {
   bundle: WeekBundle
   markSeen: (id: string) => void
   addMedia: () => void
+  openPhotoModal: (week: WeekBundle, day: DayTile) => void
 }) => {
   const headerHeight = useHeaderHeight()
   const tabHeight = useBottomTabBarHeight()
@@ -212,7 +217,9 @@ const WeekPage = ({
   const ADAPTIVE_MARGIN = Constants.isIOS ? 0 : headerHeight
   const ADAPTIVE_PADDING = Constants.isIOS ? headerHeight : 0
 
-  const renderDay: ListRenderItem<DayTile> = ({ item }) => <DayCell day={item} onAdd={addMedia} />
+  const renderDay: ListRenderItem<DayTile> = ({ item }) => (
+    <DayCell day={item} onAdd={addMedia} onOpenPhoto={() => openPhotoModal(bundle, item)} />
+  )
   const renderFeed: ListRenderItem<FeedItem> = ({ item }) => <FeedCard item={item} onSeen={() => markSeen(item.id)} />
   return (
     <View
@@ -245,36 +252,6 @@ const WeekPage = ({
   )
 }
 
-/**************** Helper – Extract capture date from picker asset ****************/
-const getCaptureDate = async (asset: ImagePicker.ImagePickerAsset): Promise<Date> => {
-  // 1 ▸ Try EXIF first (works on iOS, some Android devices)
-  const exifDate = (asset.exif as any)?.DateTimeOriginal || (asset.exif as any)?.DateTime
-  if (exifDate && typeof exifDate === 'string') {
-    // EXIF datetime format "YYYY:MM:DD HH:MM:SS"
-    const parsed = exifDate.replace(/:/g, '-').replace(' ', 'T')
-    const d = new Date(parsed)
-    if (!isNaN(d.getTime())) return d
-  }
-
-  // 2 ▸ MediaLibrary (works reliably on Android & iOS)
-  if (asset.assetId) {
-    try {
-      const info = await MediaLibrary.getAssetInfoAsync(asset.assetId)
-      if (info && typeof info.creationTime === 'number') {
-        return new Date(info.creationTime)
-      }
-    } catch (e) {
-      console.warn('Failed to fetch MediaLibrary info', e)
-    }
-  }
-
-  // 3 ▸ Fallback to file modification time (Android legacy)
-  // Omitted because 'modificationTime' is not part of 'ImagePickerAsset'.
-
-  // 4 ▸ Last resort – now
-  return new Date()
-}
-
 /**************** HomeScreen ****************/
 const HomeScreen = () => {
   const session = useSession()
@@ -289,8 +266,24 @@ const HomeScreen = () => {
   const [weekListIndex, setWeekListIndex] = useState(0)
   const listRef = useRef<FlatList>(null)
 
-  type PhotoInfo = { uri: string }
-  const [mediaByDate, setMediaByDate] = useState<Record<string, PhotoInfo>>({})
+  //type PhotoInfo = { uri: string }
+  //const [mediaByDate, setMediaByDate] = useState<Record<string, PhotoInfo>>({})
+
+  /* === PHOTO STORE ====================================== */
+  const currentUserId = useUserStore((s) => s.user.id)
+  const addPhoto = usePhotoStore((s) => s.addPhoto)
+  const getUserPhotos = usePhotoStore((s) => s.getUserPhotos)
+  const myPhotos = getUserPhotos(currentUserId)
+
+  const mediaByDate = useMemo(() => {
+    const map: Record<string, { uri: string }> = {}
+    myPhotos.forEach((p) => {
+      const ts = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)
+      const iso = ts.toISOString().split('T')[0]
+      map[iso] = { uri: p.url }
+    })
+    return map
+  }, [myPhotos])
 
   /** picker modal state */
   const [pickerAssets, setPickerAssets] = useState<MediaLibrary.Asset[]>([])
@@ -329,6 +322,42 @@ const HomeScreen = () => {
   }, [])
 
   const getItemLayout = (_: any, index: number) => ({ length: SCREEN_HEIGHT, offset: SCREEN_HEIGHT * index, index })
+
+  /** HANDLING OPEN PHOTO MODEL */
+  // Quickly map ISO‑date → full Photo object
+  const photoObjByDate = useMemo(() => {
+    const map: Record<string, ReturnType<typeof getUserPhotos>[number]> = {}
+    myPhotos.forEach((p) => {
+      const iso = new Date(p.timestamp).toISOString().split('T')[0]
+      map[iso] = p
+    })
+    return map
+  }, [myPhotos])
+
+  // open the photo modal
+  const openPhotoModal = useCallback(
+    (week: WeekBundle, day: DayTile) => {
+      const iso = day.date.toISOString().split('T')[0]
+      const photo = photoObjByDate[iso]
+      if (!photo) return // should not happen – guard
+
+      // how many photos are in this SAME week?
+      const photosThisWeek = week.days
+        .filter((d) => !d.isAdd && photoObjByDate[ymd(d.date)])
+        .map((d) => photoObjByDate[ymd(d.date)])
+      const index = photosThisWeek.findIndex((p) => p?.id === photo.id)
+
+      router.push({
+        pathname: '/(modal)/ViewPhotoModal', // adjust if your route differs
+        params: {
+          photoId: photo.id,
+          index: index.toString(),
+          total: photosThisWeek.length.toString()
+        }
+      })
+    },
+    [photoObjByDate, router]
+  )
 
   /* -------- Combine Zustand data & local uploads to week bundles -------- */
   const enrichedWeeks = useMemo(() => {
@@ -397,18 +426,34 @@ const HomeScreen = () => {
     async (asset: MediaLibrary.Asset) => {
       if (!pickerWeekRef.current) return
       setPickerVisible(false)
+
+      /* 0 figure out the capture date */
       const captureDate = new Date(asset.creationTime)
       captureDate.setHours(0, 0, 0, 0)
       const iso = captureDate.toISOString().split('T')[0]
 
-      // duplicate check
+      // 1.duplicate check
       if (mediaByDate[iso]) {
         console.log('Photo exists', 'You have already selected a photo for this date.')
         return
       }
 
+      /* 2 file system */
+      const dir = FileSystem.documentDirectory + 'snappy/'
+      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+
+      const filename = `${makeId()}.jpg` // reuse the store’s id helper
+      const dest = dir + filename
+      await FileSystem.copyAsync({ from: asset.uri, to: dest })
+
       /* save to local */
-      setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
+      //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
+
+      addPhoto(currentUserId, {
+        id: filename.replace('.jpg', ''),
+        uri: dest,
+        timestamp: captureDate
+      })
 
       /* ensure week bundle present & patch */
       setWeeks((prev) => {
@@ -467,7 +512,14 @@ const HomeScreen = () => {
         data={enrichedWeeks}
         pagingEnabled
         keyExtractor={(w) => w.key}
-        renderItem={({ item }) => <WeekPage bundle={item} markSeen={markSeen} addMedia={() => openPicker(item)} />}
+        renderItem={({ item }) => (
+          <WeekPage
+            bundle={item}
+            markSeen={markSeen}
+            addMedia={() => openPicker(item)}
+            openPhotoModal={openPhotoModal}
+          />
+        )}
         getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
@@ -504,7 +556,6 @@ const tileWidth = 100
 const tileHeight = 120
 const assetSize = SCREEN_WIDTH / 3 - 2
 const grey = '#9EA0A6' // light grey used for empty text
-const pillBg = 'rgba(0,0,0,0.45)'
 
 const styles = StyleSheet.create({
   container: {
@@ -593,7 +644,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#fff',
-    backgroundColor: 'rgba(0,0,0,0.5)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4
