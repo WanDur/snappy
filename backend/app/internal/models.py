@@ -216,6 +216,7 @@ class Photo(Model):
     user: User = Reference()
     timestamp: datetime
     url: str
+    location: Optional[str] = None
     caption: Optional[str] = None
     taggedUserIds: list[ObjectId] = Field(default_factory=list)
 
@@ -261,6 +262,7 @@ class Album(Model):
     participants: list[ObjectId]
     createdAt: datetime
     createdBy: User = Reference()
+    location: Optional[str] = None
     photos: list[ObjectId] = Field(default_factory=list)
 
     @classmethod

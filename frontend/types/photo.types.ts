@@ -1,24 +1,24 @@
 /* ------------------------------------------------------------------
    Photo domain models  –  aligned with UML + extra week counters
 ------------------------------------------------------------------- */
-export interface PhotoLocation {
-  latitude: number;
-  longitude: number;
-  name?: string; // optional human-readable place
-}
+// export interface PhotoLocation {
+//   latitude: number;
+//   longitude: number;
+//   name?: string; // optional human-readable place
+// }
 
 export interface PhotoComment {
   id: string; // UUID per comment
   userId: string; // who wrote it
   message: string;
-  timestamp: string; // ISO-8601
+  timestamp: Date; // ISO-8601
 }
 
 export interface Photo {
   /* --- core fields from the UML diagram ---------------------------------- */
-  photoId: string; // primary key (UUID)
+  id: string; // primary key (UUID)
   userId: string; // uploader
-  timestamp: string; // upload time  (ISO-8601)
+  timestamp: Date; // upload time
   url: string; // local URI or remote CDN URL
   caption?: string;
   taggedUserIds: string[];
@@ -28,13 +28,20 @@ export interface Photo {
   comments: PhotoComment[]; // ordered oldest-first
 
   /* --- extra local-only metadata ----------------------------------------- */
-  location?: PhotoLocation;
-  orderInWeek: number; // e.g. 2  ( “2 / 3” that week )
-  weekTotal: number; // e.g. 3  ( denominator )
+  location?: string;
+  year: number;
+  week: number;
 }
 
 export interface PhotoPreview {
   id: string;
   url: string;
+  caption?: string;
+  location?: string;
   timestamp: Date;
+  taggedUserIds: string[];
+}
+
+export interface FetchUserPhotosResponse {
+  photos: PhotoPreview[];
 }

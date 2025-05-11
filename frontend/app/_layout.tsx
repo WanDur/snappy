@@ -11,7 +11,7 @@ import { useTheme, useUserStore } from '@/hooks'
 import { SettingsProvider } from '@/contexts'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { Stack } from '@/components/router-form'
-import { SessionProvider } from '@/contexts/auth'
+import { bypassLogin, SessionProvider } from '@/contexts/auth'
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -27,19 +27,21 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync()
-      setUser({
-        id: 'test',
-        name: 'Alex Johnson',
-        username: '@alexjphoto',
-        email: '@mail',
-        phone: '1234567890',
-        notificationTokens: [],
-        tier: {},
-        bio: '',
-        iconUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
-        premiumExpireTime: undefined
-      })
-      console.log('User set in _layout.tsx')
+      if (bypassLogin()) {
+        setUser({
+          id: '1y2318273091720312',
+          name: 'Alex Johnson',
+          username: '@alexjphoto',
+          email: '@mail',
+          phone: '1234567890',
+          notificationTokens: [],
+          tier: {},
+          bio: '',
+          iconUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
+          premiumExpireTime: undefined
+        })
+        console.log('User set in _layout.tsx')
+      }
     }
   }, [loaded])
 
