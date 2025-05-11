@@ -57,7 +57,7 @@ const FriendsScreen = () => {
 
   const { colors, isDark } = useTheme()
   const { friends, addFriend, getFriend, removeFriend, changeFriendType } = useFriendStore()
-  const { addChat, hasChat } = useChatStore()
+  const { addChat, hasChat, getChatWithFriend } = useChatStore()
 
   const [query, setQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
@@ -97,8 +97,9 @@ const FriendsScreen = () => {
       })
   }, [])
   const onPressMessage = (friendID: string) => {
-    const chatExist = hasChat(friendID)
-    if (!chatExist) {
+    console.log("onPressMessage", friendID)
+    const chat = getChatWithFriend(friendID)
+    if (!chat) {
       const friend = getFriend(friendID)!
       // addChat({
       //   id: friendID,
@@ -109,8 +110,9 @@ const FriendsScreen = () => {
       //   unreadCount: 0,
       //   messages: []
       // })
-    }
-    router.push({ pathname: '/screens/ChatScreen', params: { chatID: friendID } })
+    } else {
+      router.push({ pathname: '/screens/ChatScreen', params: { chatID: chat.id } })
+    } 
   }
 
   const fetchUsers = async (query: string) => {
