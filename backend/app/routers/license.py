@@ -7,12 +7,13 @@ import random
 import string
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import ORJSONResponse
+from odmantic import AIOEngine
 from pydantic import BaseModel
 
 from internal.models import License, User, UserTier
 from utils.auth import get_user
 from utils.debug import log_debug
-from utils.mongo import engine
+from utils.mongo import engine, get_prod_database
 
 license_router = APIRouter(prefix="/license", tags=["license"])
 
@@ -69,7 +70,9 @@ async def redeem_license(
     )
 
 
-async def generate_license_keys(days: int, count: int) -> list[str]:
+async def generate_license_keys(
+    days: int, count: int, engine: AIOEngine = Depends(get_prod_database)
+) -> list[str]:
     licenses = []
     while len(licenses) < count:
         key = "-".join(

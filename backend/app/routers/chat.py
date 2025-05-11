@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import random
 import string
 from typing import Annotated, Optional
-from odmantic import ObjectId
+from odmantic import AIOEngine, ObjectId
 from fastapi import (
     APIRouter,
     Depends,
@@ -25,7 +25,7 @@ from internal.models import Attachment, ConversationType, Message, User, Convers
 from utils.auth import get_user, get_user_from_token
 from utils.debug import log_debug
 from utils.minio import upload_file
-from utils.mongo import engine, serialize_mongo_object
+from utils.mongo import engine, serialize_mongo_object, get_prod_database
 
 chat_router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -43,7 +43,9 @@ class CreateDirectChatResponse(BaseModel):
 
 @chat_router.post("/create/direct")
 async def create_direct_chat(
-    body: CreateDirectChatBody, user: User | None = Depends(get_user)
+    body: CreateDirectChatBody,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ) -> CreateDirectChatResponse:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -54,7 +56,7 @@ async def create_direct_chat(
 
     # Check if the user is already in a conversation with the target user
     existing_conversation = await Conversation.find_direct_conversation(
-        user, target_user
+        engine, user, target_user
     )
     if existing_conversation:
         raise HTTPException(
@@ -83,7 +85,9 @@ class CreateGroupChatResponse(BaseModel):
 
 @chat_router.post("/create/group")
 async def create_group_chat(
-    body: CreateGroupChatBody, user: User | None = Depends(get_user)
+    body: CreateGroupChatBody,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ) -> CreateGroupChatResponse:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -160,7 +164,9 @@ class ConversationInfoResponse(BaseModel):
 
 @chat_router.get("/conversation/{conversation_id}/info")
 async def get_conversation_info(
-    conversation_id: ObjectId, user: User | None = Depends(get_user)
+    conversation_id: ObjectId,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
 ) -> ConversationInfoResponse:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -217,6 +223,7 @@ async def send_message(
     conversation_id: ObjectId,
     message: Annotated[str, Form()],
     attachments: Optional[list[UploadFile]] = None,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> SendMessageResponse:
     if user is None:
@@ -319,12 +326,13 @@ class FetchNewMessagesResponse(BaseModel):
 @chat_router.get("/fetch")
 async def fetch_messages(
     since: Optional[datetime] = None,
+    engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
 ) -> FetchNewMessagesResponse:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    conversation_ids = await Conversation.find_conversation_ids(user)
+    conversation_ids = await Conversation.find_conversation_ids(engine, user)
     new_messages = []
     for conversation_id in conversation_ids:
         from odmantic.query import and_

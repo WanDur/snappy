@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import ORJSONResponse
-from odmantic import ObjectId
+from odmantic import AIOEngine, ObjectId
 from pydantic import BaseModel
 
 from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
-from utils.mongo import engine, serialize_mongo_object
+from utils.mongo import engine, serialize_mongo_object, get_prod_database
 from internal.models import Album, AlbumPhoto, Friendship, User
 
 album_router = APIRouter(prefix="/album", tags=["album"])
@@ -27,6 +27,7 @@ class CreateAlbumBody(BaseModel):
 async def create_album(
     body: CreateAlbumBody,
     user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
 ) -> dict[str, str]:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -50,7 +51,7 @@ async def create_album(
             raise HTTPException(
                 status_code=400, detail=f"Invalid participant: {participantId}"
             )
-        if not await Friendship.are_friends(user, puser):
+        if not await Friendship.are_friends(engine, user, puser):
             raise HTTPException(
                 status_code=400,
                 detail=f"User @{puser.username} is not a friend",
@@ -79,6 +80,7 @@ async def edit_album(
     album_id: ObjectId,
     body: EditAlbumBody,
     user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
 ) -> dict[str, str]:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -95,12 +97,14 @@ async def edit_album(
     if body.participants:
         # Validate participant lists
         for participantId in body.participants:
-            puser = await engine.find_one(User.id == participantId)
+            if participantId == user.id:
+                continue
+            puser = await engine.find_one(User, User.id == participantId)
             if puser is None:
                 raise HTTPException(
                     status_code=400, detail=f"Invalid participant: {participantId}"
                 )
-            if not await Friendship.are_friends(user, puser):
+            if not await Friendship.are_friends(engine, user, puser):
                 raise HTTPException(
                     status_code=400,
                     detail=f"User @{puser.username} is not a friend",
@@ -125,6 +129,7 @@ async def upload_photo(
     file: UploadFile,
     caption: Annotated[Optional[str], Form()] = None,
     user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
 ) -> dict[str, str]:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -171,6 +176,7 @@ async def fetch_album(
     toYear: int,
     toWeek: int,
     user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
 ) -> dict[str, str]:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -210,4 +216,4 @@ async def fetch_album(
             }
         )
 
-    return ORJSONResponse(serialize_mongo_object(response))
+    return ORJSONResponse(serialize_mongo_object({"photos": response}))

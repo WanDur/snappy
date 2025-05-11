@@ -17,6 +17,10 @@ client = AsyncIOMotorClient(mongodb_connection_string)
 engine = AIOEngine(client=client, database="snappy")
 
 
+def get_prod_database() -> AIOEngine:
+    return engine
+
+
 def serialize_mongo_object(
     obj: any, project: list[str] = None, exclude: list[str] = None
 ) -> any:
