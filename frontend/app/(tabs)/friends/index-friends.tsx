@@ -42,7 +42,7 @@ const generateUser = (type: 'friend' | 'pending' | 'suggested') => {
   const name = names[Math.floor(Math.random() * names.length)]
   const username = name.toLowerCase().replace(/\s+/g, '').slice(0, 10)
 
-  const item: Friend = { id, name, avatar, type, username, albumList: [], photolist: [] }
+  const item: Friend = { id, name, avatar, type, username, albumList: [], photoList: [] }
   const lastActiveOptions = ['Just now', '2h ago', '4h ago', '1d ago', '3d ago']
   item.lastActive = lastActiveOptions[Math.floor(Math.random() * lastActiveOptions.length)]
   item.mutualFriends = Math.floor(Math.random() * 10)
@@ -127,7 +127,7 @@ const FriendsScreen = () => {
           type: 'suggested',
           lastActive: 'Just now',
           mutualFriends: 3,
-          photolist: []
+          photoList: []
         },
         {
           id: '2',
@@ -138,7 +138,7 @@ const FriendsScreen = () => {
           type: 'suggested',
           lastActive: 'Just now',
           mutualFriends: 2,
-          photolist: []
+          photoList: []
         },
         {
           id: '3',
@@ -149,7 +149,7 @@ const FriendsScreen = () => {
           type: 'suggested',
           lastActive: 'Just now',
           mutualFriends: 1,
-          photolist: []
+          photoList: []
         },
         {
           id: '4',
@@ -160,7 +160,7 @@ const FriendsScreen = () => {
           type: 'suggested',
           lastActive: 'Just now',
           mutualFriends: 5,
-          photolist: []
+          photoList: []
         }
       ]
   

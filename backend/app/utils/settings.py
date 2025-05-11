@@ -4,6 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    RUN_MODE: str
+
     AUTHJWT_SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_TIME: int
     REFRESH_TOKEN_EXPIRE_TIME: int

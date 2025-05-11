@@ -68,7 +68,7 @@ export const useSync = () => {
             avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
             type: "friend",
             albumList: [],
-            photolist: [],
+            photoList: [],
           });
         } else {
           addFriend({
@@ -76,7 +76,7 @@ export const useSync = () => {
             avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
             type: "friend",
             albumList: [],
-            photolist: [],
+            photoList: [],
           });
         }
       });
@@ -86,7 +86,7 @@ export const useSync = () => {
           avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
           type: "pending",
           albumList: [],
-          photolist: [],
+          photoList: [],
         });
       });
     } catch (error) {
@@ -210,7 +210,7 @@ export const useSync = () => {
                     : undefined,
                   type: "suggested", // TODO: change to the correct type
                   albumList: [],
-                  photolist: [],
+                  photoList: [],
                 })
               );
               participants.forEach((participant) => {

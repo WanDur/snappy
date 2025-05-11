@@ -1,5 +1,5 @@
 import { Album } from "./album.types";
-import { Photo } from "./photo.types";
+import { Photo, PhotoPreview } from "./photo.types";
 import { User as TUser } from "react-native-gifted-chat";
 
 export interface Friend {
@@ -15,7 +15,7 @@ export interface Friend {
   type: "friend" | "pending" | "suggested" | "outgoing";
   lastActive?: string;
   mutualFriends?: number;
-  photolist: Photo[];
+  photoList: Photo[];
 }
 
 export interface FriendResponse {
@@ -24,4 +24,18 @@ export interface FriendResponse {
   username: string;
   iconUrl: string;
   friendStatus: "friend" | "pending" | "suggested" | "outgoing";
+}
+
+export interface FriendDetailResponse {
+  id: string;
+  name: string;
+  username: string;
+  iconUrl: string;
+  bio?: string;
+  friendStatus: "friend" | "pending" | "suggested" | "outgoing";
+  mutualFriends: number;
+  postsCount: number;
+  friendsCount: number;
+  albumsCount: number;
+  recentPhotos: PhotoPreview[];
 }

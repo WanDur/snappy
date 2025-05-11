@@ -2,77 +2,108 @@
  * Screen Params:
  * friendID: string
  */
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, Dimensions } from 'react-native'
 import { Ionicons, Feather, AntDesign } from '@expo/vector-icons'
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 
 import { Themed, SectionHeader } from '@/components'
 import { Stack, ContentUnavailable } from '@/components/router-form'
-import { useFriendStore, useTheme, usePhotoStore } from '@/hooks'
+import { useFriendStore, useTheme, useUserStore } from '@/hooks'
+import { Friend } from '@/types'
+import { PhotoPreview } from '@/types/photo.types'
+import { AlbumPreview } from '@/types/album.types'
+import { bypassLogin, isAuthenticated, useSession } from '@/contexts/auth'
 
 const { width } = Dimensions.get('window')
 const PHOTO_SIZE = (width - 48) / 3
 
+interface ProfileData {
+  name: string
+  username: string
+  avatar?: string
+  bio: string;
+  postsCount: number;
+  friendsCount: number;
+  albumsCount: number;
+  mutualFriends: number;
+  recentPhotos: PhotoPreview[];
+  sharedAlbums: AlbumPreview[];
+}
+
+const sample_user = {
+  id: 'asdasdad',
+  bio: 'Photography enthusiast | Travel lover | Coffee addict',
+  name: 'Willi Wonka',
+  username: 'williwonka',
+  avatar: undefined,
+  type: 'friend',
+  mutualFriends: 0,
+  postsCount: 127,
+  friendsCount: 348,
+  albumsCount: 15,
+  recentPhotos: [
+    // your original four
+    { id: '1', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131', timestamp: new Date() },
+    { id: '2', imageUrl: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e', timestamp: new Date() },
+    { id: '3', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5', timestamp: new Date() },
+    { id: '4', imageUrl: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e', timestamp: new Date() },
+    // now 100 more, ids 5…104
+    ...Array.from({ length: 10 }, (_, i) => ({
+      id: `${i + 5}`,
+      imageUrl: `https://picsum.photos/${100 + i * 5}/${200 + i * 5}`
+    }))
+  ],
+  sharedAlbums: [
+    {
+      id: '1',
+      name: 'Summer Trip 2024',
+      count: 34,
+      coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'
+    },
+    {
+      id: '2',
+      name: 'Food Adventures',
+      count: 27,
+      coverUrl: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327'
+    },
+    {
+      id: '3',
+      name: 'City Explorations',
+      count: 42,
+      coverUrl: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b'
+    }
+  ]
+} as ProfileData
+
 const FriendProfileModal = () => {
+  const session = useSession()
   const { colors } = useTheme()
 
+  const { user } = useUserStore()
   const { friends } = useFriendStore()
   const { friendID } = useLocalSearchParams<{ friendID: string }>()
-  const friend = friends.find((f) => f.id === friendID)!
 
   const [isFriend, setIsFriend] = useState(true)
-  const [selectedPhoto, setSelectedPhoto] = useState(null)
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoPreview | null>(null)
+  const [shownUser, setShownUser] = useState<ProfileData>(sample_user);
 
-  // Sample data for the profile
-  const user = {
-    bio: 'Photography enthusiast | Travel lover | Coffee addict',
-    postsCount: 127,
-    friendsCount: 348,
-    albumsCount: 15,
-    recentPhotos: [
-      // your original four
-      { id: '1', imageUrl: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131' },
-      { id: '2', imageUrl: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e' },
-      { id: '3', imageUrl: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5' },
-      { id: '4', imageUrl: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e' },
-      // now 100 more, ids 5…104
-      ...Array.from({ length: 10 }, (_, i) => ({
-        id: `${i + 5}`,
-        imageUrl: `https://picsum.photos/${100 + i * 5}/${200 + i * 5}`
-      }))
-    ],
-    sharedAlbums: [
-      {
-        id: '1',
-        name: 'Summer Trip 2024',
-        count: 34,
-        coverUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e'
-      },
-      {
-        id: '2',
-        name: 'Food Adventures',
-        count: 27,
-        coverUrl: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327'
-      },
-      {
-        id: '3',
-        name: 'City Explorations',
-        count: 42,
-        coverUrl: 'https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b'
-      }
-    ]
-  }
+  useEffect(() => {
+    // Fetch user profile
+    if (bypassLogin()) {
+      return;
+    }
+    if (!isAuthenticated(session)) {
+      router.replace('/(auth)/LoginScreen')
+      return;
+    }
+    session.apiWithToken.get(`/user/profile/fetch/${friendID}?detail=true`).then((res) => {
+      console.log('res', res.data)
+      setShownUser(res.data)
+    })
+  }, [friendID])
 
-  // pick a random subset of 6-9 photos once on mount
-  const displayedPhotos = useMemo(() => {
-    // shuffle copy
-    const shuffled = [...user.recentPhotos].sort(() => Math.random() - 0.5)
-    // pick random count between 6 and 9
-    const count = Math.floor(Math.random() * 4) + 6
-    return shuffled.slice(0, count)
-  }, [user.recentPhotos])
 
   // Function to toggle friend status (for demo purposes)
   const toggleFriendStatus = () => {
@@ -100,7 +131,7 @@ const FriendProfileModal = () => {
   }
 
   // Render album item
-  const renderAlbumItem = ({ item }) => (
+  const renderAlbumItem = ({ item }: { item: AlbumPreview }) => (
     <TouchableOpacity style={styles.albumCard} activeOpacity={0.8}>
       <Image source={{ uri: item.coverUrl }} style={styles.albumCover} />
       <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.albumGradient} />
@@ -122,24 +153,24 @@ const FriendProfileModal = () => {
       <Themed.ScrollView style={{ flex: 1 }}>
         {/* Profile section */}
         <View style={styles.profileSection}>
-          {friend.avatar ? (
-            <Image source={{ uri: friend.avatar }} style={styles.profilePic} />
+          {shownUser.avatar ? (
+            <Image source={{ uri: shownUser.avatar }} style={styles.profilePic} />
           ) : (
             <Ionicons name="person-circle-outline" size={50} color={colors.gray} style={{ marginLeft: 4 }} />
           )}
 
           <View style={styles.userInfo}>
-            <Themed.Text style={styles.userName}>{friend.name}</Themed.Text>
+            <Themed.Text style={styles.userName}>{shownUser.name}</Themed.Text>
             <Themed.Text style={styles.userHandle} text70>
-              @username
+              @{shownUser.username}
             </Themed.Text>
-            <Themed.Text style={styles.lastActive}>127 posts • Active {friend.lastActive}</Themed.Text>
+            <Themed.Text style={styles.lastActive}>{shownUser.postsCount} posts</Themed.Text>
           </View>
         </View>
 
         {/* Bio section */}
         <View style={{ paddingHorizontal: 16 }}>
-          <Themed.Text style={styles.bioText}>{user.bio}</Themed.Text>
+          <Themed.Text style={styles.bioText}>{shownUser.bio}</Themed.Text>
         </View>
 
         <View style={styles.actionSection}>
@@ -171,7 +202,7 @@ const FriendProfileModal = () => {
               <SectionHeader title="Recent Photos" />
 
               <View style={styles.photoGrid}>
-                {displayedPhotos.slice(0, 6).map((photo, index) => (
+                {shownUser.recentPhotos.slice(0, 6).map((photo, index) => (
                   <TouchableOpacity
                     key={photo.id}
                     style={styles.photoGridItem}
@@ -179,9 +210,9 @@ const FriendProfileModal = () => {
                     onPress={() => setSelectedPhoto(photo)}
                   >
                     <Image source={{ uri: photo.imageUrl }} style={styles.photoGridThumbnail} />
-                    {index === 5 && displayedPhotos.length > 6 && (
+                    {index === 5 && shownUser.recentPhotos.length > 6 && (
                       <View style={styles.morePhotosOverlay}>
-                        <Text style={styles.morePhotosText}>+{displayedPhotos.length - 6}</Text>
+                        <Text style={styles.morePhotosText}>+{shownUser.recentPhotos.length - 6}</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -194,7 +225,7 @@ const FriendProfileModal = () => {
               <SectionHeader title="Shared Albums" />
 
               <FlatList
-                data={user.sharedAlbums}
+                data={shownUser.sharedAlbums}
                 renderItem={renderAlbumItem}
                 keyExtractor={(item) => item.id}
                 horizontal

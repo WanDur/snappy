@@ -13,7 +13,7 @@ from utils.settings import get_settings
 settings = get_settings()
 # mongodb is the docker name of the mongodb container
 hostname = "mongodb"
-if os.environ.get("RUN_MODE") == "dev":
+if settings.RUN_MODE == "dev":
     hostname = "localhost"
 mongodb_connection_string = f"mongodb://{settings.MONGODB_USERNAME}:{settings.MONGODB_PASSWORD}@{hostname}:27017/"
 log_debug("Connecting to MongoDB at " + mongodb_connection_string)
