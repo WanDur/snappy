@@ -29,7 +29,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as MediaLibrary from 'expo-media-library'
 import * as FileSystem from 'expo-file-system'
 
-import { id as makeId } from 'utils'
+import { id as makeId, getDateString } from '@/utils/utils'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -198,14 +198,6 @@ const AssetTile = ({ asset, onSelect }: { asset: MediaLibrary.Asset; onSelect: (
     <Image source={{ uri: asset.uri }} style={styles.assetImg} contentFit="cover" />
   </TouchableOpacity>
 )
-
-const getDateString = (date: Date) => {
-  if (!(date instanceof Date)) {
-    return ''
-  }
-  const iso = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
-  return iso
-}
 
 const WeekPage = ({
   bundle,
@@ -448,7 +440,7 @@ const HomeScreen = () => {
       }
 
       /* 2 file system */
-      const dir = FileSystem.documentDirectory + 'snappy/'
+      const dir = FileSystem.documentDirectory!
       await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
 
       const filename = `${makeId()}.jpg` // reuse the store’s id helper
