@@ -99,7 +99,7 @@ const buildDays = (weekOffset: number): DayTile[] => {
   const tiles: DayTile[] = []
   for (let i = 0; i < 7; i++) {
     const date = addDays(mon, i)
-    const id = date.toISOString().split('T')[0]
+    const id = getDateString(date)
     const hasMedia = false // will be patched later based on uploads
     const label = `${date.toLocaleString('en', { month: 'short' })} ${date.getDate()}\n${date.toLocaleString('en', {
       weekday: 'short'
@@ -199,6 +199,14 @@ const AssetTile = ({ asset, onSelect }: { asset: MediaLibrary.Asset; onSelect: (
   </TouchableOpacity>
 )
 
+const getDateString = (date: Date) => {
+  if (!(date instanceof Date)) {
+    return ''
+  }
+  const iso = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`
+  return iso
+}
+
 const WeekPage = ({
   bundle,
   markSeen,
@@ -279,7 +287,7 @@ const HomeScreen = () => {
     const map: Record<string, { uri: string }> = {}
     myPhotos.forEach((p) => {
       const ts = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)
-      const iso = ts.toISOString().split('T')[0]
+      const iso = getDateString(ts)
       map[iso] = { uri: p.url }
     })
     return map
@@ -328,7 +336,8 @@ const HomeScreen = () => {
   const photoObjByDate = useMemo(() => {
     const map: Record<string, ReturnType<typeof getUserPhotos>[number]> = {}
     myPhotos.forEach((p) => {
-      const iso = new Date(p.timestamp).toISOString().split('T')[0]
+      const timestamp = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)
+      const iso = getDateString(timestamp)
       map[iso] = p
     })
     return map
@@ -337,7 +346,7 @@ const HomeScreen = () => {
   // open the photo modal
   const openPhotoModal = useCallback(
     (week: WeekBundle, day: DayTile) => {
-      const iso = day.date.toISOString().split('T')[0]
+      const iso = getDateString(day.date)
       const photo = photoObjByDate[iso]
       if (!photo) return // should not happen – guard
 
@@ -379,7 +388,7 @@ const HomeScreen = () => {
     return weeks.map((w) => {
       const patchedDays = w.days.map((d) => {
         if (d.isAdd) return d // skip the “+” tile
-        const iso = d.date.toISOString().split('T')[0]
+        const iso = getDateString(d.date)
         if (mediaByDate[iso]) {
           return { ...d, hasMedia: true, thumbnail: mediaByDate[iso].uri }
         }
@@ -430,7 +439,7 @@ const HomeScreen = () => {
       /* 0 figure out the capture date */
       const captureDate = new Date(asset.creationTime)
       captureDate.setHours(0, 0, 0, 0)
-      const iso = captureDate.toISOString().split('T')[0]
+      const iso = getDateString(captureDate)
 
       // 1.duplicate check
       if (mediaByDate[iso]) {
@@ -480,7 +489,7 @@ const HomeScreen = () => {
             ? {
                 ...w,
                 days: buildDays(offset).map((d) =>
-                  !d.isAdd && d.date.toISOString().split('T')[0] === iso
+                  !d.isAdd && getDateString(d.date) === iso
                     ? { ...d, hasMedia: true, thumbnail: asset.uri }
                     : d
                 )
