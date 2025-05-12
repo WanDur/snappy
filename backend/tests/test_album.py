@@ -28,8 +28,9 @@ async def test_create_album(client, mongodb, sample_freemium_user):
     res = await client.post(
         "/album/create",
         headers={"Authorization": f"Bearer {token}"},
-        json={
+        data={
             "name": "test album",
+            "shared": True,
             "participants": [
                 str(user.id),
                 str(other_users[0].id),
@@ -55,9 +56,10 @@ async def test_edit_album(client, mongodb, sample_freemium_user):
     res = await client.post(
         "/album/create",
         headers={"Authorization": f"Bearer {token}"},
-        json={
+        data={
             "name": "test album",
             "participants": [str(user.id)],
+            "shared": True,
         },
     )
 
@@ -104,7 +106,7 @@ async def test_album_upload_photo_and_fetch(client, mongodb, sample_freemium_use
     res = await client.post(
         "/album/create",
         headers={"Authorization": f"Bearer {token}"},
-        json={"name": "test album", "participants": [str(user.id)]},
+        data={"name": "test album", "participants": [str(user.id)], "shared": True},
     )
 
     assert res.status_code == 200

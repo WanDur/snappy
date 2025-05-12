@@ -280,7 +280,9 @@ async def invite_friend(
         user1=user, user2=target_user, inviteTimestamp=datetime.now(timezone.utc)
     )
     await engine.save(friendship)
-    return ORJSONResponse({"status": "success", "friendshipId": str(friendship.id)})
+    return ORJSONResponse(
+        {"status": "success", "friendship": serialize_mongo_object(friendship)}
+    )
 
 
 @user_router.post("/friends/accept/{target_user_id}")

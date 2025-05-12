@@ -168,9 +168,9 @@ async def comment_photo(
         raise HTTPException(status_code=404, detail="Photo not found")
 
     # Comment on the photo
-    await photo.comment(engine, user, body.message)
+    comment = await photo.comment(engine, user, body.message)
 
-    return ORJSONResponse(status_code=200, content={"success": True})
+    return ORJSONResponse(status_code=200, content={"commentId": str(comment.id)})
 
 
 @photo_router.get("/{photo_id}/comments")
@@ -195,7 +195,7 @@ async def get_comments(
         content={
             "comments": [
                 {
-                    "username": str(comment.user.username),
+                    "userId": str(comment.user.id),
                     "message": comment.message,
                     "timestamp": comment.timestamp,
                 }
