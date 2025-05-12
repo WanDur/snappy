@@ -2,15 +2,13 @@
  * Screen Params:
  * albumId: string
  */
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native'
-import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons'
+import { MaterialIcons, Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
-import { BottomSheetView, BottomSheetModal } from '@gorhom/bottom-sheet'
 
-import { Themed, TouchableBounce } from '@/components'
-import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
+import { Themed } from '@/components'
 import { HeaderText } from '@/components/ui'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Stack, ContentUnavailable } from '@/components/router-form'
@@ -30,16 +28,10 @@ const AlbumScreen = () => {
   const { isDark, colors } = useTheme()
 
   const album = useAlbumStore((state) => state.getAlbum(albumId))!
+
   const { addImage } = useAlbumStore()
 
-  const bottomSheetModalRef = useRef<BottomSheetModal>(null)
   const [isLoading, setIsLoading] = useState(false)
-
-  const formattedDate = new Date(album.createdAt).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
 
   const handleImagePick = async () => {
     setIsLoading(true)
@@ -101,7 +93,7 @@ const AlbumScreen = () => {
           <TouchableOpacity
             style={[styles.albumStatusBadge, album.shared ? sharedBadge : personalBadge]}
             activeOpacity={0.8}
-            onPress={() => bottomSheetModalRef.current?.present()}
+            onPress={() => router.push({ pathname: '/(modal)/AlbumDetailModal', params: { albumID: album.id } })}
           >
             <MaterialIcons
               name={album.shared ? 'group' : 'person'}
@@ -171,7 +163,9 @@ const AlbumScreen = () => {
         options={{
           headerTitle: album.name,
           headerRight: () => (
-            <HeaderText onPress={() => bottomSheetModalRef.current?.present()}>
+            <HeaderText
+              onPress={() => router.push({ pathname: '/(modal)/AlbumDetailModal', params: { albumID: album.id } })}
+            >
               <IconSymbol name="ellipsis.circle" color={colors.text} />
             </HeaderText>
           )
@@ -187,58 +181,6 @@ const AlbumScreen = () => {
       >
         {isLoading ? <ActivityIndicator color="#fff" /> : <IconSymbol name="plus" color="#fff" />}
       </TouchableOpacity>
-
-      <BottomSheetModal
-        index={1}
-        ref={bottomSheetModalRef}
-        snapPoints={['30%']}
-        handleComponent={BlurredHandle}
-        backgroundComponent={BlurredBackground}
-        backdropComponent={() => (
-          <View onTouchEnd={() => bottomSheetModalRef.current?.close()} style={[StyleSheet.absoluteFill]} />
-        )}
-      >
-        <BottomSheetView style={{ flex: 1, padding: 16 }}>
-          <Themed.Text style={{ fontSize: 24, fontWeight: '700', marginBottom: 16 }}>{album.name}</Themed.Text>
-
-          <View style={{ marginBottom: 16 }}>
-            {album.description && <Text style={styles.description}>{album.description}</Text>}
-
-            <View style={styles.metaItem}>
-              <Feather name="calendar" size={24} color={colors.blue} />
-              <Themed.Text style={styles.metaText}>{formattedDate}</Themed.Text>
-            </View>
-
-            {album.participants && album.participants.length > 0 && (
-              <View style={styles.metaItem}>
-                <MaterialIcons name="people" size={24} color={colors.blue} />
-                <Themed.Text style={styles.metaText}>
-                  {album.participants.length} {album.participants.length === 1 ? 'participant' : 'participants'}
-                </Themed.Text>
-              </View>
-            )}
-
-            <View style={styles.metaItem}>
-              <Feather name="image" size={24} color={colors.blue} />
-              <Themed.Text style={styles.metaText}>
-                {album.photos.length} {album.photos.length === 1 ? 'photo' : 'photos'}
-              </Themed.Text>
-            </View>
-          </View>
-
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableBounce style={[styles.button, styles.buttonRename]} onPress={() => {}}>
-              <Ionicons name="pencil-outline" size={16} color={styles.renameText.color} style={{ marginRight: 6 }} />
-              <Themed.Text style={styles.renameText}>Rename album</Themed.Text>
-            </TouchableBounce>
-
-            <TouchableBounce style={[styles.button, styles.buttonDelete]} onPress={() => {}}>
-              <Ionicons name="trash-outline" size={16} color={styles.deleteText.color} style={{ marginRight: 6 }} />
-              <Themed.Text style={styles.deleteText}>Delete album</Themed.Text>
-            </TouchableBounce>
-          </View>
-        </BottomSheetView>
-      </BottomSheetModal>
     </Themed.View>
   )
 }
@@ -272,47 +214,6 @@ const styles = StyleSheet.create({
   albumStatusText: {
     fontSize: 13,
     fontWeight: '600',
-    marginLeft: 6
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10
-  },
-  buttonRename: {
-    backgroundColor: 'rgba(10,132,255,0.15)',
-    borderWidth: 1,
-    borderColor: '#0A84FF'
-  },
-  buttonDelete: {
-    backgroundColor: 'rgba(255,69,58,0.15)',
-    borderWidth: 1,
-    borderColor: '#FF453A'
-  },
-  renameText: {
-    color: '#0A84FF',
-    fontWeight: '600'
-  },
-  deleteText: {
-    color: '#FF453A',
-    fontWeight: '600'
-  },
-  description: {
-    fontSize: 16,
-    color: '#444',
-    marginBottom: 16,
-    lineHeight: 22
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 8
-  },
-  metaText: {
-    fontSize: 16,
     marginLeft: 6
   },
   imageContainer: {
