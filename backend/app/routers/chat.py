@@ -135,7 +135,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     await websocket.accept()
     if user.id not in active_connections:
-        active_connections[user.id] = []
+        active_connections[user.id] = [websocket]
     else:
         active_connections[user.id].append(websocket)
     log_debug(f"User {user.id} connected to WebSocket")

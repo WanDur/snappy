@@ -114,6 +114,11 @@ interface ChatStore {
    */
   addChat: (chat: ChatItem) => void;
 
+  updateChatInfo: (
+    id: string,
+    info: { title?: string; iconUrl?: string }
+  ) => void;
+
   /**
    * update chat info
    */
@@ -165,6 +170,17 @@ export const useChatStore = create<ChatStore>()(
 
       hasChat(id) {
         return get().allChatID.includes(id);
+      },
+
+      updateChatInfo(id, info) {
+        set((state) => {
+          if (info.title) {
+            state.chats[id].title = info.title;
+          }
+          if (info.iconUrl) {
+            state.chats[id].iconUrl = info.iconUrl;
+          }
+        });
       },
 
       hasChatWithFriend(friendID) {
