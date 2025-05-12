@@ -10,10 +10,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import pytest_asyncio
 from main import app
 from routers.user import get_user
-from internal.models import User, UserTier
+from internal.models import Friendship, User, UserTier
 from utils.mongo import get_prod_database
 from utils.settings import get_settings
 from utils.auth import access_auth
+from .conftest import add_random_user, get_user_token
 
 
 @pytest.mark.asyncio
@@ -79,8 +80,8 @@ async def test_update_profile(client, sample_freemium_user, mongodb):
 
 
 @pytest.mark.asyncio
-async def test_upload_user_icon(client, sample_freemium_user):
-    """Test the POST /user/profile/icon/upload endpoint."""
+async def test_user_icon(client, sample_freemium_user):
+    """Test the POST /user/profile/icon/upload and DELETE /user/profile/icon/remove endpoints."""
     user, token = sample_freemium_user
     with open(
         os.path.join(os.path.dirname(__file__), "assets/upload_photo_1.jpg"), "rb"
@@ -101,3 +102,67 @@ async def test_upload_user_icon(client, sample_freemium_user):
     )
     assert res.status_code == 200
     assert user.iconUrl is None
+
+
+@pytest.mark.asyncio()
+async def test_search_username(client, sample_freemium_user, mongodb):
+    """Test the GET /user/search endpoint."""
+    user, token = sample_freemium_user
+
+    for _ in range(10):
+        await add_random_user(mongodb)
+    await add_random_user(mongodb, username="test_bilibili")
+
+    res = await client.get(
+        "/user/search",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"query": "bil"},
+    )
+
+    assert res.status_code == 200
+    assert len(res.json()["users"]) >= 1
+
+
+# @pytest.mark.asyncio
+# async def test_invite_friend(client, mongodb):
+#     """Test the POST /user/friends/invite/{target_user_id} endpoint."""
+#     user1, password1 = await add_random_user(mongodb)
+#     user2, password2 = await add_random_user(mongodb)
+#     token1 = await get_user_token(client, user1.username, password1)
+#     token2 = await get_user_token(client, user2.username, password2)
+
+#     res = await client.post(
+#         f"/user/friends/invite/{str(user2.id)}",
+#         headers={"Authorization": f"Bearer {token1}"},
+#     )
+#     print(res.json())
+#     assert res.status_code == 200
+#     print(await mongodb.find_one(Friendship, Friendship.user1 == user1.id))
+
+#     res = await client.post(
+#         f"/user/friends/accept/{str(user1.id)}",
+#         headers={"Authorization": f"Bearer {token2}"},
+#     )
+#     print(res.json())
+#     assert res.status_code == 200
+#     assert (
+#         await mongodb.find_one(
+#             Friendship,
+#             Friendship.user1 == user1.id,
+#             Friendship.user2 == user2.id,
+#         )
+#         is not None
+#     )
+
+#     res = await client.post(
+#         f"/user/friends/remove/{str(user1.id)}",
+#         headers={"Authorization": f"Bearer {token2}"},
+#     )
+#     assert res.status_code == 200
+#     assert (
+#         await mongodb.find_one(
+#             Friendship,
+#             Friendship.user1 == user1.id,
+#             Friendship.user2 == user2.id,
+#         )
+#     ) is None

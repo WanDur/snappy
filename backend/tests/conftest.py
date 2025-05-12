@@ -30,20 +30,37 @@ def get_test_database():
     return client, engine
 
 
-async def add_ranodm_user(
-    mongodb, tier: UserTier = UserTier.FREEMIUM, friend_with: User | None = None
+async def get_user_token(client, username, password):
+    res = await client.post(
+        "/auth/login",
+        json={"emailUsernamePhone": username, "password": password},
+    )
+    return res.json()["accessToken"]
+
+
+async def add_random_user(
+    mongodb,
+    username: str = None,
+    tier: UserTier = UserTier.FREEMIUM,
+    friend_with: User | None = None,
+    count: int = 1,
 ):
-    user = generate_user_data(tier)
-    await mongodb.save(user)
+    users, passwords = zip(*[generate_user_data(username, tier) for _ in range(count)])
+    users, passwords = list(users), list(passwords)
+
+    await mongodb.save_all(users)
     if friend_with:
-        friendship = Friendship(
-            user1=friend_with,
-            user2=user,
-            accepted=True,
-            inviteTimestamp=datetime.now(timezone.utc),
-        )
-        await mongodb.save(friendship)
-    return user
+        for user in users:
+            friendship = Friendship(
+                user1=friend_with,
+                user2=user,
+                accepted=True,
+                inviteTimestamp=datetime.now(timezone.utc),
+            )
+            await mongodb.save(friendship)
+    if count == 1:
+        return users[0], passwords[0]
+    return users, passwords
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -64,25 +81,29 @@ async def client(mongodb):
         yield client
 
 
-def generate_user_data(tier: UserTier = UserTier.FREEMIUM) -> User:
-    return User(
-        username=faker.user_name(),
-        bcryptPassword=bcrypt.hashpw(
-            faker.password().encode("utf-8"), bcrypt.gensalt()
+def generate_user_data(
+    username: str = None, tier: UserTier = UserTier.FREEMIUM
+) -> tuple[User, str]:
+    password = faker.password().encode("utf-8")
+    return (
+        User(
+            username=faker.user_name() if username is None else username,
+            bcryptPassword=bcrypt.hashpw(password, bcrypt.gensalt()),
+            name=faker.name(),
+            email=faker.email(),
+            phone=f"(+852) {faker.random_number(digits=8)}",
+            tier=tier,
+            premiumExpireTime=(
+                faker.date_time_this_year(after_now=True) if tier == "premium" else None
+            ),
         ),
-        name=faker.name(),
-        email=faker.email(),
-        phone=f"(+852) {faker.random_number(digits=8)}",
-        tier=tier,
-        premiumExpireTime=(
-            faker.date_time_this_year(after_now=True) if tier == "premium" else None
-        ),
+        password.decode("utf-8"),
     )
 
 
 @pytest_asyncio.fixture(scope="function")
 async def sample_freemium_user(mongodb):
-    user = generate_user_data("freemium")
+    user, _ = generate_user_data("freemium")
     await mongodb.save(user)
     token = access_auth.create_access_token(
         {"id": str(user.id), "username": user.username}
@@ -94,7 +115,7 @@ async def sample_freemium_user(mongodb):
 
 @pytest_asyncio.fixture(scope="function")
 async def sample_premium_user(mongodb):
-    user = generate_user_data("premium")
+    user, _ = generate_user_data("premium")
     await mongodb.save(user)
     token = access_auth.create_access_token(
         {"id": str(user.id), "username": user.username}
