@@ -222,7 +222,6 @@ class Photo(Model):
     url: str
     location: Optional[str] = None
     caption: Optional[str] = None
-    contentType: str = "image/jpeg"
     taggedUserIds: list[ObjectId] = Field(default_factory=list)
 
     async def like(self, engine: AIOEngine, user: User):
