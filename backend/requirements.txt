@@ -33,6 +33,7 @@ odmantic==1.0.2
 orjson==3.10.15
 packaging==25.0
 pillow==11.1.0
+pillow_heif==0.22.0
 pluggy==1.5.0
 pycparser==2.22
 pycryptodome==3.22.0
