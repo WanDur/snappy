@@ -10,11 +10,11 @@ from .conftest import generate_user_data
 
 @pytest.mark.asyncio
 async def test_create_album(client, mongodb, sample_freemium_user):
-    """Test the POST /album/create endpoint."""
+    """Test the POST /album/create and DELETE /album/{album_id}/delete endpoint."""
     user, token = sample_freemium_user
     other_users = []
     for _ in range(3):
-        new_user = generate_user_data()
+        new_user, _ = generate_user_data()
         await mongodb.save(new_user)
         other_users.append(new_user)
         frdship = Friendship(
@@ -46,6 +46,14 @@ async def test_create_album(client, mongodb, sample_freemium_user):
     assert res.json()["albumId"] is not None
     assert res.json()["createdAt"] is not None
 
+    res = await client.delete(
+        f"/album/{res.json()['albumId']}/delete",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert res.status_code == 200
+    assert res.json()["status"] == "success"
+
 
 @pytest.mark.asyncio
 async def test_edit_album(client, mongodb, sample_freemium_user):
@@ -70,7 +78,7 @@ async def test_edit_album(client, mongodb, sample_freemium_user):
     album_id = res.json()["albumId"]
 
     # Edit the album's name and add a new partcipant
-    friend = generate_user_data()
+    friend, _ = generate_user_data()
     await mongodb.save(friend)
     frdship = Friendship(
         user1=user,
