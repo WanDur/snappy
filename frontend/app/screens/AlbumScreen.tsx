@@ -7,11 +7,11 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndi
 import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
-import * as Crypto from 'expo-crypto'
 import { BottomSheetView, BottomSheetModal } from '@gorhom/bottom-sheet'
 
-import { Themed } from '@/components'
+import { Themed, TouchableBounce } from '@/components'
 import { BlurredHandle, BlurredBackground } from '@/components/bottomsheetUI'
+import { HeaderText } from '@/components/ui'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Stack, ContentUnavailable } from '@/components/router-form'
 import { useTheme, useAlbumStore } from '@/hooks'
@@ -53,19 +53,17 @@ const AlbumScreen = () => {
           type: asset.mimeType,
           uri: asset.uri
         } as any)
-        session.apiWithToken.post(`/album/${album.id}/upload`, formData)
-        .then((res: any) => {
-          addImage(
-            album.id,
-            [{ photoId: res.data.photoId, url: parsePublicUrl(res.data.filePath) }]
-          )
-        })
-        .catch((err) => {
-          Alert.alert('Error', 'Failed to upload photo')
-          console.log(err)
-        })
+        session.apiWithToken
+          .post(`/album/${album.id}/upload`, formData)
+          .then((res: any) => {
+            addImage(album.id, [{ photoId: res.data.photoId, url: parsePublicUrl(res.data.filePath) }])
+          })
+          .catch((err) => {
+            Alert.alert('Error', 'Failed to upload photo')
+            console.log(err)
+          })
       })
-      
+
       setIsLoading(false)
     }
     setIsLoading(false)
@@ -171,7 +169,12 @@ const AlbumScreen = () => {
     <Themed.View style={{ flex: 1 }}>
       <Stack.Screen
         options={{
-          headerTitle: album.name
+          headerTitle: album.name,
+          headerRight: () => (
+            <HeaderText onPress={() => bottomSheetModalRef.current?.present()}>
+              <IconSymbol name="ellipsis.circle" color={colors.text} />
+            </HeaderText>
+          )
         }}
       />
 
@@ -222,6 +225,18 @@ const AlbumScreen = () => {
               </Themed.Text>
             </View>
           </View>
+
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableBounce style={[styles.button, styles.buttonRename]} onPress={() => {}}>
+              <Ionicons name="pencil-outline" size={16} color={styles.renameText.color} style={{ marginRight: 6 }} />
+              <Themed.Text style={styles.renameText}>Rename album</Themed.Text>
+            </TouchableBounce>
+
+            <TouchableBounce style={[styles.button, styles.buttonDelete]} onPress={() => {}}>
+              <Ionicons name="trash-outline" size={16} color={styles.deleteText.color} style={{ marginRight: 6 }} />
+              <Themed.Text style={styles.deleteText}>Delete album</Themed.Text>
+            </TouchableBounce>
+          </View>
         </BottomSheetView>
       </BottomSheetModal>
     </Themed.View>
@@ -258,6 +273,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     marginLeft: 6
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10
+  },
+  buttonRename: {
+    backgroundColor: 'rgba(10,132,255,0.15)',
+    borderWidth: 1,
+    borderColor: '#0A84FF'
+  },
+  buttonDelete: {
+    backgroundColor: 'rgba(255,69,58,0.15)',
+    borderWidth: 1,
+    borderColor: '#FF453A'
+  },
+  renameText: {
+    color: '#0A84FF',
+    fontWeight: '600'
+  },
+  deleteText: {
+    color: '#FF453A',
+    fontWeight: '600'
   },
   description: {
     fontSize: 16,

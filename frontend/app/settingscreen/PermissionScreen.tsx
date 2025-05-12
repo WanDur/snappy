@@ -21,7 +21,7 @@ const PermissionScreen = () => {
 
   useEffect(() => {
     const fetchPermissions = async () => {
-      const { granted: contactsGranted } = await Contacts.requestPermissionsAsync()
+      const { granted: contactsGranted } = await Contacts.getPermissionsAsync()
       setContactsGranted(contactsGranted)
 
       const { granted: micGranted } = await getRecordingPermissionsAsync()

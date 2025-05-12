@@ -79,7 +79,10 @@ const AlbumScreen = () => {
   const { albumList } = useAlbumStore()
   const [viewMode, setViewMode] = useState('grid')
   const personalAlbums = useMemo(() => albumList.filter((album) => album.createdBy === user.id), [albumList])
-  const sharedAlbums = useMemo(() => albumList.filter((album) => album.shared && album.createdBy !== user.id), [albumList])
+  const sharedAlbums = useMemo(
+    () => albumList.filter((album) => album.shared && album.createdBy !== user.id),
+    [albumList]
+  )
 
   const openAlbum = (albumId: string) => router.push({ pathname: '/screens/AlbumScreen', params: { albumId } })
 
@@ -129,6 +132,14 @@ const AlbumScreen = () => {
     </TouchableOpacity>
   )
 
+  const createAlbum = (shared = false) => {
+    if (albumList.length >= 5) {
+      router.push('/(modal)/PremiumInfoModal')
+      return
+    }
+    router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: shared.toString() } })
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen
@@ -144,7 +155,7 @@ const AlbumScreen = () => {
         <View style={{ paddingBottom: 12 }}>
           <TouchableOpacity
             style={[styles.createAlbumButton, { borderColor: colors.borderColor, backgroundColor: colors.secondaryBg }]}
-            onPress={() => router.push('/(modal)/CreateAlbumModal')}
+            onPress={() => createAlbum()}
             activeOpacity={0.7}
           >
             <Ionicons name="add-circle" size={24} color={colors.blue} />
@@ -164,7 +175,7 @@ const AlbumScreen = () => {
                 title="No Albums"
                 systemImage="photo.stack"
                 actionText="Create new album"
-                onAction={() => router.push('/(modal)/CreateAlbumModal')}
+                onAction={createAlbum}
               />
             }
             keyExtractor={(item) => item.id}
@@ -182,7 +193,7 @@ const AlbumScreen = () => {
                 title="No Albums"
                 systemImage="photo.stack"
                 actionText="Create new album"
-                onAction={() => router.push('/(modal)/CreateAlbumModal')}
+                onAction={createAlbum}
               />
             }
             ItemSeparatorComponent={() => <Themed.View type="divider" />}
@@ -204,7 +215,7 @@ const AlbumScreen = () => {
                 title="No Shared Albums"
                 systemImage="rectangle.stack.person.crop"
                 actionText="Share one with your friends"
-                onAction={() => router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: 'true' } })}
+                onAction={() => createAlbum(true)}
               />
             }
           />
@@ -219,7 +230,7 @@ const AlbumScreen = () => {
                 title="No Shared Albums"
                 systemImage="rectangle.stack.person.crop"
                 actionText="Share one with your friends"
-                onAction={() => router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: 'true' } })}
+                onAction={() => createAlbum(true)}
               />
             }
             ItemSeparatorComponent={() => <Themed.View type="divider" />}
