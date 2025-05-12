@@ -70,7 +70,6 @@
     "react-native-reanimated-carousel": "^4.0.2",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.10.0",
-    "react-native-section-alphabet-list": "^3.0.0",
     "react-native-shimmer-placeholder": "^2.0.9",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
