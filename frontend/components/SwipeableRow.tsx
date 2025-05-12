@@ -1,5 +1,5 @@
 import React, { useRef } from 'react'
-import { StyleSheet, Alert } from 'react-native'
+import { StyleSheet, Alert, ViewStyle, StyleProp } from 'react-native'
 import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable'
 import Animated, {
   SharedValue,
@@ -18,13 +18,14 @@ interface SwipeableRowProps {
   title: string
   description?: string
   onDelete?: () => void
+  style?: StyleProp<ViewStyle>
 }
 
 configureReanimatedLogger({
   strict: false // Reanimated runs in strict mode by default
 })
 
-const RightAction = (prog: SharedValue<number>, drag: SharedValue<number>) => {
+export const RightAction = ({prog, drag, backgroundColor, activeColor}: {prog: SharedValue<number>, drag: SharedValue<number>, backgroundColor: string, activeColor: string}) => {
   const hasReachedThresholdUp = useSharedValue(false)
   const hasReachedThresholdDown = useSharedValue(false)
 
@@ -48,11 +49,11 @@ const RightAction = (prog: SharedValue<number>, drag: SharedValue<number>) => {
   const animatedStyle = useAnimatedStyle(() => {
     if (Math.abs(drag.value) > 100) {
       return {
-        backgroundColor: '#d11a2a'
+        backgroundColor: activeColor
       }
     }
     return {
-      backgroundColor: '#8b8a8a'
+      backgroundColor: backgroundColor
     }
   })
 
@@ -65,7 +66,7 @@ const RightAction = (prog: SharedValue<number>, drag: SharedValue<number>) => {
   )
 }
 
-const SwipeableRow = ({ children, id, title, description, onDelete }: SwipeableRowProps) => {
+const SwipeableRow = ({ children, id, title, description, onDelete, style }: SwipeableRowProps) => {
   const reanimatedRef = useRef<SwipeableMethods>(null)
 
   const deleteChat = async () => {
@@ -85,7 +86,7 @@ const SwipeableRow = ({ children, id, title, description, onDelete }: SwipeableR
       ref={reanimatedRef}
       friction={2}
       rightThreshold={40}
-      renderRightActions={RightAction}
+      renderRightActions={(prog, drag) => <RightAction prog={prog} drag={drag} backgroundColor='#8b8a8a' activeColor='#d11a2a' />}
       onSwipeableWillOpen={onSwipeableOpen}
     >
       {children}

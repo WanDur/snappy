@@ -170,7 +170,10 @@ async def comment_photo(
     # Comment on the photo
     comment = await photo.comment(engine, user, body.message)
 
-    return ORJSONResponse(status_code=200, content={"commentId": str(comment.id)})
+    return ORJSONResponse(
+        status_code=200,
+        content={"commentId": str(comment.id), "timestamp": str(comment.timestamp)},
+    )
 
 
 @photo_router.get("/{photo_id}/comments")

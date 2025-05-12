@@ -73,7 +73,7 @@ def optimize_image(file: Annotated[bytes, File()]) -> BytesIO:
     Check if the given file is a valid image file
     """
     try:
-        img = Image.open(BytesIO(file))
+        img = Image.open(BytesIO(file)).convert("RGB")
     except Exception as e:
         log_debug(f"Error opening image: {e}")
         raise HTTPException(400, "Invalid image file")
