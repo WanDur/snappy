@@ -181,7 +181,14 @@ export default function ViewPhotoModal() {
             <TouchableOpacity
               onPress={() => {
                 Alert.alert('Options', 'Choose an action', [
-                  { text: 'Tag Friend', onPress: () => console.log('Tag friend tapped') },
+                  {
+                    text: 'Tag Friend',
+                    onPress: () =>
+                      router.push({
+                        pathname: '/(modal)/TaggedUserModal',
+                        params: { photoId: photoIds[currentIndex] }
+                      })
+                  },
                   { text: 'Delete Photo', onPress: () => console.log('Delete photo tapped'), style: 'destructive' },
                   { text: 'Cancel', style: 'cancel' }
                 ])
