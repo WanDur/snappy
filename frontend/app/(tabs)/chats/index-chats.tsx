@@ -73,11 +73,10 @@ export const getChatIcon = (chat: ChatItem, user: User): string | undefined => {
 
 export const getChatTitle = (chat: ChatItem, user: User): string => {
   if (chat.type == 'direct') {
-    return chat.participants.find((participant) => participant._id !== user.id)!.name || "Error"
+    return chat.participants.find((participant) => participant._id !== user.id)!.name || 'Error'
   } else {
     return chat.title || `Group Chat (${chat.participants.length})`
   }
-  
 }
 
 export const ChatScreen = () => {
@@ -111,7 +110,7 @@ export const ChatScreen = () => {
   }
 
   useEffect(() => {
-    if (bypassLogin()) return;
+    if (bypassLogin()) return
     if (!isAuthenticated(session)) {
       router.replace('/(auth)/LoginScreen')
       return
