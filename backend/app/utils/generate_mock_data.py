@@ -46,6 +46,8 @@ async def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--reset":
         print("Resetting database...", end=" ")
         await engine.remove(User)
+        await engine.remove(Friendship)
+        await engine.remove(Photo)
         print("Done!")
 
     login_user = User(
@@ -78,8 +80,10 @@ async def main():
         )
         await engine.save(user)
         upload_photos = random.choices(photos, k=random.randint(1, 3))
-        for j, photo in enumerate(upload_photos):
-            url = upload_file(f"users/{user.id}/photos/sample_{j}.jpg", photo)
+        for j, photo_file in enumerate(upload_photos):
+            url = upload_file(
+                f"users/{user.id}/photos/{random.randint(1, 1000000)}.jpg", photo_file
+            )
             photo = Photo(
                 user=user,
                 timestamp=datetime.now(timezone.utc),
@@ -87,6 +91,7 @@ async def main():
             )
             await engine.save(photo)
         print(f"========== SAMPLE {user.tier} USER #{i+2} ==========")
+        print(f"ID: {user.id}")
         print(f"Email: {user.email}")
         print(f"Username: {user.username}")
         print(f"Password: {password}")
@@ -103,8 +108,10 @@ async def main():
         await engine.save(user)
         await engine.save(friendship)
         upload_photos = random.choices(photos, k=random.randint(1, 3))
-        for photo in upload_photos:
-            url = upload_file(f"users/{user.id}/photos/sample_{i}.jpg", photo)
+        for photo_file in upload_photos:
+            url = upload_file(
+                f"users/{user.id}/photos/{random.randint(1, 1000000)}.jpg", photo_file
+            )
             photo = Photo(
                 user=user,
                 timestamp=datetime.now(timezone.utc),
@@ -112,6 +119,7 @@ async def main():
             )
             await engine.save(photo)
         print(f"========== SAMPLE FREEMIUM FRIEND USER #{i+11} ==========")
+        print(f"ID: {user.id}")
         print(f"Email: {user.email}")
         print(f"Username: {user.username}")
         print(f"Password: {password}")

@@ -295,6 +295,7 @@ const HomeScreen = () => {
 
   /** Ensure user logged in */
   useEffect(() => {
+    // router.replace('/settingscreen/SettingScreen')
     if (bypassLogin()) {
       return
     }
@@ -558,7 +559,7 @@ const HomeScreen = () => {
         options={{
           headerTitle: `Week ${enrichedWeeks[weekListIndex]?.weekNum ?? ''}`,
           headerRight: () => (
-            <TouchableOpacity activeOpacity={0.7}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/settingscreen/SettingScreen')}>
               <IconSymbol name="bell" color={colors.text} size={26} />
             </TouchableOpacity>
           ),

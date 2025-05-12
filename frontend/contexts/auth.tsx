@@ -15,6 +15,7 @@ import {
 import api from '@/utils/api'
 import { useStorageState } from '@/utils/useStorageState'
 import axios, { AxiosInstance } from 'axios'
+import { useRouter } from 'expo-router'
 import * as SecureStore from 'expo-secure-store'
 import { createContext, PropsWithChildren, useContext, useEffect, useRef } from 'react'
 import { ActivityIndicator, AppState } from 'react-native'
@@ -62,6 +63,7 @@ export function useSession() {
 export function SessionProvider({ children }: PropsWithChildren) {
   const appState = useRef(AppState.currentState)
   const [[isLoading, session], setSession] = useStorageState<SessionType>('session')
+  const router = useRouter()
   const createdSockets = useRef<Map<string, WebSocket>>(new Map())
 
   const apiWithToken: AxiosInstance = axios.create({
@@ -115,6 +117,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
             return apiWithToken(originalRequest)
           } catch (refreshError) {
             console.error('apiWithToken Interceptor: Refresh token failed:', refreshError)
+            router.dismissAll()
+            router.replace('/(auth)/LoginScreen')
           }
         }
       }
