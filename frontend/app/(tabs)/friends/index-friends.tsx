@@ -242,7 +242,7 @@ const FriendsScreen = () => {
         );
 
         // Update the friend type in the global store (optional)
-        changeFriendType(id, FriendStatus.PENDING);
+        changeFriendType(id, FriendStatus.OUTGOING);
       })
       .catch((error) => {
         console.error('Error sending friend request:', error);
