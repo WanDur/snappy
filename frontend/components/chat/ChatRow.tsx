@@ -3,7 +3,7 @@ import { useState, useRef } from 'react'
 import { router } from 'expo-router'
 import { BlurView } from 'expo-blur'
 import Animated, { FadeInRight, FadeOutRight, ZoomIn, ZoomOut } from 'react-native-reanimated'
-import BouncyCheckbox from 'react-native-bouncy-checkbox'
+import BouncyCheckbox from '@/components/react-native-bouncy-checkbox'
 
 import { Themed, SwipeableRow } from '@/components'
 import { formatChatDate } from '@/utils'
@@ -21,14 +21,7 @@ export interface ChatRowProps {
   onCheckChat: (chatID: string, checked: boolean) => void
 }
 
-const ChatRow = ({
-  id: chatId,
-  chatTitle,
-  unreadCount,
-  iconUrl,
-  onCheckChat,
-  isEdit = false
-}: ChatRowProps) => {
+const ChatRow = ({ id: chatId, chatTitle, unreadCount, iconUrl, onCheckChat, isEdit = false }: ChatRowProps) => {
   const { deleteChat, clearUnreadCount } = useChatStore()
 
   const { reverseTheme } = useTheme()

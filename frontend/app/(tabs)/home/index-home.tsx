@@ -352,7 +352,8 @@ const HomeScreen = () => {
         params: {
           photoId: photo.id,
           index: index.toString(),
-          total: photosThisWeek.length.toString()
+          total: photosThisWeek.length.toString(),
+          ids: photosThisWeek.map((p) => p.id).join(',')
         }
       })
     },
@@ -462,15 +463,15 @@ const HomeScreen = () => {
         const { photoId } = res.data
 
           /* 2 file system */
-        const dir = FileSystem.documentDirectory!
-        await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+          const dir = FileSystem.documentDirectory!
+          await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
 
-        const filename = `${photoId}.jpg` // reuse the store’s id helper
-        const dest = dir + filename
-        await FileSystem.copyAsync({ from: asset.uri, to: dest })
+          const filename = `${photoId}.jpg` // reuse the store’s id helper
+          const dest = dir + filename
+          await FileSystem.copyAsync({ from: asset.uri, to: dest })
 
-        /* save to local */
-        //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
+          /* save to local */
+          //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
 
         addPhoto(currentUserId, {
           id: photoId,
@@ -505,9 +506,7 @@ const HomeScreen = () => {
               ? {
                   ...w,
                   days: buildDays(offset).map((d) =>
-                    !d.isAdd && getDateString(d.date) === iso
-                      ? { ...d, hasMedia: true, thumbnail: asset.uri }
-                      : d
+                    !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
                   )
                 }
               : w
@@ -746,7 +745,13 @@ const styles = StyleSheet.create({
     borderRadius: 12
   },
   // picker modal
-  pickerHeader: { marginTop: 60,flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  pickerHeader: {
+    marginTop: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16
+  },
   assetTile: { width: assetSize, height: assetSize, margin: 1 },
   assetImg: { width: '100%', height: '100%' }
   //})

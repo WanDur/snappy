@@ -62,6 +62,8 @@ export default function RootLayout() {
                 <Stack.Screen name="+not-found" />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
+                <Stack.Screen name="(auth)/signup" options={{ presentation: 'modal', headerShown: false }} />
+
                 <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
                 <Stack.Screen name="(modal)/ChatSettingModal" sheet />
                 <Stack.Screen
@@ -69,7 +71,10 @@ export default function RootLayout() {
                   options={{ headerShown: false, gestureEnabled: false }}
                   sheet
                 />
-                <Stack.Screen name="(modal)/ViewPhotoModal" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="(modal)/ViewPhotoModal"
+                  options={{ presentation: 'fullScreenModal', headerShown: false }}
+                />
                 <Stack.Screen name="(modal)/FriendProfileModal" sheet />
                 <Stack.Screen name="(modal)/RedeemCodeModal" options={{ headerShown: false }} sheet />
                 <Stack.Screen name="(modal)/AddFriendToGroupModal" options={{ gestureEnabled: false }} sheet />

@@ -8,6 +8,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   Alert
 } from 'react-native'
 import { router, useLocalSearchParams, useRouter } from 'expo-router'
@@ -34,14 +35,32 @@ export default function ViewPhotoModal() {
   const router = useRouter()
   const session = useSession()
 
-  const {
-    photoId,
-    index: idxParam = '0',
-    total: totalParam = '1'
-  } = useLocalSearchParams<{ photoId: string; index?: string; total?: string }>()
+  const { toggleLike } = usePhotoStore()
 
-  const { getPhoto, toggleLike } = usePhotoStore()
-  const photo = getPhoto(photoId)
+  const {
+    photoId: startId,
+    index: startIndexParam = '0',
+    ids: idsParam = ''
+  } = useLocalSearchParams<{ photoId: string; index?: string; ids?: string }>()
+
+  /* ------------ setup list for swiping ---------- */
+  const photoIds: string[] = useMemo(() => {
+    if (idsParam) return (idsParam as string).split(',')
+    return [startId as string]
+  }, [idsParam, startId])
+
+  /* Local state holds which photo we're showing – no more re‑navigation */
+  const [currentIndex, setCurrentIndex] = useState<number>(
+    Math.min(parseInt(startIndexParam as string, 10) || 0, photoIds.length - 1)
+  )
+
+  // convenience to get the actual photo object
+const photo = usePhotoStore((s) =>
+    Object.values(s.photoMap)
+      .flat()
+      .find((p) => p.id === photoIds[currentIndex])
+  ) as Photo | undefined
+  const toggleLikeInStore = usePhotoStore((s) => s.toggleLike)
 
   const currentUser = useUserStore((s) => s.user)
   const owner = useFriendStore((s) => s.friends.find((f) => f.id === (photo?.userId ?? currentUser.id)))
@@ -90,22 +109,31 @@ export default function ViewPhotoModal() {
   const [liked, setLiked] = useState(photo.likes.includes(currentUser.id))
   
   const handleToggleLike = () => {
+    const handleToggleLike = () => {
     const newLikedState = !liked
     const action = newLikedState ? 'like' : 'unlike'
     setLiked(newLikedState)
-    toggleLike(photo.userId, photoId, currentUser.id)
-    session.apiWithToken.post(`/photo/${photoId}/${action}`)
+    toggleLike(photo.userId, photoIds[currentIndex], currentUser.id)
+    session.apiWithToken.post(`/photo/${photoIds[currentIndex]}/${action}`)
       .catch((err) => {
         Alert.alert('Error', `Failed to ${action} photo`)
         setLiked(liked)
-        toggleLike(photo.userId, photoId, currentUser.id)
+        toggleLike(photo.userId, photoIds[currentIndex], currentUser.id)
         console.error(err)
       })
   }
+  }
+
+  const handleNext = () => {
+    if (currentIndex < total - 1) setCurrentIndex(currentIndex + 1)
+  }
+  const handlePrev = () => {
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1)
+  }
 
   /* index and total for top‑right counter */
-  const photoIndex = parseInt(idxParam, 10) + 1
-  const total = parseInt(totalParam, 10)
+  const photoIndex = currentIndex + 1
+  const total = photoIds.length
 
   return (
     <View style={styles.container}>
@@ -122,7 +150,7 @@ export default function ViewPhotoModal() {
         <View style={styles.headerRight}>
           <View style={styles.counterBubble}>
             <Text style={styles.counterText}>
-              {photoIndex} of {total}
+              {currentIndex + 1} of {total}
             </Text>
           </View>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
@@ -131,8 +159,13 @@ export default function ViewPhotoModal() {
         </View>
       </BlurView>
 
-      {/* ---------- IMAGE ---------- */}
-      <Image source={{ uri: photo.url }} style={styles.image} contentFit="contain" />
+      {/* ---------- IMAGE WITH TAP ZONES ---------- */}
+      <View style={styles.imageWrapper}>
+        <Image source={{ uri: photo.url }} style={styles.image} contentFit="contain" />
+        {/* tap zones */}
+        <Pressable style={styles.touchLeft} onPress={handlePrev} />
+        <Pressable style={styles.touchRight} onPress={handleNext} />
+      </View>
 
       {/* ---------- INFO ROW ---------- */}
       <View style={[styles.infoRow, { paddingBottom: 6 }]}>
@@ -222,11 +255,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600'
   },
-  /* image */
-  image: {
+  /* image wrapper & tap zones */
+  imageWrapper: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.65,
     marginTop: 80
+  },
+  image: {
+    width: '100%',
+    height: '100%'
+  },
+  touchLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '45%',
+    height: '100%'
+  },
+  touchRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '45%',
+    height: '100%'
   },
   /* info row */
   infoRow: {

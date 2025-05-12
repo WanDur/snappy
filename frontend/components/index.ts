@@ -4,7 +4,6 @@ import ListHeader from './headers/ListHeader'
 import Bounceable from './Bounceable'
 import CheckBox from './CheckBox'
 import SwipeableRow from './SwipeableRow'
-import Dot from './Dot'
 import FilterSortButton from './FliterSortButton'
 import TouchableBounce from './TouchableBounce'
 
@@ -12,18 +11,14 @@ import SettingsGroup from './settings/SettingGroup'
 
 import Themed from './themed/Themed'
 
-import Pagination from './Pagination'
-
 export {
   SectionHeader,
   ListHeader,
   Bounceable,
   CheckBox,
   SwipeableRow,
-  Dot,
   FilterSortButton,
   TouchableBounce,
   SettingsGroup,
-  Themed,
-  Pagination
+  Themed
 }
