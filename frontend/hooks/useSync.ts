@@ -53,7 +53,7 @@ export const useSync = () => {
     addUnreadCount,
   } = useChatStore();
   const { addPhoto, hasPhoto, updatePhotoDetails } = usePhotoStore();
-  const { addAlbum, clearAlbums, hasAlbum, editAlbum } = useAlbumStore();
+  const { addAlbum, getAlbum, hasAlbum, editAlbum } = useAlbumStore();
 
   const syncUserData = async (session: AuthContextProps) => {
     try {
@@ -412,16 +412,57 @@ export const useSync = () => {
     const res = await session.apiWithToken.get("/album/fetch");
     const data: AlbumListResponse = res.data;
 
-    [...data.sharedAlbums, ...data.ownAlbums].forEach((album) => {
+    [...data.sharedAlbums, ...data.ownAlbums].forEach(async (album) => {
+      const existingAlbum = getAlbum(album.id);
       album.coverImage = parsePublicUrl(album.coverImage);
-      album.photos = album.photos.map((photo) => ({
-        ...photo,
-        url: parsePublicUrl(photo.url),
-      }));
+      album.photos = await Promise.all(
+        album.photos.map(async (photo) => {
+          if (
+            !existingAlbum ||
+            !existingAlbum.photos.some((p) => p.photoId === photo.photoId)
+          ) {
+            // Cache the photo to local storage if it is not already cached
+            console.log("Caching photo", photo.photoId);
+            const downloadResumable = FileSystem.createDownloadResumable(
+              parsePublicUrl(photo.url),
+              FileSystem.documentDirectory! + photo.photoId + ".jpg",
+              {}
+            );
+            const result = await downloadResumable.downloadAsync();
+            if (result) {
+              console.log("Downloaded photo", photo.photoId, "to", result.uri);
+              return {
+                photoId: photo.photoId,
+                url: result.uri,
+              };
+            } else {
+              console.log("Failed to download photo", photo.photoId);
+              return {
+                photoId: photo.photoId,
+                url: parsePublicUrl(photo.url),
+              };
+            }
+          } else if (existingAlbum) {
+            console.log("Found photo", photo.photoId);
+            return existingAlbum.photos.find(
+              (p) => p.photoId === photo.photoId
+            )!;
+          } else {
+            return {
+              photoId: photo.photoId,
+              url: parsePublicUrl(photo.url),
+            };
+          }
+        })
+      );
       if (!hasAlbum(album.id)) {
         addAlbum(album);
       } else {
-        editAlbum(album.id, album);
+        editAlbum(album.id, {
+          ...existingAlbum,
+          coverImage: album.coverImage,
+          photos: album.photos,
+        });
       }
     });
   };

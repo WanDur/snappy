@@ -309,7 +309,7 @@ async def fetch_albums(
         if album.shared:
             info["participants"] = album.participants
         photos = await engine.find(AlbumPhoto, AlbumPhoto.album == album.id)
-        info["photos"] = [{"id": photo.id, "url": photo.url} for photo in photos]
+        info["photos"] = [{"photoId": photo.id, "url": photo.url} for photo in photos]
         if not info["photos"]:
             info["photos"] = []
         return info
