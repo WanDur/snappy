@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react'
-import { View, Text, TextInput, FlatList, TouchableOpacity, Image, StyleSheet } from 'react-native'
+import { View, Text, TextInput, FlatList, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
-import { useFriendStore, usePhotoStore } from '@/hooks'
 import { Ionicons } from '@expo/vector-icons'
-import { Friend } from '@/types/friend.types'
+import BottomSheet from '@gorhom/bottom-sheet'
+
+import { useFriendStore, usePhotoStore } from '@/hooks'
+import { Friend, FriendStatus } from '@/types/friend.types'
 import { Photo } from '@/types/photo.types'
+import { useSession } from '@/contexts/auth'
 
 /**
  * TaggedUserModal
@@ -18,9 +21,12 @@ const TaggedUserModal = () => {
   /* --- router param --- */
   const { photoId } = useLocalSearchParams<{ photoId: string }>()
   const router = useRouter()
+  const session = useSession()
 
-  /* --- data from stores --- */
-  const friends = useFriendStore((s) => s.friends) as Friend[]
+  /* --- raw data from stores --- */
+  // Get the whole friends array **once**; filtering happens in a memo so we don't create a new
+  // array every render (avoids maximum‑depth loop)
+  const allFriends = useFriendStore((s) => s.friends) as Friend[]
 
   /**
    * We need the *single* photo object regardless of owner.  Because the
@@ -40,12 +46,13 @@ const TaggedUserModal = () => {
   const [search, setSearch] = useState('')
   const [taggedIds, setTaggedIds] = useState<string[]>(photo?.taggedUserIds ?? [])
 
-  /* filter friends by search query */
+  /* memo: accepted friends + search filter */
   const filteredFriends = useMemo(() => {
+    const accepted = allFriends.filter((f) => f.type === FriendStatus.FRIEND)
     const q = search.trim().toLowerCase()
-    if (!q) return friends
-    return friends.filter((f) => f.name.toLowerCase().includes(q) || f.username.toLowerCase().includes(q))
-  }, [friends, search])
+    if (!q) return accepted
+    return accepted.filter((f) => f.name.toLowerCase().includes(q) || f.username.toLowerCase().includes(q))
+  }, [allFriends, search])
 
   /* ------------- handlers ------------- */
   const toggleTag = (id: string) => {
@@ -58,13 +65,29 @@ const TaggedUserModal = () => {
       return
     }
 
-    /* mutate the store directly via setState (Zustand pattern) */
+    const prevIds = photo.taggedUserIds
+
+    // optimistic local update
     usePhotoStore.setState((draft: any) => {
       const p: Photo | undefined = draft.photoMap[photo.userId]?.find((x: Photo) => x.id === photoId)
       if (p) p.taggedUserIds = taggedIds
     })
 
-    router.back()
+    /* ------------- API call ------------- */
+    session.apiWithToken
+      .post(`/photo/${photoId}/tag`, { taggedUserIds: taggedIds })
+      .then(() => {
+        router.back()
+      })
+      .catch((err: any) => {
+        // rollback
+        usePhotoStore.setState((draft: any) => {
+          const p: Photo | undefined = draft.photoMap[photo.userId]?.find((x: Photo) => x.id === photoId)
+          if (p) p.taggedUserIds = prevIds
+        })
+        Alert.alert('Error', 'Failed to tag photo')
+        console.error(err)
+      })
   }
 
   /* ---------------- render ---------------- */
@@ -116,7 +139,7 @@ export default TaggedUserModal
 /* ---------------- styles ---------------- */
 const styles = StyleSheet.create({
   container: {
-    marginTop: 0,
+    marginTop: 50,
     flex: 1,
     backgroundColor: '#000'
   },

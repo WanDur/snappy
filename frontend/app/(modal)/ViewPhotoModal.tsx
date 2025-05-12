@@ -110,17 +110,18 @@ export default function ViewPhotoModal() {
   }
 
   const handlePostComment = (comment: string) => {
-    session.apiWithToken.post(`/photo/${photoIds[currentIndex]}/comment`, { 
-      message: comment,
-     })
-     .then((res) => {
-      addComment(res.data.commentId, photoIds[currentIndex], currentUser.id, comment, new Date(res.data.timestamp))
-      setComment('')
-     })
-     .catch((err) => {
-      Alert.alert('Error', `Failed to post comment`)
-      console.error(err)
-    })
+    session.apiWithToken
+      .post(`/photo/${photoIds[currentIndex]}/comment`, {
+        message: comment
+      })
+      .then((res) => {
+        addComment(res.data.commentId, photoIds[currentIndex], currentUser.id, comment, new Date(res.data.timestamp))
+        setComment('')
+      })
+      .catch((err) => {
+        Alert.alert('Error', `Failed to post comment`)
+        console.error(err)
+      })
   }
 
   /* ---------- navigation helpers --------- */
@@ -148,16 +149,23 @@ export default function ViewPhotoModal() {
     const handleDeleteComment = (commentId: string) => {
       Alert.alert('Delete Comment', 'Are you sure you want to delete this comment?', [
         { text: 'Cancel', onPress: () => reanimatedRef.current?.reset(), style: 'cancel' },
-        { text: 'Delete', onPress: () => {
-          session.apiWithToken.delete(`/photo/comment/${commentId}/delete`).then(() => {
-            deleteComment(photoIds[currentIndex], commentId)
-            reanimatedRef.current?.reset()
-          }).catch((err) => {
-            Alert.alert('Error', 'Failed to delete comment')
-            reanimatedRef.current?.reset()
-            console.error(err)
-          })
-        }, style: 'destructive' }
+        {
+          text: 'Delete',
+          onPress: () => {
+            session.apiWithToken
+              .delete(`/photo/comment/${commentId}/delete`)
+              .then(() => {
+                deleteComment(photoIds[currentIndex], commentId)
+                reanimatedRef.current?.reset()
+              })
+              .catch((err) => {
+                Alert.alert('Error', 'Failed to delete comment')
+                reanimatedRef.current?.reset()
+                console.error(err)
+              })
+          },
+          style: 'destructive'
+        }
       ])
     }
 
@@ -177,19 +185,20 @@ export default function ViewPhotoModal() {
           ref={reanimatedRef}
           friction={2}
           rightThreshold={60}
-          renderRightActions={(prog, drag) => <RightAction prog={prog} drag={drag} backgroundColor='#000' activeColor='#d11a2a' />}
+          renderRightActions={(prog, drag) => (
+            <RightAction prog={prog} drag={drag} backgroundColor="#000" activeColor="#d11a2a" />
+          )}
           onSwipeableWillOpen={() => handleDeleteComment(item.id)}
         >
           <View style={[styles.commentContainer, { backgroundColor: '#222' }]}>
             <Avatar iconUrl={avatar} username={username} size={28} style={{ marginRight: 8 }} />
             <View style={{}}>
-            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{username}</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{username}</Text>
               <Text style={{ color: '#fff' }}>{item.message}</Text>
             </View>
           </View>
         </ReanimatedSwipeable>
       </View>
-      
     )
   }
 
@@ -243,31 +252,54 @@ export default function ViewPhotoModal() {
           )}
         </TouchableOpacity>
       </View>
-      
-      <View style={{ flex: 1 }}>
-        <ScrollView>
-          <Animated.FlatList
-            data={photo.comments}
-            renderItem={renderComment}
-            keyExtractor={(item) => item.id}
-            scrollEnabled={false}
-            style={{ alignSelf: 'center', flexGrow: 1, marginHorizontal: 24, paddingHorizontal: 24, width: '100%', paddingBottom: 58 }}
-          />
-        </ScrollView>
-      
-        {/* ---------- CAPTION INPUT ---------- */}
-        <BlurView intensity={50} tint="dark" style={{ paddingBottom: insets.bottom }}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 64 : 0}
-            style={{ paddingBottom: insets.bottom }}
-          >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'position' : 'position'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 64 : 0}
+        style={{ paddingBottom: insets.bottom }}
+      >
+        <View style={{ flex: 1 }}>
+          <ScrollView>
+            <Animated.FlatList
+              data={photo.comments}
+              renderItem={renderComment}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              style={{
+                alignSelf: 'center',
+                flexGrow: 1,
+                marginHorizontal: 24,
+                paddingHorizontal: 24,
+                width: '100%',
+                paddingBottom: 58
+              }}
+            />
+          </ScrollView>
+
+          {/* ---------- CAPTION INPUT ---------- */}
+          <BlurView intensity={50} tint="dark" style={{ paddingBottom: insets.bottom }}>
             <View style={styles.captionBar}>
               <Image source={{ uri: currentUser.iconUrl }} style={styles.captionAvatar} />
-              <TextInput placeholder={photo.userId === currentUser.id ? (
-                photo.comments[0]?.userId === currentUser.id ? 'Add a comment...' : 'Add a caption...'
-              ) : 'Add a comment...'} placeholderTextColor="#999" style={styles.captionInput} multiline value={comment} onChangeText={setComment} />
-              <Feather name="send" size={20} color="#fff" style={{ marginHorizontal: 6 }} onPress={() => handlePostComment(comment)} />
+              <TextInput
+                placeholder={
+                  photo.userId === currentUser.id
+                    ? photo.comments[0]?.userId === currentUser.id
+                      ? 'Add a comment...'
+                      : 'Add a caption...'
+                    : 'Add a comment...'
+                }
+                placeholderTextColor="#999"
+                style={styles.captionInput}
+                multiline
+                value={comment}
+                onChangeText={setComment}
+              />
+              <Feather
+                name="send"
+                size={20}
+                color="#fff"
+                style={{ marginHorizontal: 6 }}
+                onPress={() => handlePostComment(comment)}
+              />
               {photo.userId === currentUser.id && (
                 <TouchableOpacity
                   onPress={() => {
@@ -289,9 +321,9 @@ export default function ViewPhotoModal() {
                 </TouchableOpacity>
               )}
             </View>
-          </KeyboardAvoidingView>
-        </BlurView>
-      </View>
+          </BlurView>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   )
 }
