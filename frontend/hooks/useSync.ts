@@ -403,6 +403,14 @@ export const useSync = () => {
       });
   };
 
+  const initialSync = async (session: AuthContextProps) => {
+    await syncUserData(session);
+    await syncPhotos(session, user.id);
+    await syncFriends(session);
+    await syncFriendPhotos(session);
+    await syncChats(session);
+  };
+
   return {
     syncUserData,
     syncFriends,
@@ -410,5 +418,6 @@ export const useSync = () => {
     syncPhotos,
     syncFriendPhotos,
     fetchChatInfo,
+    initialSync,
   };
 };

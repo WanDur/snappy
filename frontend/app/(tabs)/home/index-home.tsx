@@ -261,7 +261,7 @@ const HomeScreen = () => {
   const session = useSession()
   const router = useRouter()
   const { user } = useUserStore()
-  const { syncUserData, syncFriends, syncPhotos, syncFriendPhotos } = useSync()
+  const { initialSync } = useSync()
 
   const { colors } = useTheme()
   const { friends, addFriend, clearFriends } = useFriendStore()
@@ -305,12 +305,7 @@ const HomeScreen = () => {
       return
     }
     if (session.session) {
-      syncUserData(session).then(() => {
-        syncFriends(session)
-        console.log(user.id)
-        syncPhotos(session, user.id)
-        syncFriendPhotos(session)
-      })
+      initialSync(session)
     } else {
       console.log('Session is null')
     }

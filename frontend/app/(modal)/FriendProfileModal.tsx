@@ -46,16 +46,17 @@ const sample_user = {
   albumsCount: 15,
   recentPhotos: [
     // your original four
-    { id: '1', url: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131', timestamp: new Date(), taggedUserIds: [] },
-    { id: '2', url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e', timestamp: new Date(), taggedUserIds: [] },
-    { id: '3', url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5', timestamp: new Date(), taggedUserIds: [] },
-    { id: '4', url: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e', timestamp: new Date(), taggedUserIds: [] },
+    { id: '1', url: 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131', timestamp: new Date(), taggedUserIds: [], likes: [] },
+    { id: '2', url: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e', timestamp: new Date(), taggedUserIds: [], likes: [] },
+    { id: '3', url: 'https://images.unsplash.com/photo-1573865526739-10659fec78a5', timestamp: new Date(), taggedUserIds: [], likes: [] },
+    { id: '4', url: 'https://images.unsplash.com/photo-1548247416-ec66f4900b2e', timestamp: new Date(), taggedUserIds: [], likes: [] },
     // now 100 more, ids 5…104
     ...Array.from({ length: 10 }, (_, i) => ({
       id: `${i + 5}`,
       url: `https://picsum.photos/${100 + i * 5}/${200 + i * 5}`,
       timestamp: new Date(),
-      taggedUserIds: []
+      taggedUserIds: [],
+      likes: []
     }))
   ],
   sharedAlbums: [
