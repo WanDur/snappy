@@ -71,8 +71,9 @@ export const useSync = () => {
           tier: userData.tier,
           premiumExpireTime: userData.premiumExpireTime,
         });
-        const iconUrl = parsePublicUrl(userData.iconUrl);
-        updateAvatar(iconUrl);
+        if (userData.iconUrl) {
+          updateAvatar(parsePublicUrl(userData.iconUrl));
+        }
       });
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -355,7 +356,6 @@ export const useSync = () => {
             .downloadAsync()
             .then((result) => {
               if (result) {
-                console.log("Downloaded photo to", result.uri);
                 addPhoto(userId, {
                   id: photo.id,
                   uri: result.uri,
@@ -366,9 +366,6 @@ export const useSync = () => {
                   likes: photo.likes,
                 });
               } else {
-                console.log(
-                  "Failed to download photo, saving remote url instead"
-                );
                 addPhoto(userId, {
                   id: photo.id,
                   uri: parsePublicUrl(photo.url),
@@ -422,7 +419,6 @@ export const useSync = () => {
             !existingAlbum.photos.some((p) => p.photoId === photo.photoId)
           ) {
             // Cache the photo to local storage if it is not already cached
-            console.log("Caching photo", photo.photoId);
             const downloadResumable = FileSystem.createDownloadResumable(
               parsePublicUrl(photo.url),
               FileSystem.documentDirectory! + photo.photoId + ".jpg",
@@ -430,20 +426,17 @@ export const useSync = () => {
             );
             const result = await downloadResumable.downloadAsync();
             if (result) {
-              console.log("Downloaded photo", photo.photoId, "to", result.uri);
               return {
                 photoId: photo.photoId,
                 url: result.uri,
               };
             } else {
-              console.log("Failed to download photo", photo.photoId);
               return {
                 photoId: photo.photoId,
                 url: parsePublicUrl(photo.url),
               };
             }
           } else if (existingAlbum) {
-            console.log("Found photo", photo.photoId);
             return existingAlbum.photos.find(
               (p) => p.photoId === photo.photoId
             )!;
