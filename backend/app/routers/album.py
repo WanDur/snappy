@@ -240,6 +240,29 @@ async def fetch_album(
     return ORJSONResponse(serialize_mongo_object({"photos": response}))
 
 
+@album_router.delete("/{album_id}/delete")
+async def delete_album(
+    album_id: ObjectId,
+    user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
+) -> dict[str, str]:
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    album = await engine.find_one(Album, Album.id == album_id)
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    if album.createdBy != user:
+        raise HTTPException(
+            status_code=401, detail="You are not the owner of this album"
+        )
+
+    await engine.delete(album)
+
+    return ORJSONResponse(serialize_mongo_object({"status": "success"}))
+
+
 @album_router.get("/fetch")
 async def fetch_albums(
     user: User | None = Depends(get_user),
