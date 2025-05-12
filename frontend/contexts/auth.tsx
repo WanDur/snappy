@@ -96,7 +96,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         const refreshToken = await SecureStore.getItemAsync('refreshToken')
         if (refreshToken) {
           try {
-            const response = await axios.post(`${BASE_URL}/auth/refresh`, {}, {
+            const response = await axios.post(`${BASE_URL}/auth/token/refresh`, {}, {
               headers: {  
                 Authorization: `Bearer ${refreshToken}`
               }
