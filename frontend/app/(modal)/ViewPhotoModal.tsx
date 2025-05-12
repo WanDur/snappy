@@ -30,9 +30,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
  */
 export default function ViewPhotoModal() {
   const {
-    photoId,
-    index: idxParam = '0',
-    total: totalParam = '1',
+    photoId: startId,
+    index: startIndexParam = '0',
     ids: idsParam = ''
   } = useLocalSearchParams<{ photoId: string; index?: string; total?: string; ids?: string }>()
 
@@ -54,18 +53,20 @@ export default function ViewPhotoModal() {
   /* ------------ setup list for swiping ---------- */
   const photoIds: string[] = useMemo(() => {
     if (idsParam) return (idsParam as string).split(',')
-    // fallback: single‑id list
-    return [photoId as string]
-  }, [idsParam, photoId])
+    return [startId as string]
+  }, [idsParam, startId])
 
-  const currentIndex = parseInt(idxParam as string, 10) || 0
+  /* Local state holds which photo we're showing – no more re‑navigation */
+  const [currentIndex, setCurrentIndex] = useState<number>(
+    Math.min(parseInt(startIndexParam as string, 10) || 0, photoIds.length - 1)
+  )
   const total = photoIds.length
 
   // convenience to get the actual photo object
   const photo = usePhotoStore((s) =>
     Object.values(s.photoMap)
       .flat()
-      .find((p) => p.id === photoId)
+      .find((p) => p.id === photoIds[currentIndex])
   ) as Photo | undefined
   const toggleLikeInStore = usePhotoStore((s) => s.toggleLike)
 
@@ -117,7 +118,7 @@ export default function ViewPhotoModal() {
     }
 
     setLiked((p: boolean): boolean => {
-      toggleLikeInStore(photoId as string, p ? 'unlike' : 'like', currentUser.id)
+      toggleLikeInStore(photoIds[currentIndex], p ? 'unlike' : 'like', currentUser.id)
       return !p
     })
   }
@@ -135,11 +136,12 @@ export default function ViewPhotoModal() {
     })
   }
 
+  /* ---------- index navigation (no re‑navigation) ---------- */
   const handleNext = () => {
-    if (currentIndex < total - 1) goTo(currentIndex + 1)
+    if (currentIndex < total - 1) setCurrentIndex(currentIndex + 1)
   }
   const handlePrev = () => {
-    if (currentIndex > 0) goTo(currentIndex - 1)
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1)
   }
 
   return (
