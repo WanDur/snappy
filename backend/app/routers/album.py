@@ -269,6 +269,10 @@ async def delete_album(
             status_code=401, detail="You are not the owner of this album"
         )
 
+    album_photos = await engine.find(AlbumPhoto, AlbumPhoto.album == album_id)
+    for photo in album_photos:
+        await engine.delete(photo)
+
     await engine.delete(album)
 
     return ORJSONResponse(serialize_mongo_object({"status": "success"}))
