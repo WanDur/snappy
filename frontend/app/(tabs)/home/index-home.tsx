@@ -45,6 +45,8 @@ interface DayTile {
 
 interface FeedItem {
   id: string
+  userId: string
+  photoId: string
   user: string
   avatar: string
   mediaUri: string
@@ -114,15 +116,6 @@ const buildDays = (weekOffset: number): DayTile[] => {
   return tiles
 }
 
-const buildFeed = (weekOffset: number): FeedItem[] =>
-  Array.from({ length: 5 }).map((_, idx) => ({
-    id: `f-${weekOffset}-${idx}`,
-    user: ['johndoe', 'catmeow', 'hello', 'wandur'][idx % 4],
-    avatar: `https://randomuser.me/api/portraits/${idx % 2 ? 'men' : 'women'}/${30 + idx}.jpg`,
-    mediaUri: randomThumb(),
-    seen: Math.random() < 0.5
-  }))
-
 const buildWeeks = (count = 4): WeekBundle[] => {
   const currentWeek = getISOWeek()
   return Array.from({ length: count }).map((_, offset) => ({
@@ -130,7 +123,7 @@ const buildWeeks = (count = 4): WeekBundle[] => {
     weekNum: currentWeek - offset,
     key: `week-${currentWeek - offset}`,
     days: buildDays(offset),
-    feed: buildFeed(offset)
+    feed: []
   }))
 }
 
@@ -180,8 +173,8 @@ const DayCell = ({ day, onAdd, onOpenPhoto }: { day: DayTile; onAdd: () => void;
   )
 }
 
-const FeedCard = ({ item, onSeen }: { item: FeedItem; onSeen: () => void }) => (
-  <TouchableOpacity activeOpacity={0.9} style={[styles.feedCard, { width: SCREEN_WIDTH * 0.75 }]} onPress={onSeen}>
+const FeedCard = ({ item, onPress }: { item: FeedItem; onPress: () => void }) => (
+  <TouchableOpacity activeOpacity={0.9} style={[styles.feedCard, { width: SCREEN_WIDTH * 0.75 }]} onPress={onPress}>
     <View style={styles.feedHeader}>
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
       <Themed.Text style={styles.feedUser}>{item.user}</Themed.Text>
@@ -206,12 +199,14 @@ const WeekPage = ({
   bundle,
   markSeen,
   addMedia,
-  openPhotoModal
+  openPhotoModal,
+  openFeedPhoto
 }: {
   bundle: WeekBundle
   markSeen: (id: string) => void
   addMedia: () => void
   openPhotoModal: (week: WeekBundle, day: DayTile) => void
+  openFeedPhoto: (week: WeekBundle, feed: FeedItem) => void
 }) => {
   const headerHeight = useHeaderHeight()
   const tabHeight = useBottomTabBarHeight()
@@ -223,7 +218,9 @@ const WeekPage = ({
   const renderDay: ListRenderItem<DayTile> = ({ item }) => (
     <DayCell day={item} onAdd={addMedia} onOpenPhoto={() => openPhotoModal(bundle, item)} />
   )
-  const renderFeed: ListRenderItem<FeedItem> = ({ item }) => <FeedCard item={item} onSeen={() => markSeen(item.id)} />
+  const renderFeed: ListRenderItem<FeedItem> = ({ item }) => (
+    <FeedCard item={item} onPress={() => openFeedPhoto(bundle, item)} />
+  )
   return (
     <View
       style={{
@@ -358,32 +355,65 @@ const HomeScreen = () => {
     [photoObjByDate, router]
   )
 
+  const openFeedPhoto = useCallback(
+    (week: WeekBundle, feed: FeedItem) => {
+      // no photo – nothing to open
+      if (!feed.photoId) return
+
+      // collect ALL that friend’s photos for this week
+      const friendWeekPhotos = getUserPhotos(feed.userId).filter((p) => p.year === week.year && p.week === week.weekNum)
+
+      if (!friendWeekPhotos.length) return
+
+      const startIndex = Math.max(
+        friendWeekPhotos.findIndex((p) => p.id === feed.photoId),
+        0
+      )
+
+      // mark as seen
+      markSeen(feed.id)
+
+      router.push({
+        pathname: '/(modal)/ViewPhotoModal',
+        params: {
+          photoIds: friendWeekPhotos.map((p) => p.id).join(','),
+          index: startIndex.toString()
+        }
+      })
+    },
+    [getUserPhotos, markSeen, router]
+  )
+
   /* -------- Combine Zustand data & local uploads to week bundles -------- */
   const enrichedWeeks = useMemo(() => {
     if (weeks.length === 0) return weeks
 
     // Patch every week bundle with user-uploaded photos stored in mediaByDate
     return weeks.map((w) => {
-          // Build feed from friend list (placeholder: use their first photo or blank)
-    const localFeed: FeedItem[] = getAcceptedFriends().map((f, i) => {
-      const photos = getUserPhotos(f.id).filter((p) => p.year == w.year && p.week === w.weekNum)
-      return {
-        id: `local-${f.id}-${i}`,
-        user: f.username ?? f.name,
-        avatar: f.avatar ?? 'https://placehold.co/400x400/CCCCCC/000000?text=No+Avatar',
-        mediaUri: photos[0]?.url ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
-        seen: false
-      }
-    }).sort((a, b) => {
-      if (a.mediaUri === b.mediaUri && b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
-        return 0
-      } else if (a.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
-        return 1
-      } else if (b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
-        return -1
-      }
-      return 0
-    })
+      // Build feed from friend list (placeholder: use their first photo or blank)
+      const localFeed: FeedItem[] = getAcceptedFriends()
+        .map((f, i) => {
+          const photos = getUserPhotos(f.id).filter((p) => p.year == w.year && p.week === w.weekNum)
+          return {
+            id: `local-${f.id}-${i}`,
+            userId: f.id,
+            photoId: photos[0]?.id ?? '', // empty if no upload yet
+            user: f.username ?? f.name,
+            avatar: f.avatar ?? 'https://placehold.co/400x400/CCCCCC/000000?text=No+Avatar',
+            mediaUri: photos[0]?.url ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
+            seen: false
+          }
+        })
+        .sort((a, b) => {
+          if (a.mediaUri === b.mediaUri && b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+            return 0
+          } else if (a.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+            return 1
+          } else if (b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+            return -1
+          }
+          return 0
+        })
 
       const patchedDays = w.days.map((d) => {
         if (d.isAdd) return d // skip the “+” tile
@@ -457,8 +487,10 @@ const HomeScreen = () => {
         type: mime.getType(assetInfo.filename) ?? 'image/jpeg'
       } as any)
       formData.append('timestamp', captureDate.toISOString())
-      session.apiWithToken.post('/photo/upload', formData).then(async (res) => {
-        const { photoId } = res.data
+      session.apiWithToken
+        .post('/photo/upload', formData)
+        .then(async (res) => {
+          const { photoId } = res.data
 
           /* 2 file system */
           const dir = FileSystem.documentDirectory!
@@ -471,51 +503,51 @@ const HomeScreen = () => {
           /* save to local */
           //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
 
-        addPhoto(currentUserId, {
-          id: photoId,
-          uri: dest,
-          timestamp: captureDate,
-          likes: []
-        })
+          addPhoto(currentUserId, {
+            id: photoId,
+            uri: dest,
+            timestamp: captureDate,
+            likes: []
+          })
 
-        /* ensure week bundle present & patch */
-        setWeeks((prev) => {
-          const captureWeek = pickerWeekRef.current!.weekNum
-          const current = getISOWeek()
-          const offset = current - captureWeek
-          const exists = prev.some((w) => w.weekNum === captureWeek)
-          if (!exists) {
-            // build and insert at correct offset
-            const newBundle: WeekBundle = {
-              year: pickerWeekRef.current!.year,
-              weekNum: captureWeek,
-              key: `week-${captureWeek}`,
-              days: buildDays(offset).map((d) =>
-                !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-              ),
-              feed: []
+          /* ensure week bundle present & patch */
+          setWeeks((prev) => {
+            const captureWeek = pickerWeekRef.current!.weekNum
+            const current = getISOWeek()
+            const offset = current - captureWeek
+            const exists = prev.some((w) => w.weekNum === captureWeek)
+            if (!exists) {
+              // build and insert at correct offset
+              const newBundle: WeekBundle = {
+                year: pickerWeekRef.current!.year,
+                weekNum: captureWeek,
+                key: `week-${captureWeek}`,
+                days: buildDays(offset).map((d) =>
+                  !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                ),
+                feed: []
+              }
+              const arr = [...prev]
+              arr.splice(offset, 0, newBundle)
+              return arr
             }
-            const arr = [...prev]
-            arr.splice(offset, 0, newBundle)
-            return arr
-          }
-          return prev.map((w) =>
-            w.weekNum === captureWeek
-              ? {
-                  ...w,
-                  days: buildDays(offset).map((d) =>
-                    !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-                  )
-                }
-              : w
-          )
+            return prev.map((w) =>
+              w.weekNum === captureWeek
+                ? {
+                    ...w,
+                    days: buildDays(offset).map((d) =>
+                      !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                    )
+                  }
+                : w
+            )
+          })
         })
-      })
-      .catch((err) => {
-        console.error('Error uploading photo', err)
-        console.log(err.response.data)
-        Alert.alert('Error uploading photo', 'Please try again.')
-      })
+        .catch((err) => {
+          console.error('Error uploading photo', err)
+          console.log(err.response.data)
+          Alert.alert('Error uploading photo', 'Please try again.')
+        })
     },
     [mediaByDate]
   )
@@ -546,6 +578,7 @@ const HomeScreen = () => {
             markSeen={markSeen}
             addMedia={() => openPicker(item)}
             openPhotoModal={openPhotoModal}
+            openFeedPhoto={openFeedPhoto}
           />
         )}
         getItemLayout={getItemLayout}
