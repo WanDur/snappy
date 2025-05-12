@@ -28,6 +28,8 @@ export interface ChatItem {
   messages: TMessage[];
   initialDate: Date;
   unreadCount: number;
+  title?: string;
+  iconUrl?: string;
 }
 
 export interface MessageResponse {

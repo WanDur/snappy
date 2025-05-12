@@ -11,26 +11,44 @@ import { Stack, Form } from '@/components/router-form'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { ModalCloseButton } from '@/components/ui'
 import { Themed } from '@/components'
-import { useChatStore, useUserStore } from '@/hooks'
-
+import { useChatStore, useFriendStore, useUserStore } from '@/hooks'
+import { getChatIcon, getChatTitle } from '../(tabs)/chats/index-chats'
+import { Avatar } from '@/components/Avatar'
 const ChatProfileScreen = () => {
   const { chatID } = useLocalSearchParams<{ chatID: string }>()
   const { user } = useUserStore()
-  const { getChat, setChatInfo } = useChatStore()
+  const { getChat, updateChatInfo } = useChatStore()
+  const { getFriend } = useFriendStore()
 
-  const { chatTitle, iconUrl, chatSubtitle } = getChat(chatID)
-  const members = [
-    { name: user.name, username: user.username, icon: user.iconUrl },
-    { name: chatTitle, username: `@${chatTitle.toLowerCase()}`, icon: iconUrl }
-  ]
+  const chat = getChat(chatID)
+  const chatTitle = getChatTitle(chat, user)
+  const iconUrl = getChatIcon(chat, user)
+  const memberIds = chat.participants.map((participant) => participant._id.toString())
+  const members = memberIds.map((id) => {
+    if (id === user.id) {
+      return {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        avatar: user.iconUrl
+      }
+    }
 
+    const friend = getFriend(id)!
+    return {
+      id: friend.id,
+      name: friend.name,
+      username: friend.username,
+      avatar: friend.avatar
+    }
+  })
   const inputRef = useRef<TextInput>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(chatTitle)
 
   const toggleEdit = () => {
     if (isEditing) {
-      setChatInfo(chatID, titleDraft.trim() || chatTitle)
+      updateChatInfo(chatID, { title: titleDraft.trim() || chatTitle })
     } else {
       setTimeout(() => inputRef.current?.focus(), 0)
     }
@@ -44,15 +62,7 @@ const ChatProfileScreen = () => {
       <Themed.ScrollView contentContainerStyle={{ paddingBottom: 160 }}>
         <Form.List>
           <View style={{ alignItems: 'center', gap: 12 }}>
-            <Image
-              source={{ uri: iconUrl }}
-              style={{
-                aspectRatio: 1,
-                height: 100,
-                width: 100,
-                borderRadius: 50
-              }}
-            />
+            <Avatar size={100} iconUrl={iconUrl} />
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               {isEditing ? (
                 <TextInput
@@ -66,9 +76,11 @@ const ChatProfileScreen = () => {
               ) : (
                 <Form.Text style={{ fontSize: 20, fontWeight: '600', flexShrink: 1 }}>{chatTitle}</Form.Text>
               )}
-              <TouchableOpacity style={{ padding: 2 }} onPress={toggleEdit}>
-                <IconSymbol name={isEditing ? 'checkmark' : 'square.and.pencil'} size={20} color="gray" />
-              </TouchableOpacity>
+              {chat.type === 'group' && (
+                <TouchableOpacity style={{ padding: 2 }} onPress={toggleEdit}>
+                  <IconSymbol name={isEditing ? 'checkmark' : 'square.and.pencil'} size={20} color="gray" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -76,8 +88,8 @@ const ChatProfileScreen = () => {
             {members.length > 0 ? (
               members.map((member, index) => (
                 <Form.HStack key={index}>
-                  {member.icon ? (
-                    <Image source={{ uri: member.icon }} style={{ aspectRatio: 1, height: 48, borderRadius: 24 }} />
+                  {member.avatar ? (
+                    <Image source={{ uri: member.avatar.toString() }} style={{ aspectRatio: 1, height: 48, borderRadius: 24 }} />
                   ) : (
                     <View
                       style={{
@@ -89,14 +101,14 @@ const ChatProfileScreen = () => {
                         alignItems: 'center'
                       }}
                     >
-                      <Text style={{ color: 'white' }}>{member.name.toUpperCase().slice(0, 2)}</Text>
+                      <Text style={{ color: 'white' }}>{member.name!.toUpperCase().slice(0, 2)}</Text>
                     </View>
                   )}
 
                   <View />
                   <View>
                     <Form.Text style={{ fontWeight: '600' }}>{member.name}</Form.Text>
-                    <Text style={{ color: '#666' }}>{member.username}</Text>
+                    <Text style={{ color: '#666' }}>@{member.username!}</Text>
                   </View>
                 </Form.HStack>
               ))
@@ -108,19 +120,23 @@ const ChatProfileScreen = () => {
           </Form.Section>
 
           <Form.Section>
-            <Form.Text systemImage="person.badge.plus" onPress={() => {}}>
-              Add members
-            </Form.Text>
+            {chat.type === 'group' && (
+              <Form.Text systemImage="person.badge.plus" onPress={() => {}}>
+                Add members
+              </Form.Text>
+            )}
             <Form.Text systemImage="trash" style={{ color: 'red' }} onPress={() => {}}>
               Clear chat
             </Form.Text>
-            <Form.Text
-              systemImage={{ name: 'rectangle.portrait.and.arrow.right', color: 'red' }}
-              style={{ color: 'red' }}
-              onPress={() => {}}
-            >
-              Leave chat
-            </Form.Text>
+            {chat.type === 'group' && (
+              <Form.Text
+                systemImage={{ name: 'rectangle.portrait.and.arrow.right', color: 'red' }}
+                style={{ color: 'red' }}
+                onPress={() => {}}
+              >
+                Leave chat
+              </Form.Text>
+            )}
           </Form.Section>
         </Form.List>
       </Themed.ScrollView>
