@@ -147,7 +147,7 @@ const DayCell = ({ day, onAdd, onOpenPhoto }: { day: DayTile; onAdd: () => void;
       ]}
     >
       {/* 1️  PLUS TILE  */}
-      {isAdd && <Text style={styles.plus}>＋</Text>}
+      {isAdd && <Themed.Text style={styles.plus}>＋</Themed.Text>}
 
       {/* 2️⃣ PHOTO TILE – image + centered weekday at bottom */}
       {!isAdd && isPhoto && (
@@ -681,7 +681,6 @@ const styles = StyleSheet.create({
   /* PLUS */
   plus: {
     fontSize: 42,
-    color: '#000',
     lineHeight: 46,
     fontWeight: '400'
   },

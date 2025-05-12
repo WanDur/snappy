@@ -35,10 +35,7 @@ export default function ViewPhotoModal() {
   const router = useRouter()
   const session = useSession()
 
-  const {
-    photoIds: photoIdsString,
-    index = '0',
-  } = useLocalSearchParams<{ photoIds: string; index?: string }>()
+  const { photoIds: photoIdsString, index = '0' } = useLocalSearchParams<{ photoIds: string; index?: string }>()
 
   const photoIds = photoIdsString.split(',')
   const { getPhoto, toggleLike } = usePhotoStore()
@@ -90,19 +87,18 @@ export default function ViewPhotoModal() {
   }, [photo.timestamp])
 
   const [liked, setLiked] = useState(photo.likes.includes(currentUser.id))
-  
+
   const handleToggleLike = () => {
     const newLikedState = !liked
     const action = newLikedState ? 'like' : 'unlike'
     setLiked(newLikedState)
     toggleLike(photo.userId, photoIds[currentIndex], currentUser.id)
-    session.apiWithToken.post(`/photo/${photoIds[currentIndex]}/${action}`)
-      .catch((err) => {
-        Alert.alert('Error', `Failed to ${action} photo`)
-        setLiked(liked)
-        toggleLike(photo.userId, photoIds[currentIndex], currentUser.id)
-        console.error(err)
-      })
+    session.apiWithToken.post(`/photo/${photoIds[currentIndex]}/${action}`).catch((err) => {
+      Alert.alert('Error', `Failed to ${action} photo`)
+      setLiked(liked)
+      toggleLike(photo.userId, photoIds[currentIndex], currentUser.id)
+      console.error(err)
+    })
   }
 
   /* ---------- navigation helpers --------- */
@@ -111,7 +107,7 @@ export default function ViewPhotoModal() {
       pathname: '/(modal)/ViewPhotoModal', // adjust if path differs
       params: {
         photoIds: photoIds,
-        index: nextIndex.toString(),
+        index: nextIndex.toString()
       }
     })
   }
@@ -181,7 +177,19 @@ export default function ViewPhotoModal() {
           <Image source={{ uri: currentUser.iconUrl }} style={styles.captionAvatar} />
           <TextInput placeholder="Add a caption…" placeholderTextColor="#999" style={styles.captionInput} multiline />
           <Feather name="send" size={20} color="#fff" style={{ marginHorizontal: 6 }} />
-          <Feather name="more-horizontal" size={20} color="#fff" />
+          {photo.userId === currentUser.id && (
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert('Options', 'Choose an action', [
+                  { text: 'Tag Friend', onPress: () => console.log('Tag friend tapped') },
+                  { text: 'Delete Photo', onPress: () => console.log('Delete photo tapped'), style: 'destructive' },
+                  { text: 'Cancel', style: 'cancel' }
+                ])
+              }}
+            >
+              <Feather name="more-horizontal" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
     </View>
