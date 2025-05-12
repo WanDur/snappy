@@ -23,7 +23,7 @@ from fastapi_jwt import JwtAuthorizationCredentials
 from odmantic import AIOEngine, ObjectId
 from pydantic import BaseModel, StringConstraints
 
-from utils.minio import optimize_image, upload_file_stream
+from utils.minio_server import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
 from utils.mongo import serialize_mongo_object, get_prod_database

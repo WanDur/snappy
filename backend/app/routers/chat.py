@@ -31,7 +31,7 @@ from internal.models import (
 )
 from utils.auth import get_user, get_user_from_token
 from utils.debug import log_debug
-from utils.minio import upload_file
+from utils.minio_server import upload_file
 from utils.mongo import engine, serialize_mongo_object, get_prod_database
 from utils.settings import get_settings
 

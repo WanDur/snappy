@@ -17,7 +17,8 @@ from datetime import datetime, timedelta, timezone
 import random
 from faker import Faker
 import bcrypt
-from internal.models import User, UserTier
+from internal.models import Friendship, Photo, User, UserTier
+from utils.minio_server import upload_file
 from utils.mongo import get_prod_database
 
 faker = Faker()
@@ -62,16 +63,59 @@ async def main():
     print(f"Username: root")
     print(f"Password: root")
 
+    # Read sample photos
+    photos = []
+    for i in range(1, 4):
+        with open(
+            os.path.join(os.path.dirname(__file__), "assets", f"photo{i}.jpg"), "rb"
+        ) as f:
+            photos.append(f.read())
+
     # Generate User Data
-    for i in range(9):
+    for i in range(5):
         user, password = generate_user_data(
             random.choice([UserTier.FREEMIUM, UserTier.PREMIUM])
         )
         await engine.save(user)
+        upload_photos = random.choices(photos, k=random.randint(1, 3))
+        for j, photo in enumerate(upload_photos):
+            url = upload_file(f"users/{user.id}/photos/sample_{j}.jpg", photo)
+            photo = Photo(
+                user=user,
+                timestamp=datetime.now(timezone.utc),
+                url=url,
+            )
+            await engine.save(photo)
         print(f"========== SAMPLE {user.tier} USER #{i+2} ==========")
         print(f"Email: {user.email}")
         print(f"Username: {user.username}")
         print(f"Password: {password}")
+        print(f"Photos: {len(upload_photos)}")
+
+    for i in range(5):
+        user, password = generate_user_data(UserTier.FREEMIUM)
+        friendship = Friendship(
+            user1=login_user,
+            user2=user,
+            accepted=True,
+            inviteTimestamp=datetime.now(timezone.utc),
+        )
+        await engine.save(user)
+        await engine.save(friendship)
+        upload_photos = random.choices(photos, k=random.randint(1, 3))
+        for photo in upload_photos:
+            url = upload_file(f"users/{user.id}/photos/sample_{i}.jpg", photo)
+            photo = Photo(
+                user=user,
+                timestamp=datetime.now(timezone.utc),
+                url=url,
+            )
+            await engine.save(photo)
+        print(f"========== SAMPLE FREEMIUM FRIEND USER #{i+11} ==========")
+        print(f"Email: {user.email}")
+        print(f"Username: {user.username}")
+        print(f"Password: {password}")
+        print(f"Photos: {len(upload_photos)}")
 
 
 if __name__ == "__main__":

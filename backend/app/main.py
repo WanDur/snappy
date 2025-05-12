@@ -8,7 +8,7 @@ from routers.chat import chat_router
 from routers.photo import photo_router
 from routers.album import album_router
 from utils.auth import AuthMiddleware
-from utils.minio import get_public_file
+from utils.minio_server import get_public_file
 
 from urllib.parse import unquote
 import os
