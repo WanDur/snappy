@@ -1,5 +1,4 @@
 // common types and functions for chat screen related component
-import ChatHistoryItem from './ChatHistoryItem'
 import MessageInput from './MessageInput'
 import ChatRow from './ChatRow'
 
@@ -76,18 +75,6 @@ export interface MetaData {
   extraPrompt?: string
 }
 
-export interface ChatHistoryItemProps {
-  id: string
-  createdAt: string
-  title: string
-}
-
-export interface ChatHistoryItemActionProps extends ChatHistoryItemProps {
-  onSelect: (id: string) => void
-  onEdit: (id: string) => void
-  onDelete: (id: string) => void
-}
-
 const getFileExtension = (filePath: string): FileExtensions => {
   const regex = /[^.]+$/
   const match = filePath.match(regex)
@@ -120,7 +107,6 @@ const convertToBase64 = async (uri: string) => {
 }
 
 export {
-  ChatHistoryItem,
   MessageInput,
   ChatRow,
   getFileExtension,
