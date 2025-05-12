@@ -75,3 +75,6 @@ export const pickRandom = <T>(arr: T[]) => {
 export const randomInt = (min: number, max: number) => {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
+
+// utils/id.ts
+export const id = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
