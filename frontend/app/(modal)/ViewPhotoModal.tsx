@@ -8,8 +8,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
-  Alert
+  Alert,
+  Pressable
 } from 'react-native'
 import { router, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image } from 'expo-image'
@@ -35,33 +35,17 @@ export default function ViewPhotoModal() {
   const router = useRouter()
   const session = useSession()
 
-  const { toggleLike } = usePhotoStore()
-
   const {
-    photoId: startId,
-    index: startIndexParam = '0',
-    ids: idsParam = ''
-  } = useLocalSearchParams<{ photoId: string; index?: string; ids?: string }>()
+    photoIds: photoIdsString,
+    index = '0',
+  } = useLocalSearchParams<{ photoIds: string; index?: string }>()
 
-  /* ------------ setup list for swiping ---------- */
-  const photoIds: string[] = useMemo(() => {
-    if (idsParam) return (idsParam as string).split(',')
-    return [startId as string]
-  }, [idsParam, startId])
+  const photoIds = photoIdsString.split(',')
+  console.log('photoIds', photoIds)
+  const { getPhoto, toggleLike } = usePhotoStore()
 
-  /* Local state holds which photo we're showing – no more re‑navigation */
-  const [currentIndex, setCurrentIndex] = useState<number>(
-    Math.min(parseInt(startIndexParam as string, 10) || 0, photoIds.length - 1)
-  )
-
-  // convenience to get the actual photo object
-const photo = usePhotoStore((s) =>
-    Object.values(s.photoMap)
-      .flat()
-      .find((p) => p.id === photoIds[currentIndex])
-  ) as Photo | undefined
-  const toggleLikeInStore = usePhotoStore((s) => s.toggleLike)
-
+  const [currentIndex, setCurrentIndex] = useState(parseInt(index))
+  const photo = getPhoto(photoIds[currentIndex])
   const currentUser = useUserStore((s) => s.user)
   const owner = useFriendStore((s) => s.friends.find((f) => f.id === (photo?.userId ?? currentUser.id)))
 
@@ -109,7 +93,6 @@ const photo = usePhotoStore((s) =>
   const [liked, setLiked] = useState(photo.likes.includes(currentUser.id))
   
   const handleToggleLike = () => {
-    const handleToggleLike = () => {
     const newLikedState = !liked
     const action = newLikedState ? 'like' : 'unlike'
     setLiked(newLikedState)
@@ -122,18 +105,25 @@ const photo = usePhotoStore((s) =>
         console.error(err)
       })
   }
+
+  /* ---------- navigation helpers --------- */
+  const goTo = (nextIndex: number) => {
+    router.replace({
+      pathname: '/(modal)/ViewPhotoModal', // adjust if path differs
+      params: {
+        photoIds: photoIds,
+        index: nextIndex.toString(),
+      }
+    })
   }
 
+  /* ---------- index navigation (no re‑navigation) ---------- */
   const handleNext = () => {
-    if (currentIndex < total - 1) setCurrentIndex(currentIndex + 1)
+    if (currentIndex < photoIds.length - 1) setCurrentIndex(currentIndex + 1)
   }
   const handlePrev = () => {
     if (currentIndex > 0) setCurrentIndex(currentIndex - 1)
   }
-
-  /* index and total for top‑right counter */
-  const photoIndex = currentIndex + 1
-  const total = photoIds.length
 
   return (
     <View style={styles.container}>
@@ -150,7 +140,7 @@ const photo = usePhotoStore((s) =>
         <View style={styles.headerRight}>
           <View style={styles.counterBubble}>
             <Text style={styles.counterText}>
-              {currentIndex + 1} of {total}
+              {currentIndex + 1} of {photoIds.length}
             </Text>
           </View>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>

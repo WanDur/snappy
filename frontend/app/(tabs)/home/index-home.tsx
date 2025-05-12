@@ -350,10 +350,8 @@ const HomeScreen = () => {
       router.push({
         pathname: '/(modal)/ViewPhotoModal', // adjust if your route differs
         params: {
-          photoId: photo.id,
-          index: index.toString(),
-          total: photosThisWeek.length.toString(),
-          ids: photosThisWeek.map((p) => p.id).join(',')
+          photoIds: photosThisWeek.map((p) => p.id),
+          index: index.toString()
         }
       })
     },
