@@ -264,7 +264,7 @@ const HomeScreen = () => {
   const { initialSync } = useSync()
 
   const { colors } = useTheme()
-  const { friends, addFriend, clearFriends } = useFriendStore()
+  const { getAcceptedFriends } = useFriendStore()
   const { hasPhoto, addPhoto, getUserPhotos } = usePhotoStore()
 
   const [weeks, setWeeks] = useState<WeekBundle[]>(buildWeeks())
@@ -366,7 +366,7 @@ const HomeScreen = () => {
     // Patch every week bundle with user-uploaded photos stored in mediaByDate
     return weeks.map((w) => {
           // Build feed from friend list (placeholder: use their first photo or blank)
-    const localFeed: FeedItem[] = friends.map((f, i) => {
+    const localFeed: FeedItem[] = getAcceptedFriends().map((f, i) => {
       const photos = getUserPhotos(f.id).filter((p) => p.year == w.year && p.week === w.weekNum)
       return {
         id: `local-${f.id}-${i}`,
@@ -400,7 +400,7 @@ const HomeScreen = () => {
         feed: localFeed // replace demo feed
       }
     })
-  }, [weeks, friends, mediaByDate])
+  }, [weeks, getAcceptedFriends(), mediaByDate])
 
   const openPicker = useCallback(async (week: WeekBundle) => {
     const { status } = await MediaLibrary.requestPermissionsAsync()

@@ -64,11 +64,17 @@ async def redeem_license(
             },
         )
 
+    addedDays = 0
     for license in licenses["valid"]:
         await license.redeem(engine, user)
+        addedDays += license.days
 
     return ORJSONResponse(
-        status_code=200, content={"expireTime": user.premiumExpireTime}
+        status_code=200,
+        content={
+            "expireTime": user.premiumExpireTime,
+            "addedDays": addedDays,
+        },
     )
 
 
@@ -81,7 +87,7 @@ async def generate_license_keys(
     while len(licenses) < count:
         key = "-".join(
             [
-                "".join(random.choices(string.ascii_letters + string.digits, k=4))
+                "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
                 for _ in range(4)
             ]
         )

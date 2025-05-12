@@ -11,6 +11,7 @@ interface FriendStore {
   hasFriend: (id: string) => boolean;
   addFriend: (friend: Friend) => void;
   getFriend: (id: string) => Friend | undefined;
+  getAcceptedFriends: () => Friend[];
   removeFriend: (id: string) => void;
   changeFriendType: (id: string, type: FriendStatus) => void;
   clearFriends: () => void;
@@ -41,6 +42,13 @@ export const useFriendStore = create<FriendStore>()(
       getFriend: (id) => {
         return get().friends.find((friend) => friend.id === id);
       },
+
+      getAcceptedFriends: () => {
+        return get().friends.filter(
+          (friend) => friend.type === FriendStatus.FRIEND
+        );
+      },
+
       removeFriend: (id) => {
         set((state) => {
           state.friends = state.friends.filter((friend) => friend.id !== id);
