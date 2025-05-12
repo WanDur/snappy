@@ -247,6 +247,7 @@ class Photo(Model):
             user=user, photo=self, timestamp=datetime.now(timezone.utc), message=message
         )
         await engine.save(comment)
+        return comment
 
     async def get_likes(self, engine: AIOEngine) -> list[ObjectId]:
         likes = await engine.find(PhotoLike, PhotoLike.photo == self.id)

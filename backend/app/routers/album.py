@@ -93,6 +93,7 @@ class EditAlbumBody(BaseModel):
     name: Optional[str] = None
     shared: Optional[bool] = None
     description: Optional[str] = None
+    participants: Optional[list[ObjectId]] = None
 
 
 @album_router.post("/{album_id}/edit")
@@ -118,6 +119,8 @@ async def edit_album(
         album.shared = body.shared
     if body.description:
         album.description = body.description
+    if body.participants:
+        album.participants = body.participants
 
     await engine.save(album)
 
@@ -128,6 +131,7 @@ async def edit_album(
                 "shared": album.shared,
                 "description": album.description,
                 "createdAt": album.createdAt,
+                "participants": album.participants,
             }
         )
     )
@@ -198,7 +202,7 @@ async def fetch_album(
     if album is None:
         raise HTTPException(status_code=404, detail="Album not found")
 
-    album_owner = await engine.find_one(User, User.id == album.createdBy)
+    album_owner = await engine.find_one(User, User.id == album.createdBy.id)
     if album_owner is None:
         raise HTTPException(status_code=404, detail="Album owner not found")
 
