@@ -1,10 +1,9 @@
-import { View, Text, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native'
 import { useState } from 'react'
 import { Stack, useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { isAxiosError } from 'axios'
 
-import { Constants } from '@/constants'
 import { Themed, Bounceable } from '@/components'
 import { useTheme } from '@/hooks'
 import { useSession } from '@/contexts/auth'
@@ -18,7 +17,7 @@ const LoginScreen = () => {
   const [emailUsernamePhone, setEmailUsernamePhone] = useState('')
   const [password, setPassword] = useState('')
 
-const onSignIn = async () => {
+  const onSignIn = async () => {
     try {
       console.log('Logging in with', emailUsernamePhone)
       await signInWithCredential(emailUsernamePhone, password)
@@ -33,10 +32,11 @@ const onSignIn = async () => {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Constants.isIOS ? undefined : 'height'}>
+    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" scrollEnabled={false}>
       <Stack.Screen
         options={{
           headerTitle: 'Login',
+          headerTransparent: false,
           headerLeft: () =>
             router.canGoBack() && (
               <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
@@ -46,7 +46,7 @@ const onSignIn = async () => {
         }}
       />
 
-      <View style={{ marginHorizontal: 20 }}>
+      <View style={{ marginHorizontal: 20, marginTop: 200 }}>
         <Themed.TextInput
           label="Email / Username / Phone"
           placeholder="user@example.com"
@@ -89,7 +89,7 @@ const onSignIn = async () => {
         <View style={styles.buttonContainer}>
           <Bounceable
             style={[styles.btn, { backgroundColor: colors.borderColor, justifyContent: 'center' }]}
-            onPress={() => router.push('/(auth)/SignUpScreen')}
+            onPress={() => router.push('/(auth)/signup')}
           >
             <Themed.Text style={[styles.btnText, { marginLeft: 0 }]}>Signup</Themed.Text>
           </Bounceable>
@@ -100,17 +100,14 @@ const onSignIn = async () => {
           </Text>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'column-reverse',
-    gap: 40,
-    padding: 16,
-    paddingBottom: 32
+    padding: 16
   },
   buttonContainer: {
     gap: 20

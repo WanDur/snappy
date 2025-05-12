@@ -61,6 +61,8 @@ export default function RootLayout() {
                 <Stack.Screen name="+not-found" />
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
+                <Stack.Screen name="(auth)/signup" options={{ presentation: 'modal', headerShown: false }} />
+
                 <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
                 <Stack.Screen name="(modal)/ChatSettingModal" sheet />
                 <Stack.Screen
