@@ -114,7 +114,6 @@ export default function ViewPhotoModal() {
       message: comment,
      })
      .then((res) => {
-      console.log(res.data.commentId)
       addComment(res.data.commentId, photoIds[currentIndex], currentUser.id, comment, new Date(res.data.timestamp))
       setComment('')
      })
