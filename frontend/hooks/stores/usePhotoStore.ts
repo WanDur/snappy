@@ -58,11 +58,14 @@ interface State {
   toggleLike: (ownerId: string, photoId: string, byUserId: string) => void;
 
   addComment: (
-    ownerId: string,
+    id: string,
     photoId: string,
     byUserId: string,
-    message: string
+    message: string,
+    timestamp: Date
   ) => void;
+
+  deleteComment: (photoId: string, commentId: string) => void;
 
   /* local feed helper (you can replace with real API later) */
   fetchFeed: (friendIds: string[]) => Photo[];
@@ -200,17 +203,30 @@ export const usePhotoStore = create<State>()(
       },
 
       /* ==== ADD COMMENT =================================================== */
-      addComment(ownerId, photoId, byUserId, message) {
+      addComment(id, photoId, byUserId, message, timestamp) {
         if (!message.trim()) return;
         set((draft) => {
-          const photo = draft.photoMap[ownerId]?.find((p) => p.id === photoId);
+          const photo = Object.values(draft.photoMap)
+            .flat()
+            .find((p) => p.id === photoId);
+          console.log(photo);
           if (!photo) return;
           photo.comments.push({
-            id: id(),
+            id: id,
             userId: byUserId,
             message,
-            timestamp: new Date(),
+            timestamp,
           });
+        });
+      },
+
+      deleteComment(photoId, commentId) {
+        set((draft) => {
+          const photo = Object.values(draft.photoMap)
+            .flat()
+            .find((p) => p.id === photoId);
+          if (!photo) return;
+          photo.comments = photo.comments.filter((c) => c.id !== commentId);
         });
       },
 

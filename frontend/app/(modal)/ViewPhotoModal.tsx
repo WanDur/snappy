@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Pressable
+  Pressable,
+  Animated,
+  ScrollView
 } from 'react-native'
 import { router, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image } from 'expo-image'
@@ -22,6 +24,11 @@ import { useUserStore, usePhotoStore, useFriendStore, useTheme } from '@/hooks'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Photo } from '@/types'
 import { useSession, bypassLogin, isAuthenticated } from '@/contexts/auth'
+import { PhotoComment } from '@/types/photo.types'
+import { SwipeableRow, Themed } from '@/components'
+import { Avatar } from '@/components/Avatar'
+import ReanimatedSwipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable'
+import { RightAction } from '@/components/SwipeableRow'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -38,13 +45,14 @@ export default function ViewPhotoModal() {
   const { photoIds: photoIdsString, index = '0' } = useLocalSearchParams<{ photoIds: string; index?: string }>()
 
   const photoIds = photoIdsString.split(',')
-  const { getPhoto, toggleLike } = usePhotoStore()
+  const { getPhoto, toggleLike, addComment, deleteComment } = usePhotoStore()
+  const { getFriend } = useFriendStore()
 
   const [currentIndex, setCurrentIndex] = useState(parseInt(index))
   const photo = getPhoto(photoIds[currentIndex])
   const currentUser = useUserStore((s) => s.user)
   const owner = useFriendStore((s) => s.friends.find((f) => f.id === (photo?.userId ?? currentUser.id)))
-
+  const [comment, setComment] = useState('')
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
 
@@ -101,6 +109,21 @@ export default function ViewPhotoModal() {
     })
   }
 
+  const handlePostComment = (comment: string) => {
+    session.apiWithToken.post(`/photo/${photoIds[currentIndex]}/comment`, { 
+      message: comment,
+     })
+     .then((res) => {
+      console.log(res.data.commentId)
+      addComment(res.data.commentId, photoIds[currentIndex], currentUser.id, comment, new Date(res.data.timestamp))
+      setComment('')
+     })
+     .catch((err) => {
+      Alert.alert('Error', `Failed to post comment`)
+      console.error(err)
+    })
+  }
+
   /* ---------- navigation helpers --------- */
   const goTo = (nextIndex: number) => {
     router.replace({
@@ -118,6 +141,61 @@ export default function ViewPhotoModal() {
   }
   const handlePrev = () => {
     if (currentIndex > 0) setCurrentIndex(currentIndex - 1)
+  }
+
+  const CommentRow = ({ item }: { item: PhotoComment }) => {
+    const reanimatedRef = useRef<SwipeableMethods>(null)
+
+    const handleDeleteComment = (commentId: string) => {
+      Alert.alert('Delete Comment', 'Are you sure you want to delete this comment?', [
+        { text: 'Cancel', onPress: () => reanimatedRef.current?.reset(), style: 'cancel' },
+        { text: 'Delete', onPress: () => {
+          session.apiWithToken.delete(`/photo/comment/${commentId}/delete`).then(() => {
+            deleteComment(photoIds[currentIndex], commentId)
+            reanimatedRef.current?.reset()
+          }).catch((err) => {
+            Alert.alert('Error', 'Failed to delete comment')
+            reanimatedRef.current?.reset()
+            console.error(err)
+          })
+        }, style: 'destructive' }
+      ])
+    }
+
+    let username: string | undefined = ''
+    let avatar: string | undefined = ''
+    if (item.userId === currentUser.id) {
+      username = currentUser.username
+      avatar = currentUser.iconUrl
+    } else {
+      const friend = getFriend(item.userId)
+      username = friend?.username
+      avatar = friend?.avatar
+    }
+    return (
+      <View style={{ marginTop: 8 }}>
+        <ReanimatedSwipeable
+          ref={reanimatedRef}
+          friction={2}
+          rightThreshold={60}
+          renderRightActions={(prog, drag) => <RightAction prog={prog} drag={drag} backgroundColor='#000' activeColor='#d11a2a' />}
+          onSwipeableWillOpen={() => handleDeleteComment(item.id)}
+        >
+          <View style={[styles.commentContainer, { backgroundColor: '#222' }]}>
+            <Avatar iconUrl={avatar} username={username} size={28} style={{ marginRight: 8 }} />
+            <View style={{}}>
+            <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{username}</Text>
+              <Text style={{ color: '#fff' }}>{item.message}</Text>
+            </View>
+          </View>
+        </ReanimatedSwipeable>
+      </View>
+      
+    )
+  }
+
+  const renderComment = ({ item }: { item: PhotoComment }) => {
+    return <CommentRow item={item} />
   }
 
   return (
@@ -166,39 +244,55 @@ export default function ViewPhotoModal() {
           )}
         </TouchableOpacity>
       </View>
-
-      {/* ---------- CAPTION INPUT ---------- */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 64 : 0}
-        style={{ paddingBottom: insets.bottom + 8 }}
-      >
-        <View style={styles.captionBar}>
-          <Image source={{ uri: currentUser.iconUrl }} style={styles.captionAvatar} />
-          <TextInput placeholder="Add a caption…" placeholderTextColor="#999" style={styles.captionInput} multiline />
-          <Feather name="send" size={20} color="#fff" style={{ marginHorizontal: 6 }} />
-          {photo.userId === currentUser.id && (
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert('Options', 'Choose an action', [
-                  {
-                    text: 'Tag Friend',
-                    onPress: () =>
-                      router.push({
-                        pathname: '/(modal)/TaggedUserModal',
-                        params: { photoId: photoIds[currentIndex] }
-                      })
-                  },
-                  { text: 'Delete Photo', onPress: () => console.log('Delete photo tapped'), style: 'destructive' },
-                  { text: 'Cancel', style: 'cancel' }
-                ])
-              }}
-            >
-              <Feather name="more-horizontal" size={20} color="#fff" />
-            </TouchableOpacity>
-          )}
-        </View>
-      </KeyboardAvoidingView>
+      
+      <View style={{ flex: 1 }}>
+        <ScrollView>
+          <Animated.FlatList
+            data={photo.comments}
+            renderItem={renderComment}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            style={{ alignSelf: 'center', flexGrow: 1, marginHorizontal: 24, paddingHorizontal: 24, width: '100%', paddingBottom: 58 }}
+          />
+        </ScrollView>
+      
+        {/* ---------- CAPTION INPUT ---------- */}
+        <BlurView intensity={50} tint="dark" style={{ paddingBottom: insets.bottom }}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom + 64 : 0}
+            style={{ paddingBottom: insets.bottom }}
+          >
+            <View style={styles.captionBar}>
+              <Image source={{ uri: currentUser.iconUrl }} style={styles.captionAvatar} />
+              <TextInput placeholder={photo.userId === currentUser.id ? (
+                photo.comments[0]?.userId === currentUser.id ? 'Add a comment...' : 'Add a caption...'
+              ) : 'Add a comment...'} placeholderTextColor="#999" style={styles.captionInput} multiline value={comment} onChangeText={setComment} />
+              <Feather name="send" size={20} color="#fff" style={{ marginHorizontal: 6 }} onPress={() => handlePostComment(comment)} />
+              {photo.userId === currentUser.id && (
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert('Options', 'Choose an action', [
+                      {
+                        text: 'Tag Friend',
+                        onPress: () =>
+                          router.push({
+                            pathname: '/(modal)/TaggedUserModal',
+                            params: { photoId: photoIds[currentIndex] }
+                          })
+                      },
+                      { text: 'Delete Photo', onPress: () => console.log('Delete photo tapped'), style: 'destructive' },
+                      { text: 'Cancel', style: 'cancel' }
+                    ])
+                  }}
+                >
+                  <Feather name="more-horizontal" size={20} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </BlurView>
+      </View>
     </View>
   )
 }
@@ -304,9 +398,11 @@ const styles = StyleSheet.create({
   },
   /* caption bar */
   captionBar: {
+    position: 'absolute',
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#333',
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 24,
@@ -328,5 +424,13 @@ const styles = StyleSheet.create({
   center: {
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  commentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    minHeight: 46
   }
 })
