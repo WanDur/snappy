@@ -32,15 +32,16 @@ export const AlbumCover = memo(
 
     // if the album is at small size, use a smaller icon size
     const iconSize = typeof style.width === 'string' ? 64 : Number(style.width) * 0.4
+    const coverImageExist = coverImage.trim() !== '' && !coverImage.includes('null')
 
     return (
       <View style={style}>
-        {coverImage === '' ? (
-          <Themed.View type="secondary" style={commonPlaceholderStyles}>
-            <Ionicons name="image" size={iconSize} color={colors.borderColor} />
-          </Themed.View>
-        ) : (
+        {coverImageExist ? (
           <Image source={{ uri: coverImage }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+        ) : (
+          <Themed.View type="secondary" style={commonPlaceholderStyles}>
+            <Ionicons name="image" size={iconSize} color={colors.gray} />
+          </Themed.View>
         )}
       </View>
     )

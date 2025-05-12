@@ -33,6 +33,8 @@ const AlbumScreen = () => {
 
   const [isLoading, setIsLoading] = useState(false)
 
+  const coverImageExist = album.coverImage.trim() !== '' && !album.coverImage.includes('null')
+
   const handleImagePick = async () => {
     setIsLoading(true)
     const pickerResult = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, quality: 0.3 })
@@ -78,7 +80,9 @@ const AlbumScreen = () => {
     return (
       <View>
         <View style={styles.coverImageContainer}>
-          {album.coverImage === '' ? (
+          {coverImageExist ? (
+            <Image source={{ uri: album.coverImage }} style={styles.coverImage} />
+          ) : (
             <Themed.View style={{ width: '100%', height: '80%', justifyContent: 'center', alignItems: 'center' }}>
               <ContentUnavailable
                 title="Your Album is Empty"
@@ -86,8 +90,6 @@ const AlbumScreen = () => {
                 systemImage="photo.on.rectangle.angled"
               />
             </Themed.View>
-          ) : (
-            <Image source={{ uri: album.coverImage }} style={styles.coverImage} />
           )}
 
           <TouchableOpacity
