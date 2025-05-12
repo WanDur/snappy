@@ -24,10 +24,11 @@ services:
     depends_on:
       - 'minio'
     environment:
-      - 'MC_HOST_minio=http://ltX0fh99TwfdHYSVg1ff:Kh5FgbtOd04CIEklre79PVEwm5SSY9Hb7iroQobL@minio:9000'
+      - 'MC_HOST_minio=http://root:wIb8nv85LorMvMLgXrj1IjSonWhmoeIO@minio:9000'
     entrypoint: >
       /bin/sh -c "
       /usr/bin/mc mb minio/snappy;
+      /usr/bin/mc admin user svcacct add --access-key ltX0fh99TwfdHYSVg1ff --secret-key Kh5FgbtOd04CIEklre79PVEwm5SSY9Hb7iroQobL minio/ root;
       exit 0;
       "
   

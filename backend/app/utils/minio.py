@@ -20,9 +20,14 @@ from utils.debug import log_debug
 from utils.settings import get_settings
 
 settings = get_settings()
-
+hostname = "minio"
+if settings.RUN_MODE == "dev":
+    hostname = "localhost"
 client = Minio(
-    "localhost:9000", settings.MINIO_ACCESS_KEY, settings.MINIO_SECRET_KEY, secure=False
+    f"{hostname}:9000",
+    settings.MINIO_ACCESS_KEY,
+    settings.MINIO_SECRET_KEY,
+    secure=False,
 )
 APP_BUCKET = "snappy"
 

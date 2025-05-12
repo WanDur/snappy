@@ -2,7 +2,7 @@
  * Screen Params:
  * chatID: string
  */
-import { TextInput, Alert, Modal, TouchableOpacity, View, Image, Keyboard } from 'react-native'
+import { TextInput, Alert, TouchableOpacity, View, Image, Keyboard } from 'react-native'
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router'
 import { useEffect, useState, useRef } from 'react'
 import { GiftedChat, Bubble, InputToolbar, BubbleProps } from 'react-native-gifted-chat'
@@ -16,7 +16,7 @@ import { MessageInput, AudioComponent, FileComponent, ImageComponent, ImagesComp
 import { Constants } from '@/constants'
 import { useChatStore, useUserStore, useTheme } from '@/hooks'
 // import { useSession } from '@/contexts/auth'
-import { Attachment, ChatItem, MessageResponse, SYSTEM } from '@/types/chats.type'
+import { Attachment, MessageResponse, SYSTEM } from '@/types/chats.type'
 import { Avatar } from '@/components/Avatar'
 import { getChatTitle } from '../(tabs)/chats/index-chats'
 import { getChatIcon } from '../(tabs)/chats/index-chats'
@@ -38,7 +38,6 @@ const ChatScreen = () => {
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   const [allMessages, setAllMessages] = useState<TMessage[]>([])
   const [modalVisible, setModalVisible] = useState(false)
-  const [menuVisible, setMenuVisible] = useState(false)
   const [iconUrl, setIconUrl] = useState(getChatIcon(chat, user))
   const [chatTitle, setChatTitle] = useState(getChatTitle(chat, user))
 
@@ -46,70 +45,6 @@ const ChatScreen = () => {
   const loadMessageRef = useRef<number>(0)
 
   const { initialDate, messages } = getChat(chatID)
-
-  const TempContextMenu = () => {
-    const toggleMenu = () => {
-      setModalVisible(!modalVisible)
-      setMenuVisible(!menuVisible)
-    }
-
-    return (
-      <Modal transparent={true} visible={modalVisible} animationType="fade">
-        <TouchableOpacity
-          style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onPress={toggleMenu}
-          activeOpacity={1}
-        >
-          <Themed.View
-            style={[
-              {
-                position: 'absolute',
-                top: 60,
-                left: Constants.screenWidth - 220,
-                width: 220,
-                borderRadius: 10,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.4,
-                shadowRadius: 6,
-                padding: 10
-              }
-            ]}
-          >
-            <Themed.Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>Context Menu</Themed.Text>
-            <Themed.Text style={{ marginBottom: 10 }}>
-              This is temporary. Native one will be implemented later.
-            </Themed.Text>
-            <View style={{ borderBottomWidth: 1, borderBottomColor: '#ccc', marginBottom: 10 }} />
-            <View style={{ padding: 6 }}>
-              <TouchableOpacity
-                style={{
-                  padding: 4,
-                  borderColor: colors.borderColor,
-                  borderWidth: 1,
-                  borderRadius: 6,
-                  marginBottom: 10
-                }}
-                onPress={() => {
-                  setModalVisible(false)
-                }}
-              >
-                <Themed.Text style={{ paddingVertical: 6, textAlign: 'center' }}>Report</Themed.Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ padding: 4, borderColor: colors.borderColor, borderWidth: 1, borderRadius: 6 }}
-                onPress={() => {
-                  setModalVisible(false)
-                }}
-              >
-                <Themed.Text style={{ paddingVertical: 6, textAlign: 'center' }}>Delete chat</Themed.Text>
-              </TouchableOpacity>
-            </View>
-          </Themed.View>
-        </TouchableOpacity>
-      </Modal>
-    )
-  }
 
   const loadNewMessages = async () => {
     const chat = getChat(chatID)
@@ -138,13 +73,13 @@ const ChatScreen = () => {
 
   useEffect(() => {
     if (bypassLogin()) {
-      return;
+      return
     }
     if (!isAuthenticated(session)) {
       router.replace('/(auth)/LoginScreen')
-      return;
+      return
     }
-    
+
     setAllMessages([
       ...messages,
       {
@@ -199,7 +134,9 @@ const ChatScreen = () => {
           type: attachment
         } as any)
       }
-      const messageRes: MessageResponse = (await session.apiWithToken.post(`/chat/conversation/${chatID}/send`, formData)).data
+      const messageRes: MessageResponse = (
+        await session.apiWithToken.post(`/chat/conversation/${chatID}/send`, formData)
+      ).data
       const newMessage = {
         _id: messageRes.messageId,
         user: {
@@ -211,7 +148,7 @@ const ChatScreen = () => {
         attachments: messageRes.attachments.map((attachment) => ({
           type: attachment.type,
           url: parsePublicUrl(attachment.url),
-          name: attachment.name,
+          name: attachment.name
         }))
       } as TMessage
 
@@ -343,7 +280,6 @@ const ChatScreen = () => {
           return props !== nextProps
         }}
       />
-      <TempContextMenu />
     </Themed.View>
   )
 }

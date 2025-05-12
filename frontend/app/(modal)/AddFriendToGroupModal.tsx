@@ -2,18 +2,17 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import { View, StyleSheet, SectionList, Image, TouchableOpacity, Animated, ListRenderItem } from 'react-native'
 import { useHeaderHeight } from '@react-navigation/elements'
 import { Ionicons } from '@expo/vector-icons'
-import * as Crypto from 'expo-crypto'
 import { router, useLocalSearchParams } from 'expo-router'
 
 import { Themed } from '@/components'
-import { Stack } from '@/components/router-form'
+import { Stack, Form, ContentUnavailable } from '@/components/router-form'
 import { HeaderText } from '@/components/ui'
 import BouncyCheckbox from '@/components/react-native-bouncy-checkbox'
 import { Constants } from '@/constants'
 import { useFriendStore, useTheme } from '@/hooks'
 import { Friend } from '@/types'
 import { useSettings } from '@/contexts'
-import contacts from './contacts.json'
+
 // remove from Omit if more fields are needed
 interface TFriend
   extends Omit<Friend, 'albumList' | 'username' | 'type' | 'lastActive' | 'mutualFriends' | 'photoList'> {}
@@ -23,21 +22,17 @@ interface FriendListGroup {
   data: TFriend[]
 }
 
-// for testing
-const data: TFriend[] = contacts.map((contact) => ({
-  id: Crypto.randomUUID().slice(0, 8),
-  name: contact.first_name + ' ' + contact.last_name,
-  avatar: contact.img
-}))
-
-const AddFriendToGroupScreen = ({ friends }: { friends: TFriend[] }) => {
+const AddFriendToGroupScreen = () => {
   const { type } = useLocalSearchParams<{ type: string }>()
   const { colors } = useTheme()
   const HEADER_HEIGHT = useHeaderHeight()
+  const { getAcceptedFriends } = useFriendStore()
   const { setSetting } = useSettings()
 
   const [selectedFriends, setSelectedFriends] = useState<TFriend[]>([])
   const animValue = useRef(new Animated.Value(0)).current
+
+  const friends = getAcceptedFriends()
 
   const toggleSelection = (friend: TFriend) => {
     setSelectedFriends((prev) => {
@@ -78,8 +73,8 @@ const AddFriendToGroupScreen = ({ friends }: { friends: TFriend[] }) => {
       .map((letter) => ({ title: letter, data: groups[letter] }))
   }, [friends])
 
-  const renderFriend: ListRenderItem<TFriend> = ({ item }) => (
-    <Themed.View style={styles.friendRow} lightColor="#fafafa">
+  const renderFriend: ListRenderItem<TFriend> = ({ item, index }) => (
+    <Themed.View key={index} style={styles.friendRow} lightColor="#fafafa">
       <Image source={{ uri: item.avatar }} style={styles.avatar} />
       <Themed.Text style={{ fontSize: 16 }}>{item.name}</Themed.Text>
       <View style={{ position: 'absolute' }}>
@@ -132,8 +127,8 @@ const AddFriendToGroupScreen = ({ friends }: { friends: TFriend[] }) => {
         }}
       >
         <Themed.ScrollView style={{ padding: 16 }} showsHorizontalScrollIndicator={false} horizontal>
-          {selectedFriends.map((item) => (
-            <View style={styles.selectedFriend}>
+          {selectedFriends.map((item, index) => (
+            <View style={styles.selectedFriend} key={index}>
               <Image source={{ uri: item.avatar }} style={styles.selectedAvatar} />
               <TouchableOpacity
                 style={[styles.removeButton, { backgroundColor: colors.background }]}
@@ -145,6 +140,7 @@ const AddFriendToGroupScreen = ({ friends }: { friends: TFriend[] }) => {
           ))}
         </Themed.ScrollView>
       </Animated.View>
+
       <SectionList
         sections={groupedFriends}
         keyExtractor={(item) => item.id}
@@ -154,9 +150,19 @@ const AddFriendToGroupScreen = ({ friends }: { friends: TFriend[] }) => {
             <Themed.Text style={styles.sectionHeaderText}>{section.title}</Themed.Text>
           </Themed.View>
         )}
+        ListEmptyComponent={() => (
+          <Form.Section style={{ marginTop: 20 }}>
+            <ContentUnavailable
+              title="Connect with Friends"
+              systemImage="person.2"
+              description="You haven't added any friends yet. Explore suggested friends or search to start connecting!"
+            />
+          </Form.Section>
+        )}
         contentContainerStyle={{ paddingBottom: 120 }}
         stickySectionHeadersEnabled
         ItemSeparatorComponent={() => <Themed.View type="divider" />}
+        style={{ backgroundColor: colors.background }}
       />
     </View>
   )
@@ -202,9 +208,4 @@ const styles = StyleSheet.create({
   }
 })
 
-// Example usage with mock data:
-export default function ScreenWrapper() {
-  const { getAcceptedFriends } = useFriendStore()
-
-  return <AddFriendToGroupScreen friends={getAcceptedFriends()} />
-}
+export default AddFriendToGroupScreen
