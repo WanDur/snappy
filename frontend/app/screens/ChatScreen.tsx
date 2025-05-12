@@ -65,6 +65,10 @@ const ChatScreen = () => {
   }
 
   useEffect(() => {
+    setChatTitle(getChatTitle(chat, user))
+  }), [chat]
+
+  useEffect(() => {
     loadMessageRef.current = window.setInterval(loadNewMessages, 1000)
     return () => {
       clearTimeout(loadMessageRef.current)
