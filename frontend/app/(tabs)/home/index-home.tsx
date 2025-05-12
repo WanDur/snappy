@@ -91,8 +91,6 @@ const addDays = (d: Date, n: number) => {
   return dupe
 }
 
-/**************** Mock generators (for feed demo only) ****************/
-const randomThumb = () => `https://picsum.photos/seed/${Math.floor(Math.random() * 10000)}/800`
 /***************building day tiles and feed logics */
 const buildDays = (weekOffset: number): DayTile[] => {
   // Monday of the target week
@@ -277,11 +275,18 @@ const HomeScreen = () => {
 
   const mediaByDate = useMemo(() => {
     const map: Record<string, { uri: string }> = {}
-    myPhotos.forEach((p) => {
-      const ts = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)
-      const iso = getDateString(ts)
-      map[iso] = { uri: p.url }
-    })
+    ;[...myPhotos]
+      .sort((a, b) => {
+        const dateA = a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp)
+        const dateB = b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp)
+        return dateA.getTime() - dateB.getTime()
+      }) // ① chronological
+      .forEach((p) => {
+        const ts = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)
+        const iso = getDateString(ts)
+        if (!map[iso]) map[iso] = { uri: p.url } // ② set only once
+      })
+
     return map
   }, [myPhotos])
 
@@ -474,10 +479,8 @@ const HomeScreen = () => {
       console.log('iso', iso)
 
       // 1.duplicate check
-      if (mediaByDate[iso] || hasPhoto(currentUserId, iso)) {
-        Alert.alert('Photo exists', 'You have already selected a photo for this date.')
-        return
-      }
+      // Is this the first photo of the day?  (needed for UI patching only)
+      const isFirstOfDay = !mediaByDate[iso]
 
       const formData = new FormData()
       const assetInfo = await MediaLibrary.getAssetInfoAsync(asset)
@@ -511,37 +514,39 @@ const HomeScreen = () => {
           })
 
           /* ensure week bundle present & patch */
-          setWeeks((prev) => {
-            const captureWeek = pickerWeekRef.current!.weekNum
-            const current = getISOWeek()
-            const offset = current - captureWeek
-            const exists = prev.some((w) => w.weekNum === captureWeek)
-            if (!exists) {
-              // build and insert at correct offset
-              const newBundle: WeekBundle = {
-                year: pickerWeekRef.current!.year,
-                weekNum: captureWeek,
-                key: `week-${captureWeek}`,
-                days: buildDays(offset).map((d) =>
-                  !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-                ),
-                feed: []
+          if (isFirstOfDay) {
+            setWeeks((prev) => {
+              const captureWeek = pickerWeekRef.current!.weekNum
+              const current = getISOWeek()
+              const offset = current - captureWeek
+              const exists = prev.some((w) => w.weekNum === captureWeek)
+              if (!exists) {
+                // build and insert at correct offset
+                const newBundle: WeekBundle = {
+                  year: pickerWeekRef.current!.year,
+                  weekNum: captureWeek,
+                  key: `week-${captureWeek}`,
+                  days: buildDays(offset).map((d) =>
+                    !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                  ),
+                  feed: []
+                }
+                const arr = [...prev]
+                arr.splice(offset, 0, newBundle)
+                return arr
               }
-              const arr = [...prev]
-              arr.splice(offset, 0, newBundle)
-              return arr
-            }
-            return prev.map((w) =>
-              w.weekNum === captureWeek
-                ? {
-                    ...w,
-                    days: buildDays(offset).map((d) =>
-                      !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-                    )
-                  }
-                : w
-            )
-          })
+              return prev.map((w) =>
+                w.weekNum === captureWeek
+                  ? {
+                      ...w,
+                      days: buildDays(offset).map((d) =>
+                        !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                      )
+                    }
+                  : w
+              )
+            })
+          }
         })
         .catch((err) => {
           console.error('Error uploading photo', err)
