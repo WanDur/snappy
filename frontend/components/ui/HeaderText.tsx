@@ -1,4 +1,5 @@
 import { TouchableOpacity, ViewStyle } from 'react-native'
+import { useRouter } from 'expo-router'
 
 import { ThemedTextProps } from '../themed/ThemedText'
 import Themed from '../themed/Themed'
@@ -28,6 +29,8 @@ interface Props {
 }
 
 const HeaderText = ({ text, textProps, onPress, children, style }: Props) => {
+  const router = useRouter()
+
   if (!text && !children) {
     console.error('HeaderText: text or children prop is required')
   }
@@ -49,7 +52,7 @@ const HeaderText = ({ text, textProps, onPress, children, style }: Props) => {
     )
   }
   return (
-    <TouchableOpacity style={[style, { padding: 2 }]} onPress={_onPress} activeOpacity={0.7}>
+    <TouchableOpacity style={[style, { padding: 2 }]} onPress={_onPress || router.back} activeOpacity={0.7}>
       <Themed.Text type="headerButton" {...textProps}>
         {text}
       </Themed.Text>

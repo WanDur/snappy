@@ -15,6 +15,8 @@ export interface SettingsProps {
   isTabBarVisible: boolean
   isFirstLaunch: boolean
   language: string
+  friendsToAlbum: string[]
+  friendsToChat: string[]
 }
 
 /**
@@ -24,7 +26,9 @@ export interface SettingsProps {
 const DEFAULT_SETTINGS: SettingsProps = {
   isTabBarVisible: true,
   isFirstLaunch: true,
-  language: ''
+  language: '',
+  friendsToAlbum: [],
+  friendsToChat: []
 }
 
 // NO need to change this
