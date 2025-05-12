@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import os
 import dotenv
 
@@ -15,7 +16,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from main import app
 from utils.auth import access_auth, get_user
 from utils.settings import get_settings
-from internal.models import User, UserTier
+from internal.models import User, UserTier, Friendship
 from utils.mongo import get_prod_database
 
 faker = Faker()
@@ -27,6 +28,22 @@ def get_test_database():
     )
     engine = AIOEngine(client=client, database="snappy_test")
     return client, engine
+
+
+async def add_ranodm_user(
+    mongodb, tier: UserTier = UserTier.FREEMIUM, friend_with: User | None = None
+):
+    user = generate_user_data(tier)
+    await mongodb.save(user)
+    if friend_with:
+        friendship = Friendship(
+            user1=friend_with,
+            user2=user,
+            accepted=True,
+            inviteTimestamp=datetime.now(timezone.utc),
+        )
+        await mongodb.save(friendship)
+    return user
 
 
 @pytest_asyncio.fixture(scope="function")
