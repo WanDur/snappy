@@ -11,6 +11,7 @@ from fastapi import File, HTTPException
 from fastapi.responses import StreamingResponse
 from minio import Minio
 from PIL import Image
+from pillow_heif import register_heif_opener
 from Crypto.Cipher import AES
 from Crypto.Hash import SHA256
 from Crypto.Protocol.KDF import HKDF
@@ -18,6 +19,8 @@ import os
 
 from utils.debug import log_debug
 from utils.settings import get_settings
+
+register_heif_opener()
 
 settings = get_settings()
 hostname = "minio"
@@ -70,8 +73,9 @@ def optimize_image(file: Annotated[bytes, File()]) -> BytesIO:
     Check if the given file is a valid image file
     """
     try:
-        img = Image.open(BytesIO(file)).convert("RGB")
-    except:
+        img = Image.open(BytesIO(file))
+    except Exception as e:
+        log_debug(f"Error opening image: {e}")
         raise HTTPException(400, "Invalid image file")
 
     buf = BytesIO()
