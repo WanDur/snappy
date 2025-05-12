@@ -277,16 +277,14 @@ const HomeScreen = () => {
     const map: Record<string, { uri: string }> = {}
     ;[...myPhotos]
       .sort((a, b) => {
-        const dateA = a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp)
-        const dateB = b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp)
-        return dateA.getTime() - dateB.getTime()
-      }) // ① chronological
-      .forEach((p) => {
-        const ts = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)
-        const iso = getDateString(ts)
-        if (!map[iso]) map[iso] = { uri: p.url } // ② set only once
+        const ta = (a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp)).getTime()
+        const tb = (b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp)).getTime()
+        return ta - tb // oldest-first
       })
-
+      .forEach((p) => {
+        const iso = getDateString(p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp))
+        if (!map[iso]) map[iso] = { uri: p.url }
+      })
     return map
   }, [myPhotos])
 
@@ -325,39 +323,36 @@ const HomeScreen = () => {
   const getItemLayout = (_: any, index: number) => ({ length: SCREEN_HEIGHT, offset: SCREEN_HEIGHT * index, index })
 
   /** HANDLING OPEN PHOTO MODEL */
-  // Quickly map ISO‑date → full Photo object
-  const photoObjByDate = useMemo(() => {
-    const map: Record<string, ReturnType<typeof getUserPhotos>[number]> = {}
-    myPhotos.forEach((p) => {
-      const timestamp = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)
-      const iso = getDateString(timestamp)
-      map[iso] = p
-    })
-    return map
-  }, [myPhotos])
-
   // open the photo modal
   const openPhotoModal = useCallback(
     (week: WeekBundle, day: DayTile) => {
-      const iso = getDateString(day.date)
-      const photo = photoObjByDate[iso]
-      if (!photo) return // should not happen – guard
+      const isoClicked = getDateString(day.date)
 
-      // how many photos are in this SAME week?
-      const photosThisWeek = week.days
-        .filter((d) => !d.isAdd && photoObjByDate[ymd(d.date)])
-        .map((d) => photoObjByDate[ymd(d.date)])
-      const index = photosThisWeek.findIndex((p) => p?.id === photo.id)
+      /*   all photos YOU posted in this ISO week  */
+      const weekPhotos = myPhotos
+        .filter((p) => p.year === week.year && p.week === week.weekNum)
+        .sort((a, b) => {
+          const ta = (a.timestamp instanceof Date ? a.timestamp : new Date(a.timestamp)).getTime()
+          const tb = (b.timestamp instanceof Date ? b.timestamp : new Date(b.timestamp)).getTime()
+          return ta - tb // oldest → newest
+        })
+
+      if (!weekPhotos.length) return // shouldn’t happen
+
+      /*  where should the carousel start? → first photo whose date == clicked cell  */
+      const startIndex = weekPhotos.findIndex(
+        (p) => getDateString(p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp)) === isoClicked
+      )
 
       router.push({
-        pathname: '/(modal)/ViewPhotoModal', // adjust if your route differs
+        pathname: '/(modal)/ViewPhotoModal',
         params: {
-          photoIds: photosThisWeek.map((p) => p.id),
-          index: index.toString()
+          photoIds: weekPhotos.map((p) => p.id).join(','), // e.g. "a1,b2,c3,d4"
+          index: Math.max(startIndex, 0).toString() // default to 0 if not found
         }
       })
     },
-    [photoObjByDate, router]
+    [myPhotos, router]
   )
 
   const openFeedPhoto = useCallback(
