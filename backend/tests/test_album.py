@@ -130,7 +130,7 @@ async def test_album_upload_photo_and_fetch(client, mongodb, sample_freemium_use
         res = await client.post(
             f"/album/{album_id}/upload",
             headers={"Authorization": f"Bearer {token}"},
-            files={"file": ("upload_photo_1.jpg", photo_file.read(), "image/jpeg")},
+            files={"files": ("upload_photo_1.jpg", photo_file.read(), "image/jpeg")},
         )
 
     print(res.json())
