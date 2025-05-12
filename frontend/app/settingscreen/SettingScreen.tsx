@@ -86,7 +86,9 @@ export default function SettingScreen() {
             Feedback & Suggestion
           </Form.Text>
           <Form.Text systemImage="doc.text">Terms of Service</Form.Text>
-          <Form.Text systemImage="hand.raised">Privacy Policy</Form.Text>
+          <Form.Link href="/settingscreen/PrivacyScreen" systemImage="hand.raised">
+            Privacy
+          </Form.Link>
         </Form.Section>
 
         <Form.Section>

@@ -60,7 +60,6 @@ export default function RootLayout() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="settingscreen" options={{ presentation: 'containedModal', headerShown: false }} />
                 <Stack.Screen name="+not-found" />
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
                 <Stack.Screen name="(auth)/signup" options={{ presentation: 'modal', headerShown: false }} />
 
