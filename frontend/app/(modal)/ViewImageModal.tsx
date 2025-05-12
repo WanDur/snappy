@@ -20,6 +20,7 @@ import { BlurView } from 'expo-blur'
 
 import { AlbumPhoto } from '@/types'
 import { useAlbumStore } from '@/hooks'
+import { useSession } from '@/contexts/auth'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 
 const { width, height } = Dimensions.get('window')
@@ -27,10 +28,12 @@ const { width, height } = Dimensions.get('window')
 export default function ViewImageModal() {
   const { getAlbum, removeImage, editAlbum } = useAlbumStore()
   const { photoIndex, id } = useLocalSearchParams<{ photoIndex: string; id: string }>()
+  const session = useSession()
 
   const [photos, setPhotos] = useState<AlbumPhoto[]>([])
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const listRef = useRef<FlatList>(null)
+  const hasDoneInitialScroll = useRef(false)
 
   useEffect(() => {
     const album = getAlbum(id)
@@ -38,35 +41,51 @@ export default function ViewImageModal() {
   }, [id])
 
   useEffect(() => {
-    if (!photos.length) return
+    if (hasDoneInitialScroll.current || !photos.length) return
     const start = Math.min(parseInt(photoIndex), photos.length - 1)
     listRef.current?.scrollToIndex({ index: start, animated: false })
-  }, [photos, photoIndex])
+    setCurrentIndex(start)
+    hasDoneInitialScroll.current = true
+  }, [photos])
 
   const onPageChanged = (e: NativeSyntheticEvent<NativeScrollEvent>): void => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / width)
     setCurrentIndex(idx)
   }
 
-  const handleDelete = () => {
+  // TODO
+  const handleDelete = async () => {
     if (!photos.length) return
-    removeImage(id, currentIndex)
+    const photoId = photos[currentIndex].photoId
 
-    const next = photos.filter((_, i) => i !== currentIndex)
-    if (!next.length) {
-      router.back()
-      return
+    try {
+      // const res = await session.apiWithToken.delete(`/album/${id}/photo/${photoId}`)
+      // editAlbum(id, { coverImage: res.data.coverImageUrl })
+
+      const next = photos.filter((_, i) => i !== currentIndex)
+      if (!next.length) {
+        router.back()
+        return
+      }
+
+      setPhotos(next)
+      const newIndex = Math.min(currentIndex, next.length - 1)
+      setCurrentIndex(newIndex)
+      listRef.current?.scrollToIndex({ index: newIndex, animated: true })
+    } catch (error) {
+      console.error('Failed to delete photo:', error)
     }
-
-    setPhotos(next)
-    const newIndex = Math.min(currentIndex, next.length - 1)
-    setCurrentIndex(newIndex)
-    listRef.current?.scrollToIndex({ index: newIndex, animated: true })
   }
 
-  const handleSetCover = () => {
+  const handleSetCover = async () => {
     if (!photos[currentIndex]) return
-    editAlbum(id, { coverImage: photos[currentIndex].url })
+    try {
+      const res = await session.apiWithToken.patch(`/album/${id}/cover/${photos[currentIndex].photoId}`)
+      editAlbum(id, { coverImage: res.data.coverImageUrl })
+    } catch (error) {
+      console.log(error)
+    }
+
     router.back()
   }
 

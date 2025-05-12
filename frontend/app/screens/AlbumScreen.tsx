@@ -27,9 +27,8 @@ const AlbumScreen = () => {
   const { albumId } = useLocalSearchParams<{ albumId: string }>()
   const { isDark, colors } = useTheme()
 
+  const { addImage, editAlbum } = useAlbumStore()
   const album = useAlbumStore((state) => state.getAlbum(albumId))!
-
-  const { addImage } = useAlbumStore()
 
   const [isLoading, setIsLoading] = useState(false)
 
@@ -51,6 +50,9 @@ const AlbumScreen = () => {
           .post(`/album/${album.id}/upload`, formData)
           .then((res: any) => {
             addImage(album.id, [{ photoId: res.data.photoId, url: parsePublicUrl(res.data.filePath) }])
+            if (!coverImageExist && res.data.coverImageUrl) {
+              editAlbum(album.id, { coverImage: parsePublicUrl(res.data.coverImageUrl) })
+            }
           })
           .catch((err) => {
             Alert.alert('Error', 'Failed to upload photo')
@@ -145,7 +147,7 @@ const AlbumScreen = () => {
       )}
       ListHeaderComponent={<AlbumHeader />}
       ListEmptyComponent={
-        album.coverImage ? (
+        coverImageExist ? (
           <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
             <ContentUnavailable
               title="Your Album is Empty"
