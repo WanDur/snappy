@@ -40,6 +40,7 @@ export interface PhotoPreview {
   location?: string;
   timestamp: Date;
   taggedUserIds: string[];
+  likes: string[];
 }
 
 export interface FetchUserPhotosResponse {

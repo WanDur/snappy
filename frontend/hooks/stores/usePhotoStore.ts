@@ -32,6 +32,7 @@ interface State {
       taggedUserIds?: string[];
       timestamp: Date;
       location?: string;
+      likes: string[];
     }
   ) => void;
 
@@ -41,8 +42,21 @@ interface State {
 
   getUserPhotos: (userId: string) => Photo[];
 
+  getPhoto: (photoId: string) => Photo | undefined;
+
   /* social */
+
+  updatePhotoDetails: (
+    userId: string,
+    photoId: string,
+    caption?: string,
+    taggedUserIds?: string[],
+    likes?: string[],
+    comments?: PhotoComment[]
+  ) => void;
+
   toggleLike: (ownerId: string, photoId: string, byUserId: string) => void;
+
   addComment: (
     ownerId: string,
     photoId: string,
@@ -52,6 +66,8 @@ interface State {
 
   /* local feed helper (you can replace with real API later) */
   fetchFeed: (friendIds: string[]) => Photo[];
+
+  clearPhotos: () => void;
 }
 
 /* ---------- the store ---------------------------------------- */
@@ -141,6 +157,38 @@ export const usePhotoStore = create<State>()(
         return get().photoMap[userId] ?? [];
       },
 
+      getPhoto(photoId) {
+        return Object.values(get().photoMap)
+          .flat()
+          .find((p) => p.id === photoId);
+      },
+
+      updatePhotoDetails(
+        userId,
+        photoId,
+        caption,
+        taggedUserIds,
+        likes,
+        comments
+      ) {
+        set((draft) => {
+          const photo = draft.photoMap[userId]?.find((p) => p.id === photoId);
+          if (!photo) return;
+          if (caption) {
+            photo.caption = caption;
+          }
+          if (taggedUserIds) {
+            photo.taggedUserIds = taggedUserIds;
+          }
+          if (likes) {
+            photo.likes = likes;
+          }
+          if (comments) {
+            photo.comments = comments;
+          }
+        });
+      },
+
       /* ==== TOGGLE LIKE =================================================== */
       toggleLike(ownerId, photoId, byUserId) {
         set((draft) => {
@@ -172,6 +220,10 @@ export const usePhotoStore = create<State>()(
         return friendIds
           .flatMap((fid) => map[fid] ?? [])
           .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      },
+
+      clearPhotos() {
+        set({ photoMap: {} });
       },
     })),
     {

@@ -52,6 +52,7 @@ interface FeedItem {
 }
 
 interface WeekBundle {
+  year: number
   weekNum: number
   key: string
   days: DayTile[]
@@ -125,6 +126,7 @@ const buildFeed = (weekOffset: number): FeedItem[] =>
 const buildWeeks = (count = 4): WeekBundle[] => {
   const currentWeek = getISOWeek()
   return Array.from({ length: count }).map((_, offset) => ({
+    year: new Date().getFullYear(),
     weekNum: currentWeek - offset,
     key: `week-${currentWeek - offset}`,
     days: buildDays(offset),
@@ -259,10 +261,10 @@ const HomeScreen = () => {
   const session = useSession()
   const router = useRouter()
   const { user } = useUserStore()
-  const { syncUserData, syncFriends, syncPhotos } = useSync()
+  const { initialSync } = useSync()
 
   const { colors } = useTheme()
-  const { friends, addFriend, clearFriends } = useFriendStore()
+  const { getAcceptedFriends } = useFriendStore()
   const { hasPhoto, addPhoto, getUserPhotos } = usePhotoStore()
 
   const [weeks, setWeeks] = useState<WeekBundle[]>(buildWeeks())
@@ -303,11 +305,7 @@ const HomeScreen = () => {
       return
     }
     if (session.session) {
-      syncUserData(session).then(() => {
-        syncFriends(session)
-        console.log(user.id)
-        syncPhotos(session, user.id)
-      })
+      initialSync(session)
     } else {
       console.log('Session is null')
     }
@@ -352,10 +350,8 @@ const HomeScreen = () => {
       router.push({
         pathname: '/(modal)/ViewPhotoModal', // adjust if your route differs
         params: {
-          photoId: photo.id,
-          index: index.toString(),
-          total: photosThisWeek.length.toString(),
-          ids: photosThisWeek.map((p) => p.id).join(',')
+          photoIds: photosThisWeek.map((p) => p.id),
+          index: index.toString()
         }
       })
     },
@@ -366,20 +362,29 @@ const HomeScreen = () => {
   const enrichedWeeks = useMemo(() => {
     if (weeks.length === 0) return weeks
 
-    // Build feed from friend list (placeholder: use their first photo or blank)
-    const localFeed: FeedItem[] = friends.map((f, i) => {
-      const first = f.albumList.flatMap((al) => al.images ?? [])[0]?.uri
+    // Patch every week bundle with user-uploaded photos stored in mediaByDate
+    return weeks.map((w) => {
+          // Build feed from friend list (placeholder: use their first photo or blank)
+    const localFeed: FeedItem[] = getAcceptedFriends().map((f, i) => {
+      const photos = getUserPhotos(f.id).filter((p) => p.year == w.year && p.week === w.weekNum)
       return {
         id: `local-${f.id}-${i}`,
         user: f.username ?? f.name,
         avatar: f.avatar ?? 'https://placehold.co/400x400/CCCCCC/000000?text=No+Avatar',
-        mediaUri: first ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
+        mediaUri: photos[0]?.url ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
         seen: false
       }
+    }).sort((a, b) => {
+      if (a.mediaUri === b.mediaUri && b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+        return 0
+      } else if (a.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+        return 1
+      } else if (b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+        return -1
+      }
+      return 0
     })
 
-    // Patch every week bundle with user-uploaded photos stored in mediaByDate
-    return weeks.map((w) => {
       const patchedDays = w.days.map((d) => {
         if (d.isAdd) return d // skip the “+” tile
         const iso = getDateString(d.date)
@@ -394,7 +399,7 @@ const HomeScreen = () => {
         feed: localFeed // replace demo feed
       }
     })
-  }, [weeks, friends, mediaByDate])
+  }, [weeks, getAcceptedFriends(), mediaByDate])
 
   const openPicker = useCallback(async (week: WeekBundle) => {
     const { status } = await MediaLibrary.requestPermissionsAsync()
@@ -435,6 +440,8 @@ const HomeScreen = () => {
       const captureDate = new Date(asset.creationTime)
       captureDate.setHours(0, 0, 0, 0)
       const iso = getDateString(captureDate)
+      console.log('captureDate', captureDate.toISOString())
+      console.log('iso', iso)
 
       // 1.duplicate check
       if (mediaByDate[iso] || hasPhoto(currentUserId, iso)) {
@@ -449,10 +456,9 @@ const HomeScreen = () => {
         name: assetInfo.filename,
         type: mime.getType(assetInfo.filename) ?? 'image/jpeg'
       } as any)
-      session.apiWithToken
-        .post('/photo/upload', formData)
-        .then(async (res) => {
-          const { photoId } = res.data
+      formData.append('timestamp', captureDate.toISOString())
+      session.apiWithToken.post('/photo/upload', formData).then(async (res) => {
+        const { photoId } = res.data
 
           /* 2 file system */
           const dir = FileSystem.documentDirectory!
@@ -465,49 +471,51 @@ const HomeScreen = () => {
           /* save to local */
           //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
 
-          addPhoto(currentUserId, {
-            id: photoId,
-            uri: dest,
-            timestamp: captureDate
-          })
+        addPhoto(currentUserId, {
+          id: photoId,
+          uri: dest,
+          timestamp: captureDate,
+          likes: []
+        })
 
-          /* ensure week bundle present & patch */
-          setWeeks((prev) => {
-            const captureWeek = pickerWeekRef.current!.weekNum
-            const current = getISOWeek()
-            const offset = current - captureWeek
-            const exists = prev.some((w) => w.weekNum === captureWeek)
-            if (!exists) {
-              // build and insert at correct offset
-              const newBundle: WeekBundle = {
-                weekNum: captureWeek,
-                key: `week-${captureWeek}`,
-                days: buildDays(offset).map((d) =>
-                  !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-                ),
-                feed: []
-              }
-              const arr = [...prev]
-              arr.splice(offset, 0, newBundle)
-              return arr
+        /* ensure week bundle present & patch */
+        setWeeks((prev) => {
+          const captureWeek = pickerWeekRef.current!.weekNum
+          const current = getISOWeek()
+          const offset = current - captureWeek
+          const exists = prev.some((w) => w.weekNum === captureWeek)
+          if (!exists) {
+            // build and insert at correct offset
+            const newBundle: WeekBundle = {
+              year: pickerWeekRef.current!.year,
+              weekNum: captureWeek,
+              key: `week-${captureWeek}`,
+              days: buildDays(offset).map((d) =>
+                !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+              ),
+              feed: []
             }
-            return prev.map((w) =>
-              w.weekNum === captureWeek
-                ? {
-                    ...w,
-                    days: buildDays(offset).map((d) =>
-                      !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-                    )
-                  }
-                : w
-            )
-          })
+            const arr = [...prev]
+            arr.splice(offset, 0, newBundle)
+            return arr
+          }
+          return prev.map((w) =>
+            w.weekNum === captureWeek
+              ? {
+                  ...w,
+                  days: buildDays(offset).map((d) =>
+                    !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                  )
+                }
+              : w
+          )
         })
-        .catch((err) => {
-          console.error('Error uploading photo', err)
-          console.log(err.response.data)
-          Alert.alert('Error uploading photo', 'Please try again.')
-        })
+      })
+      .catch((err) => {
+        console.error('Error uploading photo', err)
+        console.log(err.response.data)
+        Alert.alert('Error uploading photo', 'Please try again.')
+      })
     },
     [mediaByDate]
   )

@@ -5,8 +5,8 @@ import { BlurView } from 'expo-blur'
 import { Image } from 'expo-image'
 
 import Themed from '@/components/themed/Themed'
-import { useTheme, useProfileStore } from '@/hooks'
-
+import { useTheme, useUserStore } from '@/hooks'
+import { Avatar } from '@/components/Avatar'
 interface SettingsAvatarProps {
   name: string
   descirption?: string
@@ -25,7 +25,7 @@ const SettingsAvatar = ({
   displayOnly = false
 }: SettingsAvatarProps) => {
   const router = useRouter()
-  const user = useProfileStore((state) => state.profile.user)
+  const { user } = useUserStore()
   const { theme, colors } = useTheme()
 
   return (
@@ -48,16 +48,10 @@ const SettingsAvatar = ({
           </BlurView>
         )}
 
-        {user.avatar ? (
-          <Image source={{ uri: user.avatar }} style={styles.avatar} />
-        ) : (
-          <Themed.View
-            style={[styles.avatar, { borderColor: colors.borderColor, justifyContent: 'center', alignItems: 'center' }]}
-            type="secondary"
-          >
-            <Ionicons name="person" size={30} color={colors.gray} />
-          </Themed.View>
-        )}
+        <Avatar
+          size={60}
+          iconUrl={user.iconUrl}
+        />
       </TouchableOpacity>
 
       <View style={{ flex: 1, gap: 6 }}>

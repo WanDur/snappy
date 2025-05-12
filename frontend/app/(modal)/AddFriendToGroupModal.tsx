@@ -10,11 +10,10 @@ import { Stack } from '@/components/router-form'
 import { HeaderText } from '@/components/ui'
 import BouncyCheckbox from '@/components/react-native-bouncy-checkbox'
 import { Constants } from '@/constants'
-import { useTheme } from '@/hooks'
+import { useFriendStore, useTheme } from '@/hooks'
 import { Friend } from '@/types'
 import { useSettings } from '@/contexts'
 import contacts from './contacts.json'
-
 // remove from Omit if more fields are needed
 interface TFriend
   extends Omit<Friend, 'albumList' | 'username' | 'type' | 'lastActive' | 'mutualFriends' | 'photoList'> {}
@@ -205,5 +204,7 @@ const styles = StyleSheet.create({
 
 // Example usage with mock data:
 export default function ScreenWrapper() {
-  return <AddFriendToGroupScreen friends={data} />
+  const { getAcceptedFriends } = useFriendStore()
+
+  return <AddFriendToGroupScreen friends={getAcceptedFriends()} />
 }

@@ -1,17 +1,18 @@
-export type Image = {
+export type AlbumPhoto = {
   photoId: string;
-  uri: string;
+  url: string;
 };
 
 export interface Album {
   id: string;
   name: string;
   coverImage: string;
-  isShared: boolean;
+  shared: boolean;
   createdAt: string;
-  images: Image[];
+  createdBy: string;
+  photos: AlbumPhoto[];
   description?: string;
-  contributors?: number;
+  participants?: string[];
 }
 
 export interface AlbumPreview {
@@ -19,4 +20,9 @@ export interface AlbumPreview {
   name: string;
   count: number;
   coverUrl?: string;
+}
+
+export interface AlbumListResponse {
+  sharedAlbums: Album[];
+  ownAlbums: Album[];
 }

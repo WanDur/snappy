@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   View,
   Text,
@@ -8,9 +8,10 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
   Pressable
 } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image } from 'expo-image'
 import { BlurView } from 'expo-blur'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -19,6 +20,8 @@ import { Ionicons, Feather } from '@expo/vector-icons'
 /* ---------- hooks & stores ---------------------------- */
 import { useUserStore, usePhotoStore, useFriendStore, useTheme } from '@/hooks'
 import { IconSymbol } from '@/components/ui/IconSymbol'
+import { Photo } from '@/types'
+import { useSession, bypassLogin, isAuthenticated } from '@/contexts/auth'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -29,52 +32,31 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
  *  - total:  string     (total number of photos in current week)
  */
 export default function ViewPhotoModal() {
+  const router = useRouter()
+  const session = useSession()
+
   const {
-    photoId: startId,
-    index: startIndexParam = '0',
-    ids: idsParam = ''
-  } = useLocalSearchParams<{ photoId: string; index?: string; total?: string; ids?: string }>()
+    photoIds: photoIdsString,
+    index = '0',
+  } = useLocalSearchParams<{ photoIds: string; index?: string }>()
 
-  interface Photo {
-    id: string
-    url: string
-    timestamp: number
-    location?: string
-    likedByCurrent?: boolean
-    userId: string
-  }
+  const photoIds = photoIdsString.split(',')
+  const { getPhoto, toggleLike } = usePhotoStore()
 
-  interface PhotoStore {
-    photos: Photo[]
-    toggleLike: (photoId: string, likeState: string, userId: string) => void
-    getPhoto: (photoId: string) => Photo | undefined
-  }
-
-  /* ------------ setup list for swiping ---------- */
-  const photoIds: string[] = useMemo(() => {
-    if (idsParam) return (idsParam as string).split(',')
-    return [startId as string]
-  }, [idsParam, startId])
-
-  /* Local state holds which photo we're showing – no more re‑navigation */
-  const [currentIndex, setCurrentIndex] = useState<number>(
-    Math.min(parseInt(startIndexParam as string, 10) || 0, photoIds.length - 1)
-  )
-  const total = photoIds.length
-
-  // convenience to get the actual photo object
-  const photo = usePhotoStore((s) =>
-    Object.values(s.photoMap)
-      .flat()
-      .find((p) => p.id === photoIds[currentIndex])
-  ) as Photo | undefined
-  const toggleLikeInStore = usePhotoStore((s) => s.toggleLike)
-
+  const [currentIndex, setCurrentIndex] = useState(parseInt(index))
+  const photo = getPhoto(photoIds[currentIndex])
   const currentUser = useUserStore((s) => s.user)
   const owner = useFriendStore((s) => s.friends.find((f) => f.id === (photo?.userId ?? currentUser.id)))
 
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
+
+  useEffect(() => {
+    if (!isAuthenticated(session)) {
+      router.dismissAll()
+      router.replace('/login')
+    }
+  }, [])
 
   /* fallback if photo not found */
   if (!photo) {
@@ -107,20 +89,20 @@ export default function ViewPhotoModal() {
     return d.toLocaleDateString('en-US', opts)
   }, [photo.timestamp])
 
-  const [liked, setLiked] = useState(photo.likedByCurrent ?? false)
+  const [liked, setLiked] = useState(photo.likes.includes(currentUser.id))
+  
   const handleToggleLike = () => {
-    interface SetLikedCallback {
-      (prevLiked: boolean): boolean
-    }
-
-    interface ToggleLikeInStoreFn {
-      (photoId: string, likeState: 'unlike' | 'like', userId: string): void
-    }
-
-    setLiked((p: boolean): boolean => {
-      toggleLikeInStore(photoIds[currentIndex], p ? 'unlike' : 'like', currentUser.id)
-      return !p
-    })
+    const newLikedState = !liked
+    const action = newLikedState ? 'like' : 'unlike'
+    setLiked(newLikedState)
+    toggleLike(photo.userId, photoIds[currentIndex], currentUser.id)
+    session.apiWithToken.post(`/photo/${photoIds[currentIndex]}/${action}`)
+      .catch((err) => {
+        Alert.alert('Error', `Failed to ${action} photo`)
+        setLiked(liked)
+        toggleLike(photo.userId, photoIds[currentIndex], currentUser.id)
+        console.error(err)
+      })
   }
 
   /* ---------- navigation helpers --------- */
@@ -128,17 +110,15 @@ export default function ViewPhotoModal() {
     router.replace({
       pathname: '/(modal)/ViewPhotoModal', // adjust if path differs
       params: {
-        photoId: photoIds[nextIndex],
+        photoIds: photoIds,
         index: nextIndex.toString(),
-        total: total.toString(),
-        ids: photoIds.join(',')
       }
     })
   }
 
   /* ---------- index navigation (no re‑navigation) ---------- */
   const handleNext = () => {
-    if (currentIndex < total - 1) setCurrentIndex(currentIndex + 1)
+    if (currentIndex < photoIds.length - 1) setCurrentIndex(currentIndex + 1)
   }
   const handlePrev = () => {
     if (currentIndex > 0) setCurrentIndex(currentIndex - 1)
@@ -159,7 +139,7 @@ export default function ViewPhotoModal() {
         <View style={styles.headerRight}>
           <View style={styles.counterBubble}>
             <Text style={styles.counterText}>
-              {currentIndex + 1} of {total}
+              {currentIndex + 1} of {photoIds.length}
             </Text>
           </View>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>

@@ -6,6 +6,7 @@ import {
   useFriendStore,
   useUserStore,
   usePhotoStore,
+  useAlbumStore,
 } from "@/hooks";
 import {
   FetchNewMessageResponse,
@@ -19,6 +20,7 @@ import { getMessageUserFromFriendId } from "../utils/chatAdapter";
 import { PhotoPreview, FetchUserPhotosResponse } from "@/types/photo.types";
 import * as FileSystem from "expo-file-system";
 import { getDateString } from "@/utils/utils";
+import { AlbumListResponse } from "@/types/album.types";
 
 const isoWeek = (d: Date) => {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -48,7 +50,8 @@ export const useSync = () => {
     updateLastMessageTime,
     addUnreadCount,
   } = useChatStore();
-  const { addPhoto, hasPhoto } = usePhotoStore();
+  const { addPhoto, hasPhoto, updatePhotoDetails } = usePhotoStore();
+  const { addAlbum, clearAlbums, hasAlbum, editAlbum } = useAlbumStore();
 
   const syncUserData = async (session: AuthContextProps) => {
     try {
@@ -325,6 +328,14 @@ export const useSync = () => {
       const data: FetchUserPhotosResponse = res.data;
       data.photos.forEach((photo) => {
         if (hasPhoto(userId, photo.id)) {
+          // TODO : update photo details (comments / likes)
+          updatePhotoDetails(
+            userId,
+            photo.id,
+            photo.caption,
+            photo.taggedUserIds,
+            photo.likes
+          );
           return;
         }
         if (getLocalTime(photo.timestamp) >= fourWeeksBefore) {
@@ -350,6 +361,7 @@ export const useSync = () => {
                   taggedUserIds: photo.taggedUserIds,
                   timestamp: getLocalTime(photo.timestamp),
                   location: photo.location,
+                  likes: photo.likes,
                 });
               } else {
                 console.log(
@@ -362,6 +374,7 @@ export const useSync = () => {
                   taggedUserIds: photo.taggedUserIds,
                   timestamp: getLocalTime(photo.timestamp),
                   location: photo.location,
+                  likes: photo.likes,
                 });
               }
             })
@@ -376,6 +389,7 @@ export const useSync = () => {
             taggedUserIds: photo.taggedUserIds,
             timestamp: getLocalTime(photo.timestamp),
             location: photo.location,
+            likes: photo.likes,
           });
         }
       });
@@ -384,11 +398,48 @@ export const useSync = () => {
     }
   };
 
+  const syncFriendPhotos = async (session: AuthContextProps) => {
+    friends
+      .filter((friend) => friend.type === FriendStatus.FRIEND)
+      .forEach((friend) => {
+        syncPhotos(session, friend.id);
+      });
+  };
+
+  const syncAlbums = async (session: AuthContextProps) => {
+    const res = await session.apiWithToken.get("/album/fetch");
+    const data: AlbumListResponse = res.data;
+
+    [...data.sharedAlbums, ...data.ownAlbums].forEach((album) => {
+      album.coverImage = parsePublicUrl(album.coverImage);
+      album.photos = album.photos.map((photo) => ({
+        ...photo,
+        url: parsePublicUrl(photo.url),
+      }));
+      if (!hasAlbum(album.id)) {
+        addAlbum(album);
+      } else {
+        editAlbum(album.id, album);
+      }
+    });
+  };
+
+  const initialSync = async (session: AuthContextProps) => {
+    await syncUserData(session);
+    await syncPhotos(session, user.id);
+    await syncFriends(session);
+    await syncFriendPhotos(session);
+    await syncChats(session);
+    await syncAlbums(session);
+  };
+
   return {
     syncUserData,
     syncFriends,
     syncChats,
     syncPhotos,
+    syncFriendPhotos,
     fetchChatInfo,
+    initialSync,
   };
 };

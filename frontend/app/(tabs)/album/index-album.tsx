@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 
-import { useAlbumStore, useTheme } from '@/hooks'
+import { useAlbumStore, useTheme, useUserStore } from '@/hooks'
 import { Themed, SectionHeader } from '@/components'
 import { IconSymbolName } from '@/components/ui/IconSymbolFallback'
 import { Form, Stack, ContentUnavailable } from '@/components/router-form'
@@ -73,12 +73,13 @@ const EmptyContent = ({
 
 const AlbumScreen = () => {
   const router = useRouter()
-  const { albumList } = useAlbumStore()
   const { colors } = useTheme()
 
+  const { user } = useUserStore()
+  const { albumList } = useAlbumStore()
   const [viewMode, setViewMode] = useState('grid')
-  const personalAlbums = useMemo(() => albumList.filter((album) => !album.isShared), [albumList])
-  const sharedAlbums = useMemo(() => albumList.filter((album) => album.isShared), [albumList])
+  const personalAlbums = useMemo(() => albumList.filter((album) => album.createdBy === user.id), [albumList])
+  const sharedAlbums = useMemo(() => albumList.filter((album) => album.shared && album.createdBy !== user.id), [albumList])
 
   const openAlbum = (albumId: string) => router.push({ pathname: '/screens/AlbumScreen', params: { albumId } })
 
@@ -87,8 +88,8 @@ const AlbumScreen = () => {
       <View style={styles.albumCoverContainer}>
         <AlbumCover
           coverImage={item.coverImage}
-          isShared={item.isShared}
-          contributors={item.contributors}
+          isShared={item.shared}
+          contributors={item.participants ? item.participants.length : 0}
           style={{ width: '100%', height: '100%' }}
           placeholderStyle={{ width: '100%', height: '100%' }}
         />
@@ -97,7 +98,7 @@ const AlbumScreen = () => {
         {item.name}
       </Themed.Text>
       <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
-        {item.images.length} photos
+        {item.photos.length} photos
       </Themed.Text>
     </TouchableOpacity>
   )
@@ -106,8 +107,8 @@ const AlbumScreen = () => {
     <TouchableOpacity style={styles.listAlbumItem} activeOpacity={1} onPress={() => openAlbum(item.id)}>
       <AlbumCover
         coverImage={item.coverImage}
-        isShared={item.isShared}
-        contributors={item.contributors}
+        isShared={item.shared}
+        contributors={item.participants ? item.participants.length : 0}
         style={styles.listAlbumCoverContainer}
         placeholderStyle={{ width: 64, height: 64, borderRadius: 8 }}
       />
@@ -115,13 +116,13 @@ const AlbumScreen = () => {
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Themed.Text style={styles.albumTitle}>{item.name}</Themed.Text>
         <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
-          {item.images.length} photos
+          {item.photos.length} photos
         </Themed.Text>
       </View>
-      {item.isShared && (
+      {item.shared && (
         <View style={styles.listContributorsBadge}>
           <Ionicons name="people" size={16} color="#5271FF" />
-          <Text style={styles.listContributorsText}>{item.contributors ?? 0}</Text>
+          <Text style={styles.listContributorsText}>{item.participants ? item.participants.length : 0}</Text>
         </View>
       )}
       <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />

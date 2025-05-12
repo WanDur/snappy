@@ -13,7 +13,7 @@ export const LoginInfoResponseSchema = z.object({
   accessExpireTime: z.number().int().nonnegative(),
   refreshToken: z.string(),
   refreshExpireTime: z.number().int().nonnegative(),
-  userTier: z.enum([UserTier.FREEMIUM, UserTier.PREMIUM]),
+  userTier: z.enum([UserTier.FREEMIUM, UserTier.PREMIUM, UserTier.ADMIN]),
   userId: z.string(),
 });
 

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
+import * as DocumentPicker from 'expo-document-picker'
+import * as FileSystem from 'expo-file-system'
 
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'
@@ -22,7 +24,32 @@ const RedeemCodeModal = () => {
     return
   }
 
-  const handleSubmit = () => {
+  const handleKeyFileSelect = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['application/octet-stream'],
+      copyToCacheDirectory: true
+    })
+
+    if (!result.canceled) {
+      const keyFile = result.assets[0].uri
+      const content = await FileSystem.readAsStringAsync(keyFile)
+      const keys = content.split('\n').map(key => key.trim())
+      let valid = true;
+      for (const key of keys) {
+        if (!key.match('^([A-Z0-9]{4}-){3}[A-Z0-9]{4}$')) {
+          valid = false;
+          break;
+        }
+      }
+      if (valid) {
+        handleSubmit(keys)
+      } else {
+        Alert.alert('Error', 'Invalid key file. Please try again.', [{ text: 'OK', onPress: () => setCode('') }])
+      }
+    }
+  }
+
+  const handleSubmit = (keys: string[]) => {
     setIsLoading(true)
     if (bypassLogin()) {
       // For development testing purposes
@@ -38,11 +65,11 @@ const RedeemCodeModal = () => {
       }, 2000)
     } else {
       session.apiWithToken.post('/license/redeem', {
-        keys: [code]
+        keys: keys
       }).then((res) => {
         updatePremiumExpireTime(new Date(res.data.premiumExpireTime))
         updateTier(UserTier.PREMIUM)
-        Alert.alert('Success', 'Your code has been redeemed successfully!', [
+        Alert.alert('Success', `Your code has been redeemed successfully! ${res.data.addedDays} days have been added to your premium membership.`, [
           { text: 'OK', onPress: () => router.back() }
         ])
       }).catch((err) => {
@@ -53,7 +80,7 @@ const RedeemCodeModal = () => {
 
   return (
     <Themed.View style={{ flex: 1, padding: 16, paddingBottom: 40 }}>
-      <Stack.Screen options={{ sheetAllowedDetents: [0.4] }} />
+      <Stack.Screen options={{ sheetAllowedDetents: [0.5] }} />
       <View style={{ paddingTop: 16, alignItems: 'center' }}>
         <MaterialCommunityIcons name="crown" size={48} color="#FFD700" />
         <Themed.Text style={styles.title}>Premium Membership</Themed.Text>
@@ -66,7 +93,7 @@ const RedeemCodeModal = () => {
 
       <TouchableOpacity
         style={[styles.redeemButton, code.trim() === '' && styles.redeemButtonDisabled]}
-        onPress={handleSubmit}
+        onPress={() => {handleSubmit([code])}}
         activeOpacity={0.7}
       >
         {isLoading ? (
@@ -77,6 +104,14 @@ const RedeemCodeModal = () => {
         ) : (
           <Text style={styles.buttonText}>Redeem Code</Text>
         )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.redeemButton}
+        onPress={handleKeyFileSelect}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.buttonText}>Redeem Key File</Text>
       </TouchableOpacity>
     </Themed.View>
   )
@@ -106,7 +141,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 4
+    elevation: 4,
+    marginBottom: 16
   },
   redeemButtonDisabled: {
     backgroundColor: '#AAAAAA',

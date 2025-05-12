@@ -18,7 +18,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
 import { BlurView } from 'expo-blur'
 
-import { Image as ImageType } from '@/types'
+import { AlbumPhoto } from '@/types'
 import { useAlbumStore } from '@/hooks'
 import { IconSymbol } from '@/components/ui/IconSymbol'
 
@@ -28,13 +28,13 @@ export default function ViewImageModal() {
   const { getAlbum, removeImage, editAlbum } = useAlbumStore()
   const { photoIndex, id } = useLocalSearchParams<{ photoIndex: string; id: string }>()
 
-  const [photos, setPhotos] = useState<ImageType[]>([])
+  const [photos, setPhotos] = useState<AlbumPhoto[]>([])
   const [currentIndex, setCurrentIndex] = useState<number>(0)
   const listRef = useRef<FlatList>(null)
 
   useEffect(() => {
     const album = getAlbum(id)
-    if (album) setPhotos(album.images)
+    if (album) setPhotos(album.photos)
   }, [id])
 
   useEffect(() => {
@@ -66,14 +66,14 @@ export default function ViewImageModal() {
 
   const handleSetCover = () => {
     if (!photos[currentIndex]) return
-    editAlbum(id, { coverImage: photos[currentIndex].uri })
+    editAlbum(id, { coverImage: photos[currentIndex].url })
     router.back()
   }
 
   const handleShare = async () => {
     try {
       await Share.share({
-        url: photos[currentIndex]?.uri,
+        url: photos[currentIndex]?.url,
         message: 'Check out this photo'
       })
     } catch (err) {
@@ -111,7 +111,7 @@ export default function ViewImageModal() {
         })}
         renderItem={({ item }) => (
           <View style={{ width: width, height: height * 0.9 }}>
-            <Image source={{ uri: item.uri }} style={styles.fullImage} contentFit="contain" />
+            <Image source={{ uri: item.url }} style={styles.fullImage} contentFit="contain" />
           </View>
         )}
         onMomentumScrollEnd={onPageChanged}
