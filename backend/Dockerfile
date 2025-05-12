@@ -10,6 +10,6 @@ COPY ./app /code/app
 
 WORKDIR /code/app
 
-RUN ["export", "RUN_MODE=prod"]
+ENV RUN_MODE=prod
 
 CMD ["fastapi", "run", "main.py", "--port", "8000"]
