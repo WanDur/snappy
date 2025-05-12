@@ -68,6 +68,10 @@ export default function RootLayout() {
                   options={{ headerShown: false, gestureEnabled: false }}
                   sheet
                 />
+                <Stack.Screen
+                  name="(modal)/ViewPhotoModal"
+                  options={{ presentation: 'fullScreenModal', headerShown: false }}
+                />
                 <Stack.Screen name="(modal)/FriendProfileModal" sheet />
                 <Stack.Screen name="(modal)/RedeemCodeModal" options={{ headerShown: false }} sheet />
                 <Stack.Screen name="(modal)/AddFriendToGroupModal" options={{ gestureEnabled: false }} sheet />
