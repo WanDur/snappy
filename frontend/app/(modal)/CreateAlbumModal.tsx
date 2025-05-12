@@ -2,9 +2,10 @@
  * Screen Params:
  * isShared?: string
  */
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View,
+  ScrollView,
   Text,
   StyleSheet,
   TextInput,
@@ -15,19 +16,22 @@ import {
 } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
-import * as Crypto from 'expo-crypto'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
+import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-native-reanimated'
 
 import { Themed } from '@/components'
 import { HeaderText } from '@/components/ui'
 import { Stack } from '@/components/router-form'
 import { useTheme, useAlbumStore } from '@/hooks'
 import { Album } from '@/types'
+import { useSettings } from '@/contexts'
 import { bypassLogin, isAuthenticated, useSession, parsePublicUrl } from '@/contexts/auth'
+
 const CreateAlbumModal = () => {
   const router = useRouter()
   const session = useSession()
+  const { settings, setSetting } = useSettings()
 
   const { addAlbum } = useAlbumStore()
   const { colors } = useTheme()
@@ -37,6 +41,31 @@ const CreateAlbumModal = () => {
   const [description, setDescription] = useState('')
   const [coverImage, setCoverImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
   const [isCollaborative, setIsCollaborative] = useState(isShared === 'true')
+
+  const showAddFriend = useSharedValue(isCollaborative)
+
+  // region useEffects
+  useEffect(() => {
+    showAddFriend.value = isCollaborative
+  }, [isCollaborative])
+
+  useEffect(() => {
+    return () => {
+      setSetting('friendsToAlbum', [])
+    }
+  }, [])
+
+  // endregion
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      height: withTiming(showAddFriend.value ? 30 : 0, {
+        duration: 300
+      }),
+      opacity: withTiming(showAddFriend.value ? 1 : 0, { duration: 300 }),
+      marginTop: withTiming(showAddFriend.value ? 6 : 0, { duration: 300 })
+    }
+  })
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -107,7 +136,7 @@ const CreateAlbumModal = () => {
         sheet
       />
 
-      <Themed.ScrollView contentContainerStyle={{ flex: 1, padding: 16 }}>
+      <Themed.ScrollView contentContainerStyle={{ flex: 1, padding: 16, paddingBottom: 60 }}>
         <View style={styles.coverSection}>
           <TouchableOpacity style={styles.coverImageContainer} onPress={pickImage} activeOpacity={0.7}>
             {coverImage ? (
@@ -155,14 +184,37 @@ const CreateAlbumModal = () => {
         </View>
 
         <Themed.View style={styles.switchContainer} type="secondary">
-          <View style={styles.switchRow}>
-            <Themed.Text style={styles.switchLabel}>Collaborative Album</Themed.Text>
+          <View key={isCollaborative.toString()} style={styles.switchRow}>
+            <Themed.Text style={styles.switchLabel}>
+              {isCollaborative ? 'Collaborative Album' : 'Personal Album'}
+            </Themed.Text>
             <Switch onValueChange={setIsCollaborative} value={isCollaborative} />
           </View>
           <Themed.Text style={{ fontSize: 14 }} text50>
             {isCollaborative ? 'Friends can add photos to this album' : 'Only you can add photos to this album'}
           </Themed.Text>
+          <Animated.View style={[{ overflow: 'hidden', alignItems: 'center' }, animatedStyle]}>
+            <TouchableOpacity
+              style={{ padding: 2, paddingHorizontal: 16 }}
+              onPress={() => router.push({ pathname: '/(modal)/AddFriendToGroupModal', params: { type: 'album' } })}
+              activeOpacity={0.7}
+            >
+              <Themed.Text type="link">Add friend</Themed.Text>
+            </TouchableOpacity>
+          </Animated.View>
         </Themed.View>
+
+        {settings.friendsToAlbum.length > 0 && (
+          <Themed.View style={{ padding: 12, borderRadius: 12 }} type="secondary">
+            <ScrollView style={{ width: '100%' }} horizontal>
+              {settings.friendsToAlbum.map((item) => (
+                <Themed.View style={styles.friendAvatar} shadow>
+                  <Themed.Text>{item.slice(0, 2)}</Themed.Text>
+                </Themed.View>
+              ))}
+            </ScrollView>
+          </Themed.View>
+        )}
 
         <TouchableOpacity style={[styles.createButton]} onPress={handleCreateAlbum}>
           <Text style={styles.createButtonText}>Create Album</Text>
@@ -259,6 +311,17 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600'
+  },
+  friendAvatar: {
+    padding: 8,
+    width: 50,
+    height: 50,
+    borderRadius: 50,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOpacity: 0.2,
+    margin: 6
   }
 })
 
