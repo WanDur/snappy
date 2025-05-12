@@ -7,7 +7,8 @@ import {
   Dimensions,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Pressable
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
@@ -31,8 +32,9 @@ export default function ViewPhotoModal() {
   const {
     photoId,
     index: idxParam = '0',
-    total: totalParam = '1'
-  } = useLocalSearchParams<{ photoId: string; index?: string; total?: string }>()
+    total: totalParam = '1',
+    ids: idsParam = ''
+  } = useLocalSearchParams<{ photoId: string; index?: string; total?: string; ids?: string }>()
 
   interface Photo {
     id: string
@@ -46,8 +48,20 @@ export default function ViewPhotoModal() {
   interface PhotoStore {
     photos: Photo[]
     toggleLike: (photoId: string, likeState: string, userId: string) => void
+    getPhoto: (photoId: string) => Photo | undefined
   }
 
+  /* ------------ setup list for swiping ---------- */
+  const photoIds: string[] = useMemo(() => {
+    if (idsParam) return (idsParam as string).split(',')
+    // fallback: single‑id list
+    return [photoId as string]
+  }, [idsParam, photoId])
+
+  const currentIndex = parseInt(idxParam as string, 10) || 0
+  const total = photoIds.length
+
+  // convenience to get the actual photo object
   const photo = usePhotoStore((s) =>
     Object.values(s.photoMap)
       .flat()
@@ -94,14 +108,39 @@ export default function ViewPhotoModal() {
 
   const [liked, setLiked] = useState(photo.likedByCurrent ?? false)
   const handleToggleLike = () => {
-    const newLikedState = !liked
-    setLiked(newLikedState)
-    toggleLikeInStore(photoId, newLikedState ? 'true' : 'false', currentUser.id)
+    interface SetLikedCallback {
+      (prevLiked: boolean): boolean
+    }
+
+    interface ToggleLikeInStoreFn {
+      (photoId: string, likeState: 'unlike' | 'like', userId: string): void
+    }
+
+    setLiked((p: boolean): boolean => {
+      toggleLikeInStore(photoId as string, p ? 'unlike' : 'like', currentUser.id)
+      return !p
+    })
   }
 
-  /* index and total for top‑right counter */
-  const photoIndex = parseInt(idxParam, 10) + 1
-  const total = parseInt(totalParam, 10)
+  /* ---------- navigation helpers --------- */
+  const goTo = (nextIndex: number) => {
+    router.replace({
+      pathname: '/(modal)/ViewPhotoModal', // adjust if path differs
+      params: {
+        photoId: photoIds[nextIndex],
+        index: nextIndex.toString(),
+        total: total.toString(),
+        ids: photoIds.join(',')
+      }
+    })
+  }
+
+  const handleNext = () => {
+    if (currentIndex < total - 1) goTo(currentIndex + 1)
+  }
+  const handlePrev = () => {
+    if (currentIndex > 0) goTo(currentIndex - 1)
+  }
 
   return (
     <View style={styles.container}>
@@ -118,7 +157,7 @@ export default function ViewPhotoModal() {
         <View style={styles.headerRight}>
           <View style={styles.counterBubble}>
             <Text style={styles.counterText}>
-              {photoIndex} of {total}
+              {currentIndex + 1} of {total}
             </Text>
           </View>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
@@ -127,8 +166,13 @@ export default function ViewPhotoModal() {
         </View>
       </BlurView>
 
-      {/* ---------- IMAGE ---------- */}
-      <Image source={{ uri: photo.url }} style={styles.image} contentFit="contain" />
+      {/* ---------- IMAGE WITH TAP ZONES ---------- */}
+      <View style={styles.imageWrapper}>
+        <Image source={{ uri: photo.url }} style={styles.image} contentFit="contain" />
+        {/* tap zones */}
+        <Pressable style={styles.touchLeft} onPress={handlePrev} />
+        <Pressable style={styles.touchRight} onPress={handleNext} />
+      </View>
 
       {/* ---------- INFO ROW ---------- */}
       <View style={[styles.infoRow, { paddingBottom: 6 }]}>
@@ -218,11 +262,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600'
   },
-  /* image */
-  image: {
+  /* image wrapper & tap zones */
+  imageWrapper: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.65,
     marginTop: 80
+  },
+  image: {
+    width: '100%',
+    height: '100%'
+  },
+  touchLeft: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '45%',
+    height: '100%'
+  },
+  touchRight: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '45%',
+    height: '100%'
   },
   /* info row */
   infoRow: {

@@ -354,7 +354,8 @@ const HomeScreen = () => {
         params: {
           photoId: photo.id,
           index: index.toString(),
-          total: photosThisWeek.length.toString()
+          total: photosThisWeek.length.toString(),
+          ids: photosThisWeek.map((p) => p.id).join(',')
         }
       })
     },
