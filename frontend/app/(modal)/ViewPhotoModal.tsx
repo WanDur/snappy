@@ -41,7 +41,6 @@ export default function ViewPhotoModal() {
   } = useLocalSearchParams<{ photoIds: string; index?: string }>()
 
   const photoIds = photoIdsString.split(',')
-  console.log('photoIds', photoIds)
   const { getPhoto, toggleLike } = usePhotoStore()
 
   const [currentIndex, setCurrentIndex] = useState(parseInt(index))
