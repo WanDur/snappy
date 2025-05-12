@@ -14,6 +14,7 @@ import { bypassLogin, isAuthenticated, useSession } from '@/contexts/auth'
 // import { useSession } from '@/contexts/auth'
 // import { FetchNewMessageResponse } from '@/types/chats.type'
 import { useSync } from '@/hooks/useSync'
+import { Ionicons } from '@expo/vector-icons'
 
 const avatars = [
   'https://i.pravatar.cc/150?u=aguilarduke@marketoid.com',
@@ -73,14 +74,16 @@ export const getChatIcon = (chat: ChatItem, user: User): string | undefined => {
 export const getChatTitle = (chat: ChatItem, user: User): string => {
   if (chat.type == 'direct') {
     return chat.participants.find((participant) => participant._id !== user.id)!.name || "Error"
+  } else {
+    return chat.title || `Group Chat (${chat.participants.length})`
   }
-  return 'Group Chat (TODO)'
+  
 }
 
 export const ChatScreen = () => {
   const router = useRouter()
   const session = useSession()
-  const { syncChats } = useSync()
+  const { syncChats, fetchAllChatInfo } = useSync()
 
   const { colors, theme } = useTheme()
   const { top } = useSafeAreaInsets()
@@ -90,14 +93,6 @@ export const ChatScreen = () => {
   const { deleteItemFromStorage } = useStorage()
   const {
     chats,
-    allChatID,
-    hasChat,
-    getLastFetchTime,
-    updateLastFetchTime,
-    getChat,
-    addChat,
-    addMessage,
-    updateLastMessageTime,
     deleteChat,
     addUnreadCount
   } = useChatStore()
@@ -110,6 +105,7 @@ export const ChatScreen = () => {
 
   const refreshData = async () => {
     setLoading(true)
+    await fetchAllChatInfo(session)
     await syncChats(session)
     setLoading(false)
   }
@@ -148,35 +144,6 @@ export const ChatScreen = () => {
           headerLeft: () => (
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={() =>
-                addChat({
-                  type: 'direct',
-                  participants: [
-                    {
-                      _id: '1',
-                      name: 'John Doe',
-                      avatar: 'https://i.pravatar.cc/150?u=aguilarduke@marketoid.com'
-                    },
-                    {
-                      _id: '2',
-                      name: 'Jane Doe',
-                      avatar: 'https://i.pravatar.cc/150?u=baxterduke@marketoid.com'
-                    }
-                  ],
-                  initialDate: getRandomDate(),
-                  unreadCount: Math.floor(Math.random() * 6),
-                  lastMessageTime: getRandomDate(),
-                  id: `${Crypto.randomUUID().substring(0, 18)}`,
-                  messages: []
-                })
-              }
-            >
-              <Themed.Text type="link">$add-chat</Themed.Text>
-            </TouchableOpacity>
-          ),
-          headerRight: () => (
-            <TouchableOpacity
-              activeOpacity={0.7}
               onPress={() => {
                 if (isEdit) {
                   deleteMultiChat()
@@ -184,11 +151,22 @@ export const ChatScreen = () => {
                   setIsEdit(!isEdit)
                 }
               }}
-              style={{ marginLeft: -6 }}
+              style={{ marginLeft: 6 }}
             >
               <Themed.Text type="link">
                 {isEdit ? (selectedChats.length > 0 ? `Delete ${selectedChats.length}` : 'Done') : 'Edit'}
               </Themed.Text>
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                router.push('/(modal)/CreateGroupChatModal')
+              }}
+              style={{ marginRight: -6 }}
+            >
+              <Ionicons name="add-circle-outline" size={24} color={colors.gray} />
             </TouchableOpacity>
           )
         }}
@@ -196,7 +174,7 @@ export const ChatScreen = () => {
       <Animated.FlatList
         data={Object.entries(chats).map(([chatID, chatItem]) => ({
           ...chatItem!
-        }))}
+        })).sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime())}
         contentInsetAdjustmentBehavior="automatic"
         renderItem={({ item, index }) => (
           <Animated.View>

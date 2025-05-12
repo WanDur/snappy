@@ -41,6 +41,7 @@ export const useSync = () => {
   const { friends, addFriend, removeFriend, hasFriend, updateFriend } =
     useFriendStore();
   const {
+    allChatID,
     addChat,
     hasChat,
     getChat,
@@ -48,6 +49,7 @@ export const useSync = () => {
     getLastFetchTime,
     updateLastFetchTime,
     updateLastMessageTime,
+    updateChatInfo,
     addUnreadCount,
   } = useChatStore();
   const { addPhoto, hasPhoto, updatePhotoDetails } = usePhotoStore();
@@ -81,7 +83,6 @@ export const useSync = () => {
     try {
       const res = await session.apiWithToken.get("/user/friends/list");
       const data = res.data;
-      console.log("Fetching friends");
       data.friends.forEach((user: FriendResponse) => {
         if (hasFriend(user.id)) {
           updateFriend(user.id, {
@@ -125,7 +126,6 @@ export const useSync = () => {
     session: AuthContextProps,
     conversationId: string
   ) => {
-    console.log("Fetching chat info for", conversationId);
     const res = await session.apiWithToken.get(
       `/chat/conversation/${conversationId}/info`
     );
@@ -145,22 +145,20 @@ export const useSync = () => {
       initialDate: getLocalTime(res.data.initialDate),
       unreadCount: 0,
       messages: [],
+      title: res.data.name,
     } as ChatItem;
   };
 
   const connectChatWebSocket = async (session: AuthContextProps) => {
     if (session.isSocketOpen("/chat/ws")) {
-      console.log("Chat web socket already connected");
       return;
     }
-    console.log("Connecting to chat web socket");
     const ws = await session.useWebSocketWithToken("/chat/ws");
     if (ws) {
       ws.onmessage = async (e) => {
         const messageData = JSON.parse(e.data) as MessageResponse & {
           conversationId: string;
         };
-        console.log("Received message from chat web socket:", messageData);
         let chat = getChat(messageData.conversationId);
         if (!chat) {
           chat = await fetchChatInfo(session, messageData.conversationId);
@@ -171,7 +169,6 @@ export const useSync = () => {
         }
 
         // Parse the timestamp to a Date object since it is parsed as a string with JSON
-        console.log("messageData.timestamp - 1", messageData.timestamp);
         messageData.timestamp = new Date(messageData.timestamp);
         addMessage(messageData.conversationId, [
           {
@@ -202,10 +199,16 @@ export const useSync = () => {
           }, 10000);
         }
       };
-      console.log("Created chat web socket");
     } else {
       console.error("Failed to connect to chat web socket");
     }
+  };
+
+  const fetchAllChatInfo = async (session: AuthContextProps) => {
+    allChatID.forEach(async (chatId) => {
+      const chatInfo = await fetchChatInfo(session, chatId);
+      updateChatInfo(chatId, chatInfo);
+    });
   };
 
   const syncChats = async (session: AuthContextProps) => {
@@ -216,7 +219,6 @@ export const useSync = () => {
       updateLastFetchTime();
       connectChatWebSocket(session);
       // Fetch new messages with GET endpoint
-      console.log("Fetching chats from", url);
       session.apiWithToken.get(url).then((res) => {
         const data: FetchNewMessageResponse = res.data;
         data.chats.forEach((chat) => {
@@ -255,7 +257,6 @@ export const useSync = () => {
 
               if (!hasChat(chat.conversationId)) {
                 // Add the chat to the chat store
-                console.log("Adding new chat to the chat store");
                 addChat({
                   id: chat.conversationId,
                   type: chat.conversationType,
@@ -263,6 +264,7 @@ export const useSync = () => {
                   lastMessageTime: chat.lastMessageTime,
                   initialDate: getLocalTime(chatInfo.initialDate),
                   unreadCount: chat.messages.length,
+                  title: chatInfo.name,
                   messages: chat.messages.map((message) => ({
                     _id: message.messageId,
                     attachments: message.attachments.map((attachment) => ({
@@ -439,6 +441,7 @@ export const useSync = () => {
     syncChats,
     syncPhotos,
     syncFriendPhotos,
+    fetchAllChatInfo,
     fetchChatInfo,
     initialSync,
   };

@@ -2,9 +2,9 @@
  * Screen Params:
  * chatID: string
  */
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, Alert } from 'react-native'
 import { useState, useRef } from 'react'
-import { useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Image } from 'expo-image'
 
 import { Stack, Form } from '@/components/router-form'
@@ -17,7 +17,7 @@ import { Avatar } from '@/components/Avatar'
 const ChatProfileScreen = () => {
   const { chatID } = useLocalSearchParams<{ chatID: string }>()
   const { user } = useUserStore()
-  const { getChat, updateChatInfo } = useChatStore()
+  const { getChat, updateChatInfo, deleteChat } = useChatStore()
   const { getFriend } = useFriendStore()
 
   const chat = getChat(chatID)
@@ -53,6 +53,16 @@ const ChatProfileScreen = () => {
       setTimeout(() => inputRef.current?.focus(), 0)
     }
     setIsEditing(!isEditing)
+  }
+
+  const handleClearChat = () => {
+    Alert.alert('Clear chat', 'Are you sure you want to clear this chat?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear', style: 'destructive', onPress: () => {
+        router.dismiss(2)
+        deleteChat(chatID)
+      } }
+    ])
   }
 
   return (
@@ -125,7 +135,7 @@ const ChatProfileScreen = () => {
                 Add members
               </Form.Text>
             )}
-            <Form.Text systemImage="trash" style={{ color: 'red' }} onPress={() => {}}>
+            <Form.Text systemImage="trash" style={{ color: 'red' }} onPress={handleClearChat}>
               Clear chat
             </Form.Text>
             {chat.type === 'group' && (
