@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
-from utils.mongo import engine, serialize_mongo_object, get_prod_database
+from utils.mongo import serialize_mongo_object, get_prod_database
 from internal.models import Album, AlbumPhoto, Friendship, User
 
 album_router = APIRouter(prefix="/album", tags=["album"])
@@ -22,6 +22,7 @@ album_router = APIRouter(prefix="/album", tags=["album"])
 async def create_album(
     name: Annotated[str, Form()],
     shared: Annotated[bool, Form()],
+    participants: Annotated[Optional[list[ObjectId]], Form()] = None,
     description: Annotated[Optional[str], Form()] = None,
     coverImage: Annotated[Optional[UploadFile], Form()] = None,
     user: User | None = Depends(get_user),
@@ -30,9 +31,34 @@ async def create_album(
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    if shared:
+        # Check that every participant is a friend of the user
+        if participants:
+            for participant_id in participants:
+                if participant_id == user.id:
+                    continue
+                participant = await engine.find_one(User, User.id == participant_id)
+                if not await Friendship.are_friends(engine, user, participant):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"You are not friends with @{participant.username}",
+                    )
+        else:  # Check that particiapnts are provided for shared albums
+            raise HTTPException(
+                status_code=400, detail="Participants are required for shared albums"
+            )
+    else:
+        # Check that participants are not provided for non-shared albums
+        if participants:
+            raise HTTPException(
+                status_code=400,
+                detail="Participants are not allowed for non-shared albums",
+            )
+
     album = Album(
         name=name,
         shared=shared,
+        participants=participants,
         description=description,
         createdAt=datetime.now(timezone.utc),
         createdBy=user,
@@ -122,6 +148,9 @@ async def upload_photo(
     if album is None:
         raise HTTPException(status_code=404, detail="Album not found")
 
+    if not await album.can_access(engine, user):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     # Check if the file is an image
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File is not an image")
@@ -173,7 +202,7 @@ async def fetch_album(
     if album_owner is None:
         raise HTTPException(status_code=404, detail="Album owner not found")
 
-    if not album.shared or not await Friendship.are_friends(engine, user, album_owner):
+    if not await album.can_access(engine, user):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     photos = await engine.find(
@@ -205,3 +234,44 @@ async def fetch_album(
         )
 
     return ORJSONResponse(serialize_mongo_object({"photos": response}))
+
+
+@album_router.get("/fetch")
+async def fetch_albums(
+    user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
+) -> dict[str, str]:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    shared_albums = await Album.get_user_accessible_albums(engine, user)
+    own_albums = await engine.find(Album, Album.createdBy == user.id)
+
+    async def get_album_info(album: Album) -> dict[str, str]:
+        info = {
+            "id": album.id,
+            "name": album.name,
+            "shared": album.shared,
+            "createdAt": album.createdAt,
+            "createdBy": album.createdBy.id,
+            "coverImage": album.coverImageUrl,
+            "description": album.description,
+        }
+        if album.shared:
+            info["participants"] = album.participants
+        photos = await engine.find(AlbumPhoto, AlbumPhoto.album == album.id)
+        info["photos"] = [{"id": photo.id, "url": photo.url} for photo in photos]
+        if not info["photos"]:
+            info["photos"] = []
+        return info
+
+    return ORJSONResponse(
+        serialize_mongo_object(
+            {
+                "sharedAlbums": [
+                    await get_album_info(album) for album in shared_albums
+                ],
+                "ownAlbums": [await get_album_info(album) for album in own_albums],
+            }
+        )
+    )

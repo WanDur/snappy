@@ -6,6 +6,7 @@ import {
   useFriendStore,
   useUserStore,
   usePhotoStore,
+  useAlbumStore,
 } from "@/hooks";
 import {
   FetchNewMessageResponse,
@@ -19,6 +20,7 @@ import { getMessageUserFromFriendId } from "../utils/chatAdapter";
 import { PhotoPreview, FetchUserPhotosResponse } from "@/types/photo.types";
 import * as FileSystem from "expo-file-system";
 import { getDateString } from "@/utils/utils";
+import { AlbumListResponse } from "@/types/album.types";
 
 const isoWeek = (d: Date) => {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -49,6 +51,7 @@ export const useSync = () => {
     addUnreadCount,
   } = useChatStore();
   const { addPhoto, hasPhoto, updatePhotoDetails } = usePhotoStore();
+  const { addAlbum, clearAlbums, hasAlbum, editAlbum } = useAlbumStore();
 
   const syncUserData = async (session: AuthContextProps) => {
     try {
@@ -403,12 +406,31 @@ export const useSync = () => {
       });
   };
 
+  const syncAlbums = async (session: AuthContextProps) => {
+    const res = await session.apiWithToken.get("/album/fetch");
+    const data: AlbumListResponse = res.data;
+
+    [...data.sharedAlbums, ...data.ownAlbums].forEach((album) => {
+      album.coverImage = parsePublicUrl(album.coverImage);
+      album.photos = album.photos.map((photo) => ({
+        ...photo,
+        url: parsePublicUrl(photo.url),
+      }));
+      if (!hasAlbum(album.id)) {
+        addAlbum(album);
+      } else {
+        editAlbum(album.id, album);
+      }
+    });
+  };
+
   const initialSync = async (session: AuthContextProps) => {
     await syncUserData(session);
     await syncPhotos(session, user.id);
     await syncFriends(session);
     await syncFriendPhotos(session);
     await syncChats(session);
+    await syncAlbums(session);
   };
 
   return {

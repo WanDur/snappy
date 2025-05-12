@@ -23,19 +23,23 @@ import Animated, { useSharedValue, withTiming, useAnimatedStyle } from 'react-na
 import { Themed } from '@/components'
 import { HeaderText } from '@/components/ui'
 import { Stack } from '@/components/router-form'
-import { useTheme, useAlbumStore } from '@/hooks'
+import { useTheme, useAlbumStore, useFriendStore, useUserStore } from '@/hooks'
 import { Album } from '@/types'
 import { useSettings } from '@/contexts'
 import { bypassLogin, isAuthenticated, useSession, parsePublicUrl } from '@/contexts/auth'
+import ProfileAvatar from './ProfileAvatar'
+import { Avatar } from '@/components/Avatar'
 
 const CreateAlbumModal = () => {
   const router = useRouter()
   const session = useSession()
   const { settings, setSetting } = useSettings()
 
+  const { user } = useUserStore()
   const { addAlbum } = useAlbumStore()
   const { colors } = useTheme()
   const { isShared } = useLocalSearchParams<{ isShared?: string }>()
+  const { getFriend } = useFriendStore()
 
   const [albumName, setAlbumName] = useState('')
   const [description, setDescription] = useState('')
@@ -103,6 +107,11 @@ const CreateAlbumModal = () => {
       } as any)
     }
     formData.append('shared', isCollaborative.toString())
+    if (isCollaborative) {
+      [user.id, ...settings.friendsToAlbum].forEach((id) => {
+        formData.append('participants', id)
+      })
+    }
     session.apiWithToken
       .post('/album/create', formData)
       .then((res) => {
@@ -111,9 +120,10 @@ const CreateAlbumModal = () => {
           name: albumName,
           description: description,
           coverImage: parsePublicUrl(res.data.coverImageUrl),
-          isShared: isCollaborative,
+          shared: isCollaborative,
           createdAt: res.data.createdAt,
-          images: []
+          createdBy: user.id,
+          photos: []
         } as Album
         addAlbum(newAlbum)
         router.back()
@@ -208,8 +218,15 @@ const CreateAlbumModal = () => {
           <Themed.View style={{ padding: 12, borderRadius: 12 }} type="secondary">
             <ScrollView style={{ width: '100%' }} horizontal>
               {settings.friendsToAlbum.map((item) => (
-                <Themed.View style={styles.friendAvatar} shadow>
-                  <Themed.Text>{item.slice(0, 2)}</Themed.Text>
+                <Themed.View key={item} style={styles.friendAvatar} shadow>
+                  {getFriend(item)?.avatar ? (
+                    <Avatar
+                      iconUrl={getFriend(item)!.avatar!}
+                      size={50}
+                    />
+                  ) : (
+                    <Themed.Text>{getFriend(item)?.username.slice(0, 2)}</Themed.Text>
+                  )}
                 </Themed.View>
               ))}
             </ScrollView>

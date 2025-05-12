@@ -272,12 +272,12 @@ class PhotoComment(Model):
 class Album(Model):
     name: str
     shared: bool
+    participants: Optional[list[ObjectId]] = None
     description: Optional[str] = None
     createdAt: datetime
     createdBy: User = Reference()
     coverImageUrl: Optional[str] = None
     location: Optional[str] = None
-    photos: list[ObjectId] = Field(default_factory=list)
 
     @classmethod
     async def get_user_accessible_albums(
@@ -285,14 +285,26 @@ class Album(Model):
     ) -> list[Album]:
         user_friends = await user.get_friends(engine)
         albums = []
+        # find all shared albums by friends
         for friend in user_friends:
             albums.extend(
                 await engine.find(
                     Album,
-                    (Album.createdBy == friend.id) & (Album.shared == True),
+                    {
+                        "participants": {
+                            "$all": [user.id],
+                        },
+                        "shared": True,
+                        "createdBy": friend.id,
+                    },
                 )
             )
         return albums
+
+    async def can_access(self, engine: AIOEngine, user: User) -> bool:
+        if self.shared:
+            return user.id in self.participants
+        return user.id == self.createdBy.id
 
 
 class AlbumPhoto(Model):

@@ -1,6 +1,6 @@
 import { User, Friendship } from "./user.types";
 import { ChatItem, TMessage } from "./chats.type";
-import { Album, Image } from "./album.types";
+import { Album, AlbumPhoto } from "./album.types";
 import { Friend } from "./friend.types";
 import { Photo } from "./photo.types";
 import { UserTier } from "./auth.type";
@@ -12,7 +12,7 @@ export {
   ChatItem,
   TMessage,
   Album,
-  Image,
+  AlbumPhoto,
   Friend,
   Photo,
 };

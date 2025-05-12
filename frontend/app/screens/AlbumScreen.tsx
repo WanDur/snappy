@@ -3,7 +3,7 @@
  * albumId: string
  */
 import { useState, useRef } from 'react'
-import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, Image, TouchableOpacity, FlatList, ActivityIndicator, Alert } from 'react-native'
 import { MaterialIcons, Feather, Ionicons } from '@expo/vector-icons'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
@@ -16,12 +16,15 @@ import { IconSymbol } from '@/components/ui/IconSymbol'
 import { Stack, ContentUnavailable } from '@/components/router-form'
 import { useTheme, useAlbumStore } from '@/hooks'
 import { Constants } from '@/constants'
+import { useSession } from '@/contexts/auth'
+import { parsePublicUrl } from '@/contexts/auth'
 
 const numColumns = 4
 const gap = 2
 const itemSize = (Constants.screenWidth - gap * (numColumns - 1)) / numColumns
 
 const AlbumScreen = () => {
+  const session = useSession()
   const router = useRouter()
   const { albumId } = useLocalSearchParams<{ albumId: string }>()
   const { isDark, colors } = useTheme()
@@ -43,11 +46,26 @@ const AlbumScreen = () => {
     const pickerResult = await ImagePicker.launchImageLibraryAsync({ allowsMultipleSelection: true, quality: 0.3 })
 
     if (!pickerResult.canceled && pickerResult.assets) {
-      const selectedAssets = pickerResult.assets.map((asset) => asset.uri)
-      addImage(
-        album.id,
-        selectedAssets.map((uri) => ({ photoId: Crypto.randomUUID(), uri }))
-      )
+      pickerResult.assets.forEach((asset) => {
+        const formData = new FormData()
+        formData.append('file', {
+          name: asset.fileName,
+          type: asset.mimeType,
+          uri: asset.uri
+        } as any)
+        session.apiWithToken.post(`/album/${album.id}/upload`, formData)
+        .then((res: any) => {
+          addImage(
+            album.id,
+            [{ photoId: res.data.photoId, url: parsePublicUrl(res.data.filePath) }]
+          )
+        })
+        .catch((err) => {
+          Alert.alert('Error', 'Failed to upload photo')
+          console.log(err)
+        })
+      })
+      
       setIsLoading(false)
     }
     setIsLoading(false)
@@ -83,17 +101,17 @@ const AlbumScreen = () => {
           )}
 
           <TouchableOpacity
-            style={[styles.albumStatusBadge, album.isShared ? sharedBadge : personalBadge]}
+            style={[styles.albumStatusBadge, album.shared ? sharedBadge : personalBadge]}
             activeOpacity={0.8}
             onPress={() => bottomSheetModalRef.current?.present()}
           >
             <MaterialIcons
-              name={album.isShared ? 'group' : 'person'}
+              name={album.shared ? 'group' : 'person'}
               size={16}
-              color={album.isShared ? (isDark ? '#7da2ff' : '#4a80f5') : isDark ? '#bbbbbb' : '#555'}
+              color={album.shared ? (isDark ? '#7da2ff' : '#4a80f5') : isDark ? '#bbbbbb' : '#555'}
             />
-            <Text style={[styles.albumStatusText, album.isShared ? sharedText : personalText]}>
-              {album.isShared ? 'Shared Album' : 'Personal Album'}
+            <Text style={[styles.albumStatusText, album.shared ? sharedText : personalText]}>
+              {album.shared ? 'Shared Album' : 'Personal Album'}
             </Text>
             <Ionicons style={{ marginLeft: 4 }} name="chevron-forward" color={personalText.color} />
           </TouchableOpacity>
@@ -119,7 +137,7 @@ const AlbumScreen = () => {
 
   const GridView = () => (
     <FlatList
-      data={album.images}
+      data={album.photos}
       numColumns={numColumns}
       showsVerticalScrollIndicator={false}
       keyExtractor={(item, index) => index.toString()}
@@ -130,7 +148,7 @@ const AlbumScreen = () => {
           onPress={() => handleImagePress(index)}
           activeOpacity={0.85}
         >
-          <Image source={{ uri: item.uri }} style={styles.image} />
+          <Image source={{ uri: item.url }} style={styles.image} />
         </TouchableOpacity>
       )}
       ListHeaderComponent={<AlbumHeader />}
@@ -188,11 +206,11 @@ const AlbumScreen = () => {
               <Themed.Text style={styles.metaText}>{formattedDate}</Themed.Text>
             </View>
 
-            {album.contributors && album.contributors > 0 && (
+            {album.participants && album.participants.length > 0 && (
               <View style={styles.metaItem}>
                 <MaterialIcons name="people" size={24} color={colors.blue} />
                 <Themed.Text style={styles.metaText}>
-                  {album.contributors} {album.contributors === 1 ? 'contributor' : 'contributors'}
+                  {album.participants.length} {album.participants.length === 1 ? 'participant' : 'participants'}
                 </Themed.Text>
               </View>
             )}
@@ -200,7 +218,7 @@ const AlbumScreen = () => {
             <View style={styles.metaItem}>
               <Feather name="image" size={24} color={colors.blue} />
               <Themed.Text style={styles.metaText}>
-                {album.images.length} {album.images.length === 1 ? 'photo' : 'photos'}
+                {album.photos.length} {album.photos.length === 1 ? 'photo' : 'photos'}
               </Themed.Text>
             </View>
           </View>

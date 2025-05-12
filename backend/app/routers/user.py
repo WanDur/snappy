@@ -98,7 +98,11 @@ async def fetch_user_profile(
             limit=6,
             sort=Photo.timestamp.desc(),
         )
-        shared_albums = await engine.find(Album, Album.createdBy == target_user.id)
+        shared_albums = await engine.find(
+            Album,
+            Album.createdBy == target_user.id,
+            Album.shared == True,
+        )
 
         async def get_album_info(album: Album) -> dict:
             album_photos = await engine.find(AlbumPhoto, AlbumPhoto.album == album.id)

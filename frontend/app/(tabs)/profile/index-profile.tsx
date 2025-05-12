@@ -268,7 +268,7 @@ const ProfileScreen = () => {
         <View style={styles.albumCoverContainer}>
           <AlbumCover
             coverImage={item.coverImage}
-            isShared={item.isShared}
+            isShared={item.shared}
             contributors={item.contributors}
             style={{ width: '100%', height: '100%' }}
             placeholderStyle={{ width: '100%', height: '100%' }}
@@ -278,7 +278,7 @@ const ProfileScreen = () => {
           {item.name}
         </Themed.Text>
         <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
-          {item.images.length} photos
+          {item.photos.length} photos
         </Themed.Text>
       </TouchableOpacity>
     )

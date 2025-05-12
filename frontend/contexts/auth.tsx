@@ -1,4 +1,5 @@
 import { BASE_URL } from '@/constants/server'
+import { useAlbumStore } from '@/hooks/stores/useAlbumStore'
 import { useChatStore } from '@/hooks/stores/useChatStore'
 import { useFriendStore } from '@/hooks/stores/useFriendStore'
 import { usePhotoStore } from '@/hooks/stores/usePhotoStore'
@@ -215,9 +216,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
     const { clearChats } = useChatStore.getState()
     const { clearFriends } = useFriendStore.getState()
     const { clearPhotos } = usePhotoStore.getState()
+    const { clearAlbums } = useAlbumStore.getState()
     clearChats()
     clearFriends()
     clearPhotos()
+    clearAlbums()
 
     // Revoke the refresh token
     await api
