@@ -94,7 +94,7 @@ const AlbumScreen = () => {
         />
       </View>
       <Themed.Text style={styles.albumTitle} numberOfLines={1}>
-        {item.title}
+        {item.name}
       </Themed.Text>
       <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
         {item.images.length} photos
@@ -113,7 +113,7 @@ const AlbumScreen = () => {
       />
 
       <View style={{ flex: 1, marginLeft: 12 }}>
-        <Themed.Text style={styles.albumTitle}>{item.title}</Themed.Text>
+        <Themed.Text style={styles.albumTitle}>{item.name}</Themed.Text>
         <Themed.Text style={{ fontSize: 13, marginTop: 2 }} text50>
           {item.images.length} photos
         </Themed.Text>

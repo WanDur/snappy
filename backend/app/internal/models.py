@@ -263,9 +263,11 @@ class PhotoComment(Model):
 
 class Album(Model):
     name: str
-    participants: list[ObjectId]
+    shared: bool
+    description: Optional[str] = None
     createdAt: datetime
     createdBy: User = Reference()
+    coverImageUrl: Optional[str] = None
     location: Optional[str] = None
     photos: list[ObjectId] = Field(default_factory=list)
 
@@ -273,7 +275,15 @@ class Album(Model):
     async def get_user_accessible_albums(
         cls, engine: AIOEngine, user: User
     ) -> list[Album]:
-        albums = await engine.find(Album, Album.participants.contains(user.id))
+        user_friends = await user.get_friends(engine)
+        albums = []
+        for friend in user_friends:
+            albums.extend(
+                await engine.find(
+                    Album,
+                    (Album.createdBy == friend.id) & (Album.shared == True),
+                )
+            )
         return albums
 
 
