@@ -33,7 +33,7 @@ const onSignIn = async () => {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Constants.isIOS ? undefined : 'height'}>
+    <KeyboardAvoidingView style={styles.container} behavior={Constants.isIOS ? 'padding' : 'height'}>
       <Stack.Screen
         options={{
           headerTitle: 'Login',

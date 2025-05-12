@@ -325,6 +325,7 @@ export const useSync = () => {
       const data: FetchUserPhotosResponse = res.data;
       data.photos.forEach((photo) => {
         if (hasPhoto(userId, photo.id)) {
+          // TODO : update photo details (comments / likes)
           return;
         }
         if (getLocalTime(photo.timestamp) >= fourWeeksBefore) {
@@ -384,11 +385,20 @@ export const useSync = () => {
     }
   };
 
+  const syncFriendPhotos = async (session: AuthContextProps) => {
+    friends
+      .filter((friend) => friend.type === FriendStatus.FRIEND)
+      .forEach((friend) => {
+        syncPhotos(session, friend.id);
+      });
+  };
+
   return {
     syncUserData,
     syncFriends,
     syncChats,
     syncPhotos,
+    syncFriendPhotos,
     fetchChatInfo,
   };
 };

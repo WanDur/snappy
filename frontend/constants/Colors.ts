@@ -25,7 +25,7 @@ export const Colors = {
     text: "#ECEDEE",
     placeholder: "#6B7280",
     background: "#151718",
-    secondaryBg: "#1C1C1E",
+    secondaryBg: "#323236",
     tint: tintColorDark,
     icon: "#9BA1A6",
     tabIconDefault: "#9BA1A6",

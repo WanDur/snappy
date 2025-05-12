@@ -240,7 +240,7 @@ async def get_feed(
         raise HTTPException(status_code=400, detail="Invalid week number")
 
     # Fetch the photos uploaded by the user's friends in the specified year & week
-    users = [user, *await User.get_friends(engine, user)]
+    users = await user.get_friends(engine)
     feed = []
     for view_user in users:
         photos = await engine.find(

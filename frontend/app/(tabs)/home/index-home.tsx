@@ -52,6 +52,7 @@ interface FeedItem {
 }
 
 interface WeekBundle {
+  year: number
   weekNum: number
   key: string
   days: DayTile[]
@@ -125,6 +126,7 @@ const buildFeed = (weekOffset: number): FeedItem[] =>
 const buildWeeks = (count = 4): WeekBundle[] => {
   const currentWeek = getISOWeek()
   return Array.from({ length: count }).map((_, offset) => ({
+    year: new Date().getFullYear(),
     weekNum: currentWeek - offset,
     key: `week-${currentWeek - offset}`,
     days: buildDays(offset),
@@ -259,7 +261,7 @@ const HomeScreen = () => {
   const session = useSession()
   const router = useRouter()
   const { user } = useUserStore()
-  const { syncUserData, syncFriends, syncPhotos } = useSync()
+  const { syncUserData, syncFriends, syncPhotos, syncFriendPhotos } = useSync()
 
   const { colors } = useTheme()
   const { friends, addFriend, clearFriends } = useFriendStore()
@@ -307,6 +309,7 @@ const HomeScreen = () => {
         syncFriends(session)
         console.log(user.id)
         syncPhotos(session, user.id)
+        syncFriendPhotos(session)
       })
     } else {
       console.log('Session is null')
@@ -365,20 +368,29 @@ const HomeScreen = () => {
   const enrichedWeeks = useMemo(() => {
     if (weeks.length === 0) return weeks
 
-    // Build feed from friend list (placeholder: use their first photo or blank)
+    // Patch every week bundle with user-uploaded photos stored in mediaByDate
+    return weeks.map((w) => {
+          // Build feed from friend list (placeholder: use their first photo or blank)
     const localFeed: FeedItem[] = friends.map((f, i) => {
-      const first = f.albumList.flatMap((al) => al.images ?? [])[0]?.uri
+      const photos = getUserPhotos(f.id).filter((p) => p.year == w.year && p.week === w.weekNum)
       return {
         id: `local-${f.id}-${i}`,
         user: f.username ?? f.name,
         avatar: f.avatar ?? 'https://placehold.co/400x400/CCCCCC/000000?text=No+Avatar',
-        mediaUri: first ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
+        mediaUri: photos[0]?.url ?? 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo',
         seen: false
       }
+    }).sort((a, b) => {
+      if (a.mediaUri === b.mediaUri && b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+        return 0
+      } else if (a.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+        return 1
+      } else if (b.mediaUri === 'https://placehold.co/600x600/EEEEEE/AAAAAA?text=No+Photo') {
+        return -1
+      }
+      return 0
     })
 
-    // Patch every week bundle with user-uploaded photos stored in mediaByDate
-    return weeks.map((w) => {
       const patchedDays = w.days.map((d) => {
         if (d.isAdd) return d // skip the “+” tile
         const iso = getDateString(d.date)
@@ -477,6 +489,7 @@ const HomeScreen = () => {
           if (!exists) {
             // build and insert at correct offset
             const newBundle: WeekBundle = {
+              year: pickerWeekRef.current!.year,
               weekNum: captureWeek,
               key: `week-${captureWeek}`,
               days: buildDays(offset).map((d) =>

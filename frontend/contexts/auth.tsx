@@ -1,6 +1,7 @@
 import { BASE_URL } from '@/constants/server'
 import { useChatStore } from '@/hooks/stores/useChatStore'
 import { useFriendStore } from '@/hooks/stores/useFriendStore'
+import { usePhotoStore } from '@/hooks/stores/usePhotoStore'
 import {
   AuthContextProps,
   LoginInfoResponse,
@@ -213,8 +214,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
     // Clear user-specific storages
     const { clearChats } = useChatStore.getState()
     const { clearFriends } = useFriendStore.getState()
+    const { clearPhotos } = usePhotoStore.getState()
     clearChats()
     clearFriends()
+    clearPhotos()
 
     // Revoke the refresh token
     await api

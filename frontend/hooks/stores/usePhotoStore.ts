@@ -52,6 +52,8 @@ interface State {
 
   /* local feed helper (you can replace with real API later) */
   fetchFeed: (friendIds: string[]) => Photo[];
+
+  clearPhotos: () => void;
 }
 
 /* ---------- the store ---------------------------------------- */
@@ -172,6 +174,10 @@ export const usePhotoStore = create<State>()(
         return friendIds
           .flatMap((fid) => map[fid] ?? [])
           .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      },
+
+      clearPhotos() {
+        set({ photoMap: {} });
       },
     })),
     {
