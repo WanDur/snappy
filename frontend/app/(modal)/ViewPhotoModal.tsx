@@ -244,7 +244,7 @@ export default function ViewPhotoModal() {
           )}
         </TouchableOpacity>
       </View>
-
+      
       <View style={{ flex: 1 }}>
         <ScrollView>
           <Animated.FlatList
@@ -273,7 +273,14 @@ export default function ViewPhotoModal() {
                 <TouchableOpacity
                   onPress={() => {
                     Alert.alert('Options', 'Choose an action', [
-                      { text: 'Tag Friend', onPress: () => console.log('Tag friend tapped') },
+                      {
+                        text: 'Tag Friend',
+                        onPress: () =>
+                          router.push({
+                            pathname: '/(modal)/TaggedUserModal',
+                            params: { photoId: photoIds[currentIndex] }
+                          })
+                      },
                       { text: 'Delete Photo', onPress: () => console.log('Delete photo tapped'), style: 'destructive' },
                       { text: 'Cancel', style: 'cancel' }
                     ])
@@ -286,9 +293,6 @@ export default function ViewPhotoModal() {
           </KeyboardAvoidingView>
         </BlurView>
       </View>
-
-      
-      
     </View>
   )
 }

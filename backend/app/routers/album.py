@@ -166,6 +166,8 @@ async def upload_photo(
 
     if not await album.can_access(engine, user):
         raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    first_photo_url: str | None = None
 
     for file in files:
         # Check if the file is an image
@@ -184,6 +186,9 @@ async def upload_photo(
             f"albums/{album_id}/photos/{timestamp}.jpg", optimized_image
         )
 
+        if first_photo_url is None:
+            first_photo_url = file_path
+
         photo = AlbumPhoto(
             url=file_path,
             caption=caption,
@@ -193,14 +198,101 @@ async def upload_photo(
         )
         await engine.save(photo)
 
+    if not album.coverImageUrl and first_photo_url:
+        album.coverImageUrl = first_photo_url
+        await engine.save(album)
+
     return ORJSONResponse(
         serialize_mongo_object(
             {
                 "photoId": photo.id,
                 "filePath": file_path,
+                "coverImageUrl": album.coverImageUrl,
             }
         )
     )
+
+@album_router.patch("/{album_id}/cover/{photo_id}")
+async def set_cover_photo(
+    album_id: ObjectId,
+    photo_id: ObjectId,
+    user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
+)->dict[str,str]:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    album = await engine.find_one(Album, Album.id == album_id)
+    if album is None:
+        raise HTTPException(status_code=404, detail="Album not found")
+    
+    if not await album.can_access(engine, user):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    photo = await engine.find_one(AlbumPhoto, AlbumPhoto.id == photo_id)
+    if photo is None or photo.album.id != album.id:
+        raise HTTPException(status_code=404, detail="Photo not found in this album")
+    
+    album.coverImageUrl = photo.url
+    await engine.save(album)
+
+    return ORJSONResponse(
+        serialize_mongo_object(
+            {
+                "albumId": album.id,
+                "coverImageUrl": album.coverImageUrl,
+            }
+        )
+    )
+
+@album_router.delete("/{album_id}/photo/{photo_id}")
+async def delete_photo(
+    album_id: ObjectId,
+    photo_id: ObjectId,
+    user: User | None = Depends(get_user),
+    engine: AIOEngine = Depends(get_prod_database),
+) -> dict[str, str]:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    album = await engine.find_one(Album, Album.id == album_id)
+    if album is None:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    if not await album.can_access(engine, user):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    photo = await engine.find_one(AlbumPhoto, AlbumPhoto.id == photo_id)
+    if photo is None or photo.album.id != album.id:
+        raise HTTPException(status_code=404, detail="Photo not found in this album")
+
+    # Determine if album cover must be cleared 
+    # Count how many photos are in the album *before* deleting this one
+    photo_count = await engine.count(AlbumPhoto, AlbumPhoto.album == album.id)
+
+    remove_cover = False
+    if photo.url == album.coverImageUrl:
+        remove_cover = True
+    elif photo_count == 1:           # this was the very last photo
+        remove_cover = True
+
+    await engine.delete(photo)
+
+    if remove_cover:
+        album.coverImageUrl = ""
+        await engine.save(album)
+
+    return ORJSONResponse(
+        serialize_mongo_object(
+            {
+                "status": "success",
+                "albumId": album.id,
+                "photoId": photo_id,
+                "coverImageUrl": album.coverImageUrl,  
+            }
+        )
+    )
+
 
 
 @album_router.get("/{album_id}/fetch")
