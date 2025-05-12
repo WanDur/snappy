@@ -6,7 +6,7 @@ import pytest
 import requests
 
 from internal.models import Friendship, Photo, PhotoComment, PhotoLike
-from .conftest import generate_user_data
+from .conftest import generate_user_data, add_random_user
 
 
 @pytest.mark.asyncio
@@ -130,3 +130,36 @@ async def test_photo_comment(client, mongodb, sample_freemium_user):
         PhotoComment.photo == ObjectId(photo_id),
         PhotoComment.user == user.id,
     )
+
+
+@pytest.mark.asyncio
+async def test_tag_photo(client, mongodb, sample_freemium_user):
+    """Test the POST /photo/{photo_id}/tag endpoint."""
+    user, token = sample_freemium_user
+    user2, _ = await add_random_user(mongodb, friend_with=user)
+
+    with open(
+        os.path.join(os.path.dirname(__file__), "assets/upload_photo_1.jpg"), "rb"
+    ) as photo_file:
+        res = await client.post(
+            f"/photo/upload",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("upload_photo_1.jpg", photo_file.read(), "image/jpeg")},
+        )
+
+    assert res.status_code == 200
+    assert res.json()["photoId"] is not None
+    assert res.json()["filePath"] is not None
+
+    photo_id = res.json()["photoId"]
+
+    res = await client.post(
+        f"/photo/{photo_id}/tag",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"taggedUserIds": [str(user2.id)]},
+    )
+
+    print(res.json())
+    assert res.status_code == 200
+    photo = await mongodb.find_one(Photo, Photo.id == ObjectId(photo_id))
+    assert photo.taggedUserIds == [user2.id]

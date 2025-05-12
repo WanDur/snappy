@@ -13,7 +13,7 @@ from utils.minio_server import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
 from utils.mongo import serialize_mongo_object, get_prod_database
-from internal.models import Photo, PhotoComment, User
+from internal.models import Friendship, Photo, PhotoComment, User
 
 photo_router = APIRouter(prefix="/photo", tags=["photo"])
 
@@ -76,6 +76,44 @@ async def fetch_photo(
             **serialize_mongo_object(photo, exclude=["user"]),
         }
     )
+
+
+class TagBody(BaseModel):
+    taggedUserIds: list[str]
+
+
+@photo_router.post("/{photo_id}/tag")
+async def tag_photo(
+    photo_id: str,
+    body: TagBody,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+) -> dict[str, str]:
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Fetch the photo from the database
+    photo = await engine.find_one(Photo, Photo.id == ObjectId(photo_id))
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    # Validate the tagged user ids
+    for tagged_user_id in body.taggedUserIds:
+        tagged_user = await engine.find_one(User, User.id == ObjectId(tagged_user_id))
+        if not tagged_user:
+            raise HTTPException(
+                status_code=404, detail=f"Tagged user {tagged_user_id} not found"
+            )
+        if tagged_user.id == user.id:
+            raise HTTPException(status_code=400, detail="Cannot tag yourself")
+        if not await Friendship.are_friends(engine, user, tagged_user):
+            raise HTTPException(status_code=400, detail="Cannot tag a non-friend")
+
+    # Tag the photo
+    photo.taggedUserIds = body.taggedUserIds
+    await engine.save(photo)
+
+    return ORJSONResponse(status_code=200, content={"success": True})
 
 
 @photo_router.delete("/{photo_id}/delete")
