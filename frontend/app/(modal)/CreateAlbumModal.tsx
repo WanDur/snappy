@@ -23,16 +23,19 @@ import { Themed } from '@/components'
 import { HeaderText } from '@/components/ui'
 import { Stack } from '@/components/router-form'
 import { useTheme, useAlbumStore } from '@/hooks'
-
+import { Album } from '@/types'
+import { bypassLogin, isAuthenticated, useSession, parsePublicUrl } from '@/contexts/auth'
 const CreateAlbumModal = () => {
   const router = useRouter()
+  const session = useSession()
+
   const { addAlbum } = useAlbumStore()
   const { colors } = useTheme()
   const { isShared } = useLocalSearchParams<{ isShared?: string }>()
 
   const [albumName, setAlbumName] = useState('')
   const [description, setDescription] = useState('')
-  const [coverImage, setCoverImage] = useState('')
+  const [coverImage, setCoverImage] = useState<ImagePicker.ImagePickerAsset | null>(null)
   const [isCollaborative, setIsCollaborative] = useState(isShared === 'true')
 
   const pickImage = async () => {
@@ -44,23 +47,51 @@ const CreateAlbumModal = () => {
     })
 
     if (!result.canceled && result.assets) {
-      setCoverImage(result.assets[0].uri)
+      setCoverImage(result.assets[0])
     }
   }
 
-  const handleCreateAlbum = () => {
-    const newAlbum = {
-      id: Crypto.randomUUID(),
-      title: albumName,
-      description: description,
-      coverImage: coverImage,
-      isShared: isCollaborative,
-      createdAt: new Date().toISOString(),
-      images: []
+  const handleCreateAlbum = async () => {
+    if (bypassLogin()) {
+      return
+    }
+    if (!isAuthenticated(session)) {
+      router.replace('/(auth)/LoginScreen')
+      return
     }
 
-    addAlbum(newAlbum)
-    router.back()
+    // TODO create album with backend
+    const formData = new FormData()
+    formData.append('name', albumName)
+    if (description.trim() !== '') {
+      formData.append('description', description)
+    }
+    if (coverImage) {
+      formData.append('coverImage', {
+        uri: coverImage.uri,
+        name: coverImage.fileName,
+        type: coverImage.mimeType
+      } as any)
+    }
+    formData.append('shared', isCollaborative.toString())
+    session.apiWithToken
+      .post('/album/create', formData)
+      .then((res) => {
+        const newAlbum = {
+          id: res.data.albumId,
+          name: albumName,
+          description: description,
+          coverImage: parsePublicUrl(res.data.coverImageUrl),
+          isShared: isCollaborative,
+          createdAt: res.data.createdAt,
+          images: []
+        } as Album
+        addAlbum(newAlbum)
+        router.back()
+      })
+      .catch((err) => {
+        console.error(err)
+      })
   }
 
   return (
@@ -80,7 +111,7 @@ const CreateAlbumModal = () => {
         <View style={styles.coverSection}>
           <TouchableOpacity style={styles.coverImageContainer} onPress={pickImage} activeOpacity={0.7}>
             {coverImage ? (
-              <Image source={{ uri: coverImage }} style={styles.coverImage} />
+              <Image source={{ uri: coverImage.uri }} style={styles.coverImage} />
             ) : (
               <Themed.View style={[styles.coverImagePlaceholder, { borderColor: colors.borderColor }]} type="secondary">
                 <MaterialIcons name="add-photo-alternate" size={40} color={colors.gray} />

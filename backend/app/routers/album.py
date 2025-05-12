@@ -18,61 +18,55 @@ from internal.models import Album, AlbumPhoto, Friendship, User
 album_router = APIRouter(prefix="/album", tags=["album"])
 
 
-class CreateAlbumBody(BaseModel):
-    name: str
-    participants: list[ObjectId]
-
-
 @album_router.post("/create")
 async def create_album(
-    body: CreateAlbumBody,
+    name: Annotated[str, Form()],
+    shared: Annotated[bool, Form()],
+    description: Annotated[Optional[str], Form()] = None,
+    coverImage: Annotated[Optional[UploadFile], Form()] = None,
     user: User | None = Depends(get_user),
     engine: AIOEngine = Depends(get_prod_database),
 ) -> dict[str, str]:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    if len(body.participants) < 1:
-        raise HTTPException(
-            status_code=400, detail="At least one participant is required"
-        )
-
-    if user.id not in body.participants:
-        raise HTTPException(
-            status_code=400, detail="You must be a participant to create an album"
-        )
-
-    # Validate participant lists
-    for participantId in body.participants:
-        if participantId == user.id:
-            continue
-        puser = await engine.find_one(User, User.id == participantId)
-        if puser is None:
-            raise HTTPException(
-                status_code=400, detail=f"Invalid participant: {participantId}"
-            )
-        if not await Friendship.are_friends(engine, user, puser):
-            raise HTTPException(
-                status_code=400,
-                detail=f"User @{puser.username} is not a friend",
-            )
-
     album = Album(
-        name=body.name,
-        participants=body.participants,
+        name=name,
+        shared=shared,
+        description=description,
         createdAt=datetime.now(timezone.utc),
         createdBy=user,
     )
+
+    if coverImage:
+        if not coverImage.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="File is not an image")
+
+        # Optimize and upload the image
+        optimized_image = optimize_image(await coverImage.read())
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+        cover_image_url = upload_file_stream(
+            f"albums/{album.id}/cover.jpg", optimized_image
+        )
+        album.coverImageUrl = cover_image_url
+
     await engine.save(album)
 
     return ORJSONResponse(
-        serialize_mongo_object({"albumId": album.id, "createdAt": album.createdAt})
+        serialize_mongo_object(
+            {
+                "albumId": album.id,
+                "coverImageUrl": album.coverImageUrl,
+                "createdAt": album.createdAt,
+            }
+        )
     )
 
 
 class EditAlbumBody(BaseModel):
     name: Optional[str] = None
-    participants: Optional[list[ObjectId]] = None
+    shared: Optional[bool] = None
+    description: Optional[str] = None
 
 
 @album_router.post("/{album_id}/edit")
@@ -94,29 +88,19 @@ async def edit_album(
 
     if album.name and album.name != "":
         album.name = body.name
-    if body.participants:
-        # Validate participant lists
-        for participantId in body.participants:
-            if participantId == user.id:
-                continue
-            puser = await engine.find_one(User, User.id == participantId)
-            if puser is None:
-                raise HTTPException(
-                    status_code=400, detail=f"Invalid participant: {participantId}"
-                )
-            if not await Friendship.are_friends(engine, user, puser):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"User @{puser.username} is not a friend",
-                )
-        album.participants = body.participants
+    if body.shared:
+        album.shared = body.shared
+    if body.description:
+        album.description = body.description
+
     await engine.save(album)
 
     return ORJSONResponse(
         serialize_mongo_object(
             {
                 "name": album.name,
-                "participants": album.participants,
+                "shared": album.shared,
+                "description": album.description,
                 "createdAt": album.createdAt,
             }
         )
@@ -185,7 +169,11 @@ async def fetch_album(
     if album is None:
         raise HTTPException(status_code=404, detail="Album not found")
 
-    if user.id not in album.participants:
+    album_owner = await engine.find_one(User, User.id == album.createdBy)
+    if album_owner is None:
+        raise HTTPException(status_code=404, detail="Album owner not found")
+
+    if not album.shared or not await Friendship.are_friends(engine, user, album_owner):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     photos = await engine.find(

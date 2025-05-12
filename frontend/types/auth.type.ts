@@ -5,6 +5,7 @@ import { z } from "zod";
 export enum UserTier {
   FREEMIUM = "freemium",
   PREMIUM = "premium",
+  ADMIN = "admin",
 }
 
 export const LoginInfoResponseSchema = z.object({

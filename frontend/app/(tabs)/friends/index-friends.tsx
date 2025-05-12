@@ -53,7 +53,7 @@ const generateUser = (type: FriendStatus) => {
 const FriendsScreen = () => {
   const router = useRouter()
   const session = useSession()
-  const { syncFriends } = useSync()
+  const { syncFriends, fetchChatInfo } = useSync()
 
   const { colors, isDark } = useTheme()
   const { friends, addFriend, getFriend, removeFriend, changeFriendType } = useFriendStore()
@@ -97,19 +97,39 @@ const FriendsScreen = () => {
       })
   }, [])
   const onPressMessage = (friendID: string) => {
-    console.log("onPressMessage", friendID)
     const chat = getChatWithFriend(friendID)
     if (!chat) {
       const friend = getFriend(friendID)!
-      // addChat({
-      //   id: friendID,
-      //   type: 'direct',
-      //   participants: [friend],
-      //   initialDate: new Date(),
-      //   lastMessageTime: new Date(),
-      //   unreadCount: 0,
-      //   messages: []
-      // })
+      session.apiWithToken.post(`/chat/create/direct`, {
+        targetUserId: friendID
+      }).then((res) => {
+        addChat({
+          id: res.data.conversationId,
+          type: "direct",
+          participants: [{
+            _id: friendID,
+            name: friend.name,
+            avatar: friend.avatar
+          }],
+          initialDate: new Date(),
+          messages: [],
+          unreadCount: 0,
+          lastMessageTime: new Date()
+        })
+        router.dismiss()
+        router.push({ pathname: '/screens/ChatScreen', params: { chatID: res.data.conversationId } })
+      })
+      .catch(async (err) => {
+        if (err.response.status === 409) {
+          // Chat exists on server but is deleted locally
+          const existingConversationId = err.response.data.detail.conversationId
+          const newChat = await fetchChatInfo(session, existingConversationId)
+          addChat(newChat)
+          router.push({ pathname: '/screens/ChatScreen', params: { chatID: existingConversationId } })
+        } else {
+          console.error("Error creating chat", err)
+        }
+      })
     } else {
       router.push({ pathname: '/screens/ChatScreen', params: { chatID: chat.id } })
     } 

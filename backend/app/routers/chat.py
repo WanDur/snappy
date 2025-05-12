@@ -55,12 +55,19 @@ async def create_direct_chat(
         raise HTTPException(status_code=404, detail="Target user not found")
 
     # Check if the user is already in a conversation with the target user
-    existing_conversation = await Conversation.find_direct_conversation(
+    existing_conversation_id = await Conversation.find_direct_conversation_id(
         engine, user, target_user
     )
-    if existing_conversation:
+    if existing_conversation_id:
+        log_debug(
+            f"Conversation with {target_user.id} already exists: {existing_conversation_id}"
+        )
         raise HTTPException(
-            status_code=400, detail="Conversation with this user already exists"
+            status_code=409,
+            detail={
+                "message": "Conversation with this user already exists",
+                "conversationId": str(existing_conversation_id),
+            },
         )
 
     # Create a new conversation

@@ -34,6 +34,9 @@ interface State {
       location?: string;
     }
   ) => void;
+
+  hasPhoto: (userId: string, photoId: string) => boolean;
+
   removePhoto: (userId: string, photoId: string) => void;
 
   getUserPhotos: (userId: string) => Photo[];
@@ -97,6 +100,10 @@ export const usePhotoStore = create<State>()(
           //   x.weekTotal = weekBlock.length;
           // });
         });
+      },
+
+      hasPhoto(userId, photoId) {
+        return get().photoMap[userId]?.some((p) => p.id === photoId) ?? false;
       },
 
       /* ==== REMOVE PHOTO ================================================== */

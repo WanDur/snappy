@@ -17,6 +17,8 @@ import {
 import { Message } from "react-native-gifted-chat";
 import { getMessageUserFromFriendId } from "../utils/chatAdapter";
 import { PhotoPreview, FetchUserPhotosResponse } from "@/types/photo.types";
+import * as FileSystem from "expo-file-system";
+import { getDateString } from "@/utils/utils";
 
 const isoWeek = (d: Date) => {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -46,7 +48,7 @@ export const useSync = () => {
     updateLastMessageTime,
     addUnreadCount,
   } = useChatStore();
-  const { addPhoto } = usePhotoStore();
+  const { addPhoto, hasPhoto } = usePhotoStore();
 
   const syncUserData = async (session: AuthContextProps) => {
     try {
@@ -120,6 +122,7 @@ export const useSync = () => {
     session: AuthContextProps,
     conversationId: string
   ) => {
+    console.log("Fetching chat info for", conversationId);
     const res = await session.apiWithToken.get(
       `/chat/conversation/${conversationId}/info`
     );
@@ -310,6 +313,7 @@ export const useSync = () => {
       const fourWeeksBefore = new Date(
         now.getTime() - 4 * 7 * 24 * 60 * 60 * 1000
       );
+      fourWeeksBefore.setHours(0, 0, 0, 0);
       const res = await session.apiWithToken.get(`/photo/fetch/${userId}`, {
         params: {
           fromYear: fourWeeksBefore.getFullYear(),
@@ -320,14 +324,60 @@ export const useSync = () => {
       });
       const data: FetchUserPhotosResponse = res.data;
       data.photos.forEach((photo) => {
-        addPhoto(userId, {
-          id: photo.id,
-          uri: parsePublicUrl(photo.url),
-          caption: photo.caption,
-          taggedUserIds: photo.taggedUserIds,
-          timestamp: getLocalTime(photo.timestamp),
-          location: photo.location,
-        });
+        if (hasPhoto(userId, photo.id)) {
+          return;
+        }
+        if (getLocalTime(photo.timestamp) >= fourWeeksBefore) {
+          // Cache the photo to local storage if it is within the last 4 weeks
+          const downloadResumable = FileSystem.createDownloadResumable(
+            parsePublicUrl(photo.url),
+            FileSystem.documentDirectory! +
+              getDateString(photo.timestamp) +
+              "-" +
+              photo.id +
+              ".jpg",
+            {}
+          );
+          downloadResumable
+            .downloadAsync()
+            .then((result) => {
+              if (result) {
+                console.log("Downloaded photo to", result.uri);
+                addPhoto(userId, {
+                  id: photo.id,
+                  uri: result.uri,
+                  caption: photo.caption,
+                  taggedUserIds: photo.taggedUserIds,
+                  timestamp: getLocalTime(photo.timestamp),
+                  location: photo.location,
+                });
+              } else {
+                console.log(
+                  "Failed to download photo, saving remote url instead"
+                );
+                addPhoto(userId, {
+                  id: photo.id,
+                  uri: parsePublicUrl(photo.url),
+                  caption: photo.caption,
+                  taggedUserIds: photo.taggedUserIds,
+                  timestamp: getLocalTime(photo.timestamp),
+                  location: photo.location,
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("Error downloading photo:", error);
+            });
+        } else {
+          addPhoto(userId, {
+            id: photo.id,
+            uri: parsePublicUrl(photo.url),
+            caption: photo.caption,
+            taggedUserIds: photo.taggedUserIds,
+            timestamp: getLocalTime(photo.timestamp),
+            location: photo.location,
+          });
+        }
       });
     } catch (error) {
       console.error("Error fetching photos:", error);
@@ -339,5 +389,6 @@ export const useSync = () => {
     syncFriends,
     syncChats,
     syncPhotos,
+    fetchChatInfo,
   };
 };

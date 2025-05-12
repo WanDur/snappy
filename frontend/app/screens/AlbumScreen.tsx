@@ -153,7 +153,7 @@ const AlbumScreen = () => {
     <Themed.View style={{ flex: 1 }}>
       <Stack.Screen
         options={{
-          headerTitle: album.title
+          headerTitle: album.name
         }}
       />
 
@@ -178,7 +178,7 @@ const AlbumScreen = () => {
         )}
       >
         <BottomSheetView style={{ flex: 1, padding: 16 }}>
-          <Themed.Text style={{ fontSize: 24, fontWeight: '700', marginBottom: 16 }}>{album.title}</Themed.Text>
+          <Themed.Text style={{ fontSize: 24, fontWeight: '700', marginBottom: 16 }}>{album.name}</Themed.Text>
 
           <View style={{ marginBottom: 16 }}>
             {album.description && <Text style={styles.description}>{album.description}</Text>}

@@ -65,7 +65,7 @@ async def redeem_license(
         )
 
     for license in licenses["valid"]:
-        await license.redeem(user)
+        await license.redeem(engine, user)
 
     return ORJSONResponse(
         status_code=200, content={"expireTime": user.premiumExpireTime}
@@ -73,7 +73,9 @@ async def redeem_license(
 
 
 async def generate_license_keys(
-    days: int, count: int, engine: AIOEngine = Depends(get_prod_database)
+    engine: AIOEngine = Depends(get_prod_database),
+    days: int = 30,
+    count: int = 1,
 ) -> list[str]:
     licenses = []
     while len(licenses) < count:

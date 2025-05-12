@@ -5,6 +5,7 @@ from typing import Annotated, Optional
 from odmantic import AIOEngine, EmbeddedModel, Field, Model, ObjectId, Reference, query
 from pydantic import EmailStr, StringConstraints
 
+from utils.debug import log_debug
 from utils.mongo import engine
 
 # section user
@@ -13,6 +14,7 @@ from utils.mongo import engine
 class UserTier(str, Enum):
     FREEMIUM = "freemium"
     PREMIUM = "premium"
+    ADMIN = "admin"
 
 
 class User(Model):
@@ -46,8 +48,10 @@ class User(Model):
         if self.tier == UserTier.FREEMIUM:
             self.tier = UserTier.PREMIUM
             self.premiumExpireTime = datetime.now(timezone.utc) + timedelta(days=days)
-        else:
+        elif self.tier == UserTier.PREMIUM:
             self.premiumExpireTime += timedelta(days=days)
+        elif self.tier == UserTier.ADMIN:
+            raise Exception("Admin cannot redeem premium")
         await engine.save(self)
 
     async def get_friends(self, engine: AIOEngine) -> list[User]:
@@ -154,10 +158,10 @@ class Conversation(Model):
     name: Optional[str] = Field(default=None, min_length=3, max_length=32)
 
     @classmethod
-    async def find_direct_conversation(
+    async def find_direct_conversation_id(
         cls, engine: AIOEngine, user1: User, user2: User
-    ) -> Conversation | None:
-        conversation = await engine.get_collection(Conversation).find_one(
+    ) -> ObjectId | None:
+        conversation_raw = await engine.get_collection(Conversation).find_one(
             {
                 "type": ConversationType.DIRECT,
                 "participants": {
@@ -165,7 +169,7 @@ class Conversation(Model):
                 },
             }
         )
-        return conversation
+        return conversation_raw["_id"] if conversation_raw else None
 
     @classmethod
     async def find_conversation_ids(
@@ -259,9 +263,11 @@ class PhotoComment(Model):
 
 class Album(Model):
     name: str
-    participants: list[ObjectId]
+    shared: bool
+    description: Optional[str] = None
     createdAt: datetime
     createdBy: User = Reference()
+    coverImageUrl: Optional[str] = None
     location: Optional[str] = None
     photos: list[ObjectId] = Field(default_factory=list)
 
@@ -269,7 +275,15 @@ class Album(Model):
     async def get_user_accessible_albums(
         cls, engine: AIOEngine, user: User
     ) -> list[Album]:
-        albums = await engine.find(Album, Album.participants.contains(user.id))
+        user_friends = await user.get_friends(engine)
+        albums = []
+        for friend in user_friends:
+            albums.extend(
+                await engine.find(
+                    Album,
+                    (Album.createdBy == friend.id) & (Album.shared == True),
+                )
+            )
         return albums
 
 
