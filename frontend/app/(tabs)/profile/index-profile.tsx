@@ -31,12 +31,12 @@ import { PhotoPreview } from '@/types/photo.types'
 import { useSync } from '@/hooks/useSync'
 
 interface PhotoWeek {
-  id: string;
-  startDate: Date;
-  endDate: Date;
-  year: number;
-  week: number;
-  photos: PhotoPreview[];
+  id: string
+  startDate: Date
+  endDate: Date
+  year: number
+  week: number
+  photos: PhotoPreview[]
 }
 
 const generateMockPhotos = () => {
@@ -83,23 +83,23 @@ const generateMockPhotos = () => {
  */
 function getWeekStart(year: number, week: number): Date {
   // January 4th is always in the first ISO week of the year
-  const simple = new Date(Date.UTC(year, 0, 4));
+  const simple = new Date(Date.UTC(year, 0, 4))
   // Get the Monday of the first ISO week
-  const dayOfWeek = simple.getUTCDay() || 7; // 1 (Mon) ... 7 (Sun)
-  const monday = new Date(simple);
-  monday.setUTCDate(simple.getUTCDate() - dayOfWeek + 1 + (week - 1) * 7);
+  const dayOfWeek = simple.getUTCDay() || 7 // 1 (Mon) ... 7 (Sun)
+  const monday = new Date(simple)
+  monday.setUTCDate(simple.getUTCDate() - dayOfWeek + 1 + (week - 1) * 7)
   // Return as local date (remove UTC if you want UTC)
-  return new Date(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate());
+  return new Date(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate())
 }
 
 /**
  * Returns the Date of the Sunday of the given ISO week and year.
  */
 function getWeekEnd(year: number, week: number): Date {
-  const monday = getWeekStart(year, week);
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  return sunday;
+  const monday = getWeekStart(year, week)
+  const sunday = new Date(monday)
+  sunday.setDate(monday.getDate() + 6)
+  return sunday
 }
 
 const photosByWeek = generateMockPhotos()
@@ -127,6 +127,8 @@ const ProfileScreen = () => {
   const [bio, setBio] = useState(user.bio)
   const [photoCount, setPhotoCount] = useState(0)
   const [photoWeeks, setPhotoWeeks] = useState<PhotoWeek[]>([])
+
+  const iconUrlExist = user.iconUrl ? user.iconUrl.trim() !== '' && !user.iconUrl.includes('null') : false
 
   const fetchProfileData = async () => {
     if (session.session) {
@@ -350,7 +352,7 @@ const ProfileScreen = () => {
             <View style={styles.profileImageSection}>
               <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/(modal)/ProfileAvatar')}>
                 <Themed.View style={styles.profileImageWrapper} lightColor="#E6E6E6" darkColor="#4D4D4D">
-                  {user.iconUrl ? (
+                  {iconUrlExist ? (
                     <Image
                       source={{ uri: user.iconUrl }}
                       style={[styles.profileImage, { borderColor: colors.borderColor }]}
@@ -367,10 +369,12 @@ const ProfileScreen = () => {
                   )}
                 </Themed.View>
               </TouchableOpacity>
-              <Themed.View style={styles.postCountBadge} shadow>
-                <Text style={styles.postCountText}>{photoCount}</Text>
-                <Text style={styles.postLabel}>Photos</Text>
-              </Themed.View>
+              {false && (
+                <Themed.View style={styles.postCountBadge} shadow>
+                  <Text style={styles.postCountText}>{photoCount}</Text>
+                  <Text style={styles.postLabel}>Photos</Text>
+                </Themed.View>
+              )}
             </View>
 
             <View style={styles.profileInfo}>

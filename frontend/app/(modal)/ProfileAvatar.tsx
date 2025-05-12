@@ -26,6 +26,7 @@ const ProfileAvatar = () => {
   const [avatarURL, setAvatarURL] = useState(user.iconUrl)
 
   const imageSize = 200
+  const iconUrlExist = avatarURL ? avatarURL.trim() !== '' && !avatarURL.includes('null') : false
 
   const uploadAvatar = async (asset: ImagePicker.ImagePickerAsset) => {
     try {
@@ -118,7 +119,7 @@ const ProfileAvatar = () => {
   }
 
   const renderAvatar = () =>
-    avatarURL ? (
+    iconUrlExist ? (
       <Animated.Image
         source={{ uri: avatarURL }}
         style={[styles.avatar, { width: imageSize, height: imageSize, borderColor: colors.text }]}
