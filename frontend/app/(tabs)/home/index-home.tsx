@@ -30,6 +30,7 @@ import * as MediaLibrary from 'expo-media-library'
 import * as FileSystem from 'expo-file-system'
 
 import { id as makeId, getDateString } from '@/utils/utils'
+import mime from 'mime'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -252,6 +253,7 @@ const WeekPage = ({
   )
 }
 
+// region HomeScreen
 /**************** HomeScreen ****************/
 const HomeScreen = () => {
   const session = useSession()
@@ -261,6 +263,7 @@ const HomeScreen = () => {
 
   const { colors } = useTheme()
   const { friends, addFriend, clearFriends } = useFriendStore()
+  const { hasPhoto, addPhoto, getUserPhotos } = usePhotoStore()
 
   const [weeks, setWeeks] = useState<WeekBundle[]>(buildWeeks())
   const [weekListIndex, setWeekListIndex] = useState(0)
@@ -271,8 +274,6 @@ const HomeScreen = () => {
 
   /* === PHOTO STORE ====================================== */
   const currentUserId = useUserStore((s) => s.user.id)
-  const addPhoto = usePhotoStore((s) => s.addPhoto)
-  const getUserPhotos = usePhotoStore((s) => s.getUserPhotos)
   const myPhotos = getUserPhotos(currentUserId)
 
   const mediaByDate = useMemo(() => {
@@ -422,6 +423,7 @@ const HomeScreen = () => {
     setPickerVisible(true)
   }, [])
 
+  // region handle asset select
   /** when an asset is selected from modal */
   const handleAssetSelect = useCallback(
     async (asset: MediaLibrary.Asset) => {
@@ -434,60 +436,76 @@ const HomeScreen = () => {
       const iso = getDateString(captureDate)
 
       // 1.duplicate check
-      if (mediaByDate[iso]) {
-        console.log('Photo exists', 'You have already selected a photo for this date.')
+      if (mediaByDate[iso] || hasPhoto(currentUserId, iso)) {
+        Alert.alert('Photo exists', 'You have already selected a photo for this date.')
         return
       }
 
-      /* 2 file system */
-      const dir = FileSystem.documentDirectory!
-      await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+      const formData = new FormData()
+      const assetInfo = await MediaLibrary.getAssetInfoAsync(asset)
+      formData.append('file', {
+        uri: assetInfo.localUri,
+        name: assetInfo.filename,
+        type: mime.getType(assetInfo.filename) ?? 'image/jpeg'
+      } as any)
+      session.apiWithToken.post('/photo/upload', formData).then(async (res) => {
+        const { photoId } = res.data
 
-      const filename = `${makeId()}.jpg` // reuse the store’s id helper
-      const dest = dir + filename
-      await FileSystem.copyAsync({ from: asset.uri, to: dest })
+          /* 2 file system */
+        const dir = FileSystem.documentDirectory!
+        await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
 
-      /* save to local */
-      //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
+        const filename = `${photoId}.jpg` // reuse the store’s id helper
+        const dest = dir + filename
+        await FileSystem.copyAsync({ from: asset.uri, to: dest })
 
-      addPhoto(currentUserId, {
-        id: filename.replace('.jpg', ''),
-        uri: dest,
-        timestamp: captureDate
-      })
+        /* save to local */
+        //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
 
-      /* ensure week bundle present & patch */
-      setWeeks((prev) => {
-        const captureWeek = pickerWeekRef.current!.weekNum
-        const current = getISOWeek()
-        const offset = current - captureWeek
-        const exists = prev.some((w) => w.weekNum === captureWeek)
-        if (!exists) {
-          // build and insert at correct offset
-          const newBundle: WeekBundle = {
-            weekNum: captureWeek,
-            key: `week-${captureWeek}`,
-            days: buildDays(offset).map((d) =>
-              !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-            ),
-            feed: []
+        addPhoto(currentUserId, {
+          id: photoId,
+          uri: dest,
+          timestamp: captureDate
+        })
+
+        /* ensure week bundle present & patch */
+        setWeeks((prev) => {
+          const captureWeek = pickerWeekRef.current!.weekNum
+          const current = getISOWeek()
+          const offset = current - captureWeek
+          const exists = prev.some((w) => w.weekNum === captureWeek)
+          if (!exists) {
+            // build and insert at correct offset
+            const newBundle: WeekBundle = {
+              weekNum: captureWeek,
+              key: `week-${captureWeek}`,
+              days: buildDays(offset).map((d) =>
+                !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+              ),
+              feed: []
+            }
+            const arr = [...prev]
+            arr.splice(offset, 0, newBundle)
+            return arr
           }
-          const arr = [...prev]
-          arr.splice(offset, 0, newBundle)
-          return arr
-        }
-        return prev.map((w) =>
-          w.weekNum === captureWeek
-            ? {
-                ...w,
-                days: buildDays(offset).map((d) =>
-                  !d.isAdd && getDateString(d.date) === iso
-                    ? { ...d, hasMedia: true, thumbnail: asset.uri }
-                    : d
-                )
-              }
-            : w
-        )
+          return prev.map((w) =>
+            w.weekNum === captureWeek
+              ? {
+                  ...w,
+                  days: buildDays(offset).map((d) =>
+                    !d.isAdd && getDateString(d.date) === iso
+                      ? { ...d, hasMedia: true, thumbnail: asset.uri }
+                      : d
+                  )
+                }
+              : w
+          )
+        })
+      })
+      .catch((err) => {
+        console.error('Error uploading photo', err)
+        console.log(err.response.data)
+        Alert.alert('Error uploading photo', 'Please try again.')
       })
     },
     [mediaByDate]
@@ -716,7 +734,7 @@ const styles = StyleSheet.create({
     borderRadius: 12
   },
   // picker modal
-  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  pickerHeader: { marginTop: 60,flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
   assetTile: { width: assetSize, height: assetSize, margin: 1 },
   assetImg: { width: '100%', height: '100%' }
   //})
