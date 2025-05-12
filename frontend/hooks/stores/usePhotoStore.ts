@@ -32,6 +32,7 @@ interface State {
       taggedUserIds?: string[];
       timestamp: Date;
       location?: string;
+      likes: string[];
     }
   ) => void;
 
@@ -41,8 +42,21 @@ interface State {
 
   getUserPhotos: (userId: string) => Photo[];
 
+  getPhoto: (photoId: string) => Photo | undefined;
+
   /* social */
+
+  updatePhotoDetails: (
+    userId: string,
+    photoId: string,
+    caption?: string,
+    taggedUserIds?: string[],
+    likes?: string[],
+    comments?: PhotoComment[]
+  ) => void;
+
   toggleLike: (ownerId: string, photoId: string, byUserId: string) => void;
+
   addComment: (
     ownerId: string,
     photoId: string,
@@ -141,6 +155,38 @@ export const usePhotoStore = create<State>()(
 
       getUserPhotos(userId) {
         return get().photoMap[userId] ?? [];
+      },
+
+      getPhoto(photoId) {
+        return Object.values(get().photoMap)
+          .flat()
+          .find((p) => p.id === photoId);
+      },
+
+      updatePhotoDetails(
+        userId,
+        photoId,
+        caption,
+        taggedUserIds,
+        likes,
+        comments
+      ) {
+        set((draft) => {
+          const photo = draft.photoMap[userId]?.find((p) => p.id === photoId);
+          if (!photo) return;
+          if (caption) {
+            photo.caption = caption;
+          }
+          if (taggedUserIds) {
+            photo.taggedUserIds = taggedUserIds;
+          }
+          if (likes) {
+            photo.likes = likes;
+          }
+          if (comments) {
+            photo.comments = comments;
+          }
+        });
       },
 
       /* ==== TOGGLE LIKE =================================================== */

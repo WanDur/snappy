@@ -304,7 +304,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
       })
       ws.onerror = (e) => {
-        console.error('Web Socket error:', e)
+        console.log('Web Socket error:', e)
       }
       if (process.env.EXPO_PUBLIC_MODE === 'debug') {
         ws.onopen = () => {

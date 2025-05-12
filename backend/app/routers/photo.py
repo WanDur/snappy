@@ -21,6 +21,7 @@ photo_router = APIRouter(prefix="/photo", tags=["photo"])
 @photo_router.post("/upload")
 async def upload_photo(
     file: UploadFile,
+    timestamp: Annotated[Optional[datetime], Form()] = None,
     caption: Annotated[Optional[str], Form()] = None,
     engine: AIOEngine = Depends(get_prod_database),
     user: User | None = Depends(get_user),
@@ -32,11 +33,14 @@ async def upload_photo(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="File is not an image")
 
+    if not timestamp:
+        timestamp = datetime.now(timezone.utc)
+    log_debug(f"Received timestamp: {timestamp}")
     # Optimize and upload the image
     optimized_image = optimize_image(await file.read())
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     file_path = upload_file_stream(
-        f"users/{user.id}/photos/{timestamp}.jpg", optimized_image
+        f"users/{user.id}/photos/{timestamp.strftime('%Y%m%d%H%M%S')}.jpg",
+        optimized_image,
     )
 
     # Create a new photo object
@@ -44,7 +48,7 @@ async def upload_photo(
         user=user,
         caption=caption,
         url=file_path,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=timestamp,
     )
     # Save the photo to the database
     await engine.save(photo)
@@ -312,6 +316,8 @@ async def fetch_photos(
                         "location": photo.location,
                         "timestamp": photo.timestamp,
                         "taggedUserIds": photo.taggedUserIds,
+                        "likes": await photo.get_likes(engine),
+                        "comments": await photo.get_comments(engine),
                     }
                     for photo in photos
                 ]

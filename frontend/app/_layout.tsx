@@ -12,6 +12,7 @@ import { SettingsProvider } from '@/contexts'
 import { useColorScheme } from '@/hooks/useColorScheme'
 import { Stack } from '@/components/router-form'
 import { bypassLogin, SessionProvider } from '@/contexts/auth'
+import { UserTier } from '@/types'
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -35,7 +36,7 @@ export default function RootLayout() {
           email: '@mail',
           phone: '1234567890',
           notificationTokens: [],
-          tier: {},
+          tier: UserTier.FREEMIUM,
           bio: '',
           iconUrl: 'https://randomuser.me/api/portraits/men/1.jpg',
           premiumExpireTime: undefined
@@ -68,6 +69,7 @@ export default function RootLayout() {
                   options={{ headerShown: false, gestureEnabled: false }}
                   sheet
                 />
+                <Stack.Screen name="(modal)/ViewPhotoModal" options={{ headerShown: false }} />
                 <Stack.Screen name="(modal)/FriendProfileModal" sheet />
                 <Stack.Screen name="(modal)/RedeemCodeModal" options={{ headerShown: false }} sheet />
                 <Stack.Screen name="(modal)/AddFriendToGroupModal" options={{ gestureEnabled: false }} sheet />

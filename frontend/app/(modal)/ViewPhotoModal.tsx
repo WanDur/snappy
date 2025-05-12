@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   View,
   Text,
@@ -7,9 +7,10 @@ import {
   Dimensions,
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Alert
 } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useRouter } from 'expo-router'
 import { Image } from 'expo-image'
 import { BlurView } from 'expo-blur'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,6 +19,8 @@ import { Ionicons, Feather } from '@expo/vector-icons'
 /* ---------- hooks & stores ---------------------------- */
 import { useUserStore, usePhotoStore, useFriendStore, useTheme } from '@/hooks'
 import { IconSymbol } from '@/components/ui/IconSymbol'
+import { Photo } from '@/types'
+import { useSession, bypassLogin, isAuthenticated } from '@/contexts/auth'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
@@ -28,38 +31,30 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
  *  - total:  string     (total number of photos in current week)
  */
 export default function ViewPhotoModal() {
+  const router = useRouter()
+  const session = useSession()
+
   const {
     photoId,
     index: idxParam = '0',
     total: totalParam = '1'
   } = useLocalSearchParams<{ photoId: string; index?: string; total?: string }>()
 
-  interface Photo {
-    id: string
-    url: string
-    timestamp: number
-    location?: string
-    likedByCurrent?: boolean
-    userId: string
-  }
-
-  interface PhotoStore {
-    photos: Photo[]
-    toggleLike: (photoId: string, likeState: string, userId: string) => void
-  }
-
-  const photo = usePhotoStore((s) =>
-    Object.values(s.photoMap)
-      .flat()
-      .find((p) => p.id === photoId)
-  ) as Photo | undefined
-  const toggleLikeInStore = usePhotoStore((s) => s.toggleLike)
+  const { getPhoto, toggleLike } = usePhotoStore()
+  const photo = getPhoto(photoId)
 
   const currentUser = useUserStore((s) => s.user)
   const owner = useFriendStore((s) => s.friends.find((f) => f.id === (photo?.userId ?? currentUser.id)))
 
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
+
+  useEffect(() => {
+    if (!isAuthenticated(session)) {
+      router.dismissAll()
+      router.replace('/login')
+    }
+  }, [])
 
   /* fallback if photo not found */
   if (!photo) {
@@ -92,11 +87,20 @@ export default function ViewPhotoModal() {
     return d.toLocaleDateString('en-US', opts)
   }, [photo.timestamp])
 
-  const [liked, setLiked] = useState(photo.likedByCurrent ?? false)
+  const [liked, setLiked] = useState(photo.likes.includes(currentUser.id))
+  
   const handleToggleLike = () => {
     const newLikedState = !liked
+    const action = newLikedState ? 'like' : 'unlike'
     setLiked(newLikedState)
-    toggleLikeInStore(photoId, newLikedState ? 'true' : 'false', currentUser.id)
+    toggleLike(photo.userId, photoId, currentUser.id)
+    session.apiWithToken.post(`/photo/${photoId}/${action}`)
+      .catch((err) => {
+        Alert.alert('Error', `Failed to ${action} photo`)
+        setLiked(liked)
+        toggleLike(photo.userId, photoId, currentUser.id)
+        console.error(err)
+      })
   }
 
   /* index and total for top‑right counter */

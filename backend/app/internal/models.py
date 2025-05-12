@@ -248,6 +248,14 @@ class Photo(Model):
         )
         await engine.save(comment)
 
+    async def get_likes(self, engine: AIOEngine) -> list[ObjectId]:
+        likes = await engine.find(PhotoLike, PhotoLike.photo == self.id)
+        return [like.user.id for like in likes]
+
+    async def get_comments(self, engine: AIOEngine) -> list[PhotoComment]:
+        comments = await engine.find(PhotoComment, PhotoComment.photo == self.id)
+        return comments
+
 
 class PhotoLike(Model):
     user: User = Reference()

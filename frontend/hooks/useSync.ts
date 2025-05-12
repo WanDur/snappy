@@ -48,7 +48,7 @@ export const useSync = () => {
     updateLastMessageTime,
     addUnreadCount,
   } = useChatStore();
-  const { addPhoto, hasPhoto } = usePhotoStore();
+  const { addPhoto, hasPhoto, updatePhotoDetails } = usePhotoStore();
 
   const syncUserData = async (session: AuthContextProps) => {
     try {
@@ -326,6 +326,13 @@ export const useSync = () => {
       data.photos.forEach((photo) => {
         if (hasPhoto(userId, photo.id)) {
           // TODO : update photo details (comments / likes)
+          updatePhotoDetails(
+            userId,
+            photo.id,
+            photo.caption,
+            photo.taggedUserIds,
+            photo.likes
+          );
           return;
         }
         if (getLocalTime(photo.timestamp) >= fourWeeksBefore) {
@@ -351,6 +358,7 @@ export const useSync = () => {
                   taggedUserIds: photo.taggedUserIds,
                   timestamp: getLocalTime(photo.timestamp),
                   location: photo.location,
+                  likes: photo.likes,
                 });
               } else {
                 console.log(
@@ -363,6 +371,7 @@ export const useSync = () => {
                   taggedUserIds: photo.taggedUserIds,
                   timestamp: getLocalTime(photo.timestamp),
                   location: photo.location,
+                  likes: photo.likes,
                 });
               }
             })
@@ -377,6 +386,7 @@ export const useSync = () => {
             taggedUserIds: photo.taggedUserIds,
             timestamp: getLocalTime(photo.timestamp),
             location: photo.location,
+            likes: photo.likes,
           });
         }
       });

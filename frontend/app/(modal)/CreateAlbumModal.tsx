@@ -89,7 +89,7 @@ const CreateAlbumModal = () => {
       return
     }
 
-    // TODO create album with backend
+    // create album with backend
     const formData = new FormData()
     formData.append('name', albumName)
     if (description.trim() !== '') {

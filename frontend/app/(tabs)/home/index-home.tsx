@@ -446,6 +446,8 @@ const HomeScreen = () => {
       const captureDate = new Date(asset.creationTime)
       captureDate.setHours(0, 0, 0, 0)
       const iso = getDateString(captureDate)
+      console.log('captureDate', captureDate.toISOString())
+      console.log('iso', iso)
 
       // 1.duplicate check
       if (mediaByDate[iso] || hasPhoto(currentUserId, iso)) {
@@ -460,6 +462,7 @@ const HomeScreen = () => {
         name: assetInfo.filename,
         type: mime.getType(assetInfo.filename) ?? 'image/jpeg'
       } as any)
+      formData.append('timestamp', captureDate.toISOString())
       session.apiWithToken.post('/photo/upload', formData).then(async (res) => {
         const { photoId } = res.data
 
@@ -477,7 +480,8 @@ const HomeScreen = () => {
         addPhoto(currentUserId, {
           id: photoId,
           uri: dest,
-          timestamp: captureDate
+          timestamp: captureDate,
+          likes: []
         })
 
         /* ensure week bundle present & patch */
