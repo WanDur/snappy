@@ -1,4 +1,5 @@
 import asyncio
+import os
 import bcrypt
 from httpx import ASGITransport, AsyncClient
 import pytest
@@ -40,3 +41,63 @@ async def test_fetch_others_profile(
     )
     print(res.json())
     assert res.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_update_profile(client, sample_freemium_user, mongodb):
+    """Test the POST /user/profile/update endpoint."""
+    user, token = sample_freemium_user
+    res = await client.post(
+        "/user/profile/edit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "email": "test@test.com",
+            "password": "test",
+            "username": "test",
+            "name": "test",
+            "phone": "(+1) 234567890",
+            "bio": "test bio",
+        },
+    )
+    assert res.status_code == 200
+    assert user.email == "test@test.com"
+    assert user.username == "test"
+    assert user.name == "test"
+    assert user.phone == "(+1) 234567890"
+    assert user.bio == "test bio"
+
+    res = await client.post(
+        "/auth/login",
+        json={
+            "emailUsernamePhone": "test@test.com",
+            "password": "test",
+        },
+    )
+    assert res.status_code == 200
+    assert res.json()["accessToken"] is not None
+    assert res.json()["refreshToken"] is not None
+
+
+@pytest.mark.asyncio
+async def test_upload_user_icon(client, sample_freemium_user):
+    """Test the POST /user/profile/icon/upload endpoint."""
+    user, token = sample_freemium_user
+    with open(
+        os.path.join(os.path.dirname(__file__), "assets/upload_photo_1.jpg"), "rb"
+    ) as photo_file:
+        res = await client.post(
+            f"/user/profile/icon/upload",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("upload_photo_1.jpg", photo_file.read(), "image/jpeg")},
+        )
+
+    assert res.status_code == 200
+    assert res.json()["filePath"] is not None
+    assert user.iconUrl is not None
+
+    res = await client.delete(
+        "/user/profile/icon/remove",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert user.iconUrl is None
