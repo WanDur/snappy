@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     RUN_MODE: str
+    ALBUM_FREEMIUM_LIMIT: int
+    GROUP_MEMBER_FREEMIUM_LIMIT: int
 
     AUTHJWT_SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_TIME: int

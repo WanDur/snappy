@@ -21,11 +21,19 @@ from fastapi.responses import ORJSONResponse
 from pydantic import BaseModel
 from yaml import serialize
 
-from internal.models import Attachment, ConversationType, Message, User, Conversation
+from internal.models import (
+    Attachment,
+    ConversationType,
+    Message,
+    User,
+    Conversation,
+    UserTier,
+)
 from utils.auth import get_user, get_user_from_token
 from utils.debug import log_debug
 from utils.minio import upload_file
 from utils.mongo import engine, serialize_mongo_object, get_prod_database
+from utils.settings import get_settings
 
 chat_router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -103,6 +111,13 @@ async def create_group_chat(
     if len(body.participants) < 2:
         raise HTTPException(status_code=400, detail="At least 2 participants required")
 
+    if user.tier == UserTier.FREEMIUM:
+        if len(body.participants) > get_settings().GROUP_MEMBER_FREEMIUM_LIMIT:
+            raise HTTPException(
+                status_code=400,
+                detail="You have reached the maximum number of participants for your plan",
+            )
+
     # Create a new conversation
     conversation = Conversation(
         type="group",
@@ -112,6 +127,56 @@ async def create_group_chat(
     )
     await engine.save(conversation)
     return ORJSONResponse({"conversationId": str(conversation.id)})
+
+
+class EditChatInfoBody(BaseModel):
+    name: Optional[str] = None
+    participants: Optional[list[ObjectId]] = None
+
+
+@chat_router.put("/{conversation_id}/edit")
+async def edit_chat_info(
+    conversation_id: ObjectId,
+    body: EditChatInfoBody,
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+) -> dict[str, str]:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    conversation = await engine.find_one(
+        Conversation, Conversation.id == conversation_id
+    )
+    if conversation is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    if user.id != conversation.createdBy.id:
+        raise HTTPException(
+            status_code=401, detail="You are not the owner of this conversation"
+        )
+
+    if conversation.type != ConversationType.GROUP:
+        if body.name:
+            raise HTTPException(
+                status_code=400, detail="You can only edit the name of a group chat"
+            )
+        if body.participants:
+            raise HTTPException(
+                status_code=400,
+                detail="You can only edit the participants of a group chat",
+            )
+
+    if body.name:
+        conversation.name = body.name
+    if body.participants:
+        if user.tier == UserTier.FREEMIUM:
+            if len(body.participants) > get_settings().GROUP_MEMBER_FREEMIUM_LIMIT:
+                raise HTTPException(
+                    status_code=400,
+                    detail="You have reached the maximum number of participants for your plan",
+                )
+        conversation.participants = body.participants
+    await engine.save(conversation)
+    return ORJSONResponse({"status": "success"})
 
 
 # region websocket

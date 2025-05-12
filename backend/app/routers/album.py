@@ -9,11 +9,12 @@ from fastapi.responses import ORJSONResponse
 from odmantic import AIOEngine, ObjectId
 from pydantic import BaseModel
 
+from utils.settings import get_settings
 from utils.minio import optimize_image, upload_file_stream
 from utils.debug import log_debug
 from utils.auth import get_user
 from utils.mongo import serialize_mongo_object, get_prod_database
-from internal.models import Album, AlbumPhoto, Friendship, User
+from internal.models import Album, AlbumPhoto, Friendship, User, UserTier
 
 album_router = APIRouter(prefix="/album", tags=["album"])
 
@@ -30,6 +31,16 @@ async def create_album(
 ) -> dict[str, str]:
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if (
+        user.tier == UserTier.FREEMIUM
+        and len(await engine.find(Album, Album.createdBy == user.id))
+        >= get_settings().ALBUM_FREEMIUM_LIMIT
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="You have reached the maximum number of albums for your plan",
+        )
 
     if shared:
         # Check that every participant is a friend of the user
