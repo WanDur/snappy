@@ -61,4 +61,5 @@ export interface FetchChatInfoResponse {
   conversationType: "direct" | "group";
   participants: ConversationParticipantInfo[];
   initialDate: Date;
+  name: string;
 }

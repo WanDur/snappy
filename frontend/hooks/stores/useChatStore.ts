@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
 import Storage from "expo-sqlite/kv-store";
-import * as Crypto from "expo-crypto";
+import { User as TUser } from "react-native-gifted-chat";
 
 import { ChatItem, TMessage } from "@/types";
 
@@ -116,7 +116,7 @@ interface ChatStore {
 
   updateChatInfo: (
     id: string,
-    info: { title?: string; iconUrl?: string }
+    info: { title?: string; participants?: TUser[] }
   ) => void;
 
   /**
@@ -177,8 +177,8 @@ export const useChatStore = create<ChatStore>()(
           if (info.title) {
             state.chats[id].title = info.title;
           }
-          if (info.iconUrl) {
-            state.chats[id].iconUrl = info.iconUrl;
+          if (info.participants) {
+            state.chats[id].participants = info.participants;
           }
         });
       },
@@ -227,20 +227,10 @@ export const useChatStore = create<ChatStore>()(
         return get().chats[id];
       },
 
-      addChat({ id, type, participants, initialDate, messages, unreadCount }) {
-        // const id = `${Crypto.randomUUID().substring(0, 18)}`
+      addChat(chat) {
         set((state) => {
-          state.chats[id] = {
-            id: id,
-            lastMessageTime: initialDate,
-            type: type,
-            participants: participants,
-            messages,
-            initialDate,
-            unreadCount: unreadCount || 0,
-          };
-
-          state.allChatID.push(id);
+          state.chats[chat.id] = chat;
+          state.allChatID.push(chat.id);
         });
       },
 

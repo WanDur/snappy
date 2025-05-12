@@ -16,6 +16,7 @@ import { PhotoPreview } from '@/types/photo.types'
 import { AlbumPreview } from '@/types/album.types'
 import { bypassLogin, isAuthenticated, parsePublicUrl, useSession } from '@/contexts/auth'
 import { FriendDetailResponse, FriendStatus } from '@/types/friend.types'
+import { useSync } from '@/hooks/useSync'
 
 const { width } = Dimensions.get('window')
 const PHOTO_SIZE = (width - 48) / 3
@@ -84,6 +85,8 @@ const sample_user = {
 const FriendProfileModal = () => {
   const session = useSession()
   const { colors } = useTheme()
+
+  const { fetchChatInfo } = useSync()
 
   const { user } = useUserStore()
   const { friends, removeFriend, changeFriendType } = useFriendStore()
@@ -209,8 +212,16 @@ const FriendProfileModal = () => {
         router.dismiss()
         router.push({ pathname: '/screens/ChatScreen', params: { chatID: res.data.conversationId } })
       })
-      .catch((err) => {
-        console.error('Error creating chat', err)
+      .catch(async (err) => {
+        if (err.response.status === 409) {
+          // Chat exists on server but is deleted locally
+          const existingConversationId = err.response.data.detail.conversationId
+          const newChat = await fetchChatInfo(session, existingConversationId)
+          addChat(newChat)
+          router.push({ pathname: '/screens/ChatScreen', params: { chatID: existingConversationId } })
+        } else {
+          console.error("Error creating chat", err)
+        }
       })
     }
   }

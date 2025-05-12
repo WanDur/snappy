@@ -12,10 +12,11 @@ import { Constants } from '@/constants'
 import { useFriendStore, useTheme } from '@/hooks'
 import { Friend } from '@/types'
 import { useSettings } from '@/contexts'
+import { Avatar } from '@/components/Avatar'
 
 // remove from Omit if more fields are needed
 interface TFriend
-  extends Omit<Friend, 'albumList' | 'username' | 'type' | 'lastActive' | 'mutualFriends' | 'photoList'> {}
+  extends Omit<Friend, 'albumList' | 'type' | 'lastActive' | 'mutualFriends' | 'photoList'> {}
 
 interface FriendListGroup {
   title: string
@@ -75,7 +76,7 @@ const AddFriendToGroupScreen = () => {
 
   const renderFriend: ListRenderItem<TFriend> = ({ item, index }) => (
     <Themed.View key={index} style={styles.friendRow} lightColor="#fafafa">
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
+      <Avatar username={item.username} iconUrl={item.avatar} size={40} style={{ marginHorizontal: 10 }} />
       <Themed.Text style={{ fontSize: 16 }}>{item.name}</Themed.Text>
       <View style={{ position: 'absolute' }}>
         <BouncyCheckbox
@@ -129,7 +130,7 @@ const AddFriendToGroupScreen = () => {
         <Themed.ScrollView style={{ padding: 16 }} showsHorizontalScrollIndicator={false} horizontal>
           {selectedFriends.map((item, index) => (
             <View style={styles.selectedFriend} key={index}>
-              <Image source={{ uri: item.avatar }} style={styles.selectedAvatar} />
+              <Avatar username={item.username} iconUrl={item.avatar} size={60} />
               <TouchableOpacity
                 style={[styles.removeButton, { backgroundColor: colors.background }]}
                 onPress={() => toggleSelection(item)}
@@ -173,11 +174,6 @@ const styles = StyleSheet.create({
     marginRight: 14,
     alignItems: 'center'
   },
-  selectedAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 60
-  },
   removeButton: {
     position: 'absolute',
     top: 0,
@@ -196,12 +192,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginHorizontal: 10
   },
   checkboxIcon: {
     borderColor: '#4CAF50'

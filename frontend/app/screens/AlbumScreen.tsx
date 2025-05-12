@@ -40,7 +40,7 @@ const AlbumScreen = () => {
     if (!pickerResult.canceled && pickerResult.assets) {
       pickerResult.assets.forEach((asset) => {
         const formData = new FormData()
-        formData.append('file', {
+        formData.append('files', {
           name: asset.fileName,
           type: asset.mimeType,
           uri: asset.uri

@@ -101,14 +101,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
                 Authorization: `Bearer ${refreshToken}`
               }
             })
-
-            const loginData = {
-              refreshToken,
-              refreshExpireTime: session?.refreshExpireTime,
-              ...response.data
+            await SecureStore.setItemAsync('accessToken', response.data.accessToken as string)
+            if (!session) {
+              throw new Error('No session found')
             }
-            const data = LoginInfoResponseSchema.parse(loginData)
-            originalRequest.headers['Authorization'] = `Authorization ${data.accessToken}`
+            setSession({
+              ...session,
+              accessExpireTime: response.data.accessExpireTime
+            })
+
+            originalRequest.headers['Authorization'] = `Authorization ${response.data.accessToken}`
             console.log('apiWithToken Interceptor: Token refreshed. Retrying.')
             return apiWithToken(originalRequest)
           } catch (refreshError) {

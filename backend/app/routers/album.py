@@ -4,6 +4,7 @@ Component for all albums related logics and routes
 
 from datetime import datetime, timezone
 from typing import Annotated, Optional
+import uuid
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from fastapi.responses import ORJSONResponse
 from odmantic import AIOEngine, ObjectId
@@ -151,7 +152,7 @@ async def edit_album(
 @album_router.post("/{album_id}/upload")
 async def upload_photo(
     album_id: ObjectId,
-    file: UploadFile,
+    files: list[UploadFile],
     caption: Annotated[Optional[str], Form()] = None,
     user: User | None = Depends(get_user),
     engine: AIOEngine = Depends(get_prod_database),
@@ -166,25 +167,31 @@ async def upload_photo(
     if not await album.can_access(engine, user):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    # Check if the file is an image
-    if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File is not an image")
+    for file in files:
+        # Check if the file is an image
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="File is not an image")
 
-    # Optimize and upload the image
-    optimized_image = optimize_image(await file.read())
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-    file_path = upload_file_stream(
-        f"albums/{album_id}/photos/{timestamp}.jpg", optimized_image
-    )
+        # Optimize and upload the image
+        optimized_image = optimize_image(await file.read())
+        file_name = (
+            file.filename
+            if file.filename
+            else f"{uuid.uuid4()}.{file.content_type.split('/')[1]}"
+        )
+        timestamp = datetime.now(timezone.utc).strftime(f"%Y%m%d%H%M%S-{file_name}")
+        file_path = upload_file_stream(
+            f"albums/{album_id}/photos/{timestamp}.jpg", optimized_image
+        )
 
-    photo = AlbumPhoto(
-        url=file_path,
-        caption=caption,
-        album=album,
-        user=user,
-        timestamp=datetime.now(timezone.utc),
-    )
-    await engine.save(photo)
+        photo = AlbumPhoto(
+            url=file_path,
+            caption=caption,
+            album=album,
+            user=user,
+            timestamp=datetime.now(timezone.utc),
+        )
+        await engine.save(photo)
 
     return ORJSONResponse(
         serialize_mongo_object(
@@ -302,7 +309,7 @@ async def fetch_albums(
         if album.shared:
             info["participants"] = album.participants
         photos = await engine.find(AlbumPhoto, AlbumPhoto.album == album.id)
-        info["photos"] = [{"id": photo.id, "url": photo.url} for photo in photos]
+        info["photos"] = [{"photoId": photo.id, "url": photo.url} for photo in photos]
         if not info["photos"]:
             info["photos"] = []
         return info

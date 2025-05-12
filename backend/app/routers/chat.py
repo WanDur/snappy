@@ -107,6 +107,9 @@ async def create_group_chat(
     if user is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+    if user.id not in body.participants:
+        body.participants.append(user.id)
+
     # Validate participants
     if len(body.participants) < 2:
         raise HTTPException(status_code=400, detail="At least 2 participants required")
@@ -124,7 +127,9 @@ async def create_group_chat(
         createdAt=datetime.now(timezone.utc),
         createdBy=user,
         participants=body.participants,
+        name=body.name,
     )
+
     await engine.save(conversation)
     return ORJSONResponse({"conversationId": str(conversation.id)})
 
@@ -275,6 +280,7 @@ async def get_conversation_info(
                 "participants": participants,
                 "lastMessageTime": await conversation.get_last_message_time(engine),
                 "initialDate": conversation.createdAt,
+                "name": conversation.name,
             }
         )
     )
