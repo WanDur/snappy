@@ -448,65 +448,65 @@ const HomeScreen = () => {
         name: assetInfo.filename,
         type: mime.getType(assetInfo.filename) ?? 'image/jpeg'
       } as any)
-      session.apiWithToken.post('/photo/upload', formData).then(async (res) => {
-        const { photoId } = res.data
+      session.apiWithToken
+        .post('/photo/upload', formData)
+        .then(async (res) => {
+          const { photoId } = res.data
 
           /* 2 file system */
-        const dir = FileSystem.documentDirectory!
-        await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
+          const dir = FileSystem.documentDirectory!
+          await FileSystem.makeDirectoryAsync(dir, { intermediates: true })
 
-        const filename = `${photoId}.jpg` // reuse the store’s id helper
-        const dest = dir + filename
-        await FileSystem.copyAsync({ from: asset.uri, to: dest })
+          const filename = `${photoId}.jpg` // reuse the store’s id helper
+          const dest = dir + filename
+          await FileSystem.copyAsync({ from: asset.uri, to: dest })
 
-        /* save to local */
-        //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
+          /* save to local */
+          //setMediaByDate((prev) => ({ ...prev, [iso]: { uri: asset.uri } }))
 
-        addPhoto(currentUserId, {
-          id: photoId,
-          uri: dest,
-          timestamp: captureDate
-        })
+          addPhoto(currentUserId, {
+            id: photoId,
+            uri: dest,
+            timestamp: captureDate
+          })
 
-        /* ensure week bundle present & patch */
-        setWeeks((prev) => {
-          const captureWeek = pickerWeekRef.current!.weekNum
-          const current = getISOWeek()
-          const offset = current - captureWeek
-          const exists = prev.some((w) => w.weekNum === captureWeek)
-          if (!exists) {
-            // build and insert at correct offset
-            const newBundle: WeekBundle = {
-              weekNum: captureWeek,
-              key: `week-${captureWeek}`,
-              days: buildDays(offset).map((d) =>
-                !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
-              ),
-              feed: []
+          /* ensure week bundle present & patch */
+          setWeeks((prev) => {
+            const captureWeek = pickerWeekRef.current!.weekNum
+            const current = getISOWeek()
+            const offset = current - captureWeek
+            const exists = prev.some((w) => w.weekNum === captureWeek)
+            if (!exists) {
+              // build and insert at correct offset
+              const newBundle: WeekBundle = {
+                weekNum: captureWeek,
+                key: `week-${captureWeek}`,
+                days: buildDays(offset).map((d) =>
+                  !d.isAdd && ymd(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                ),
+                feed: []
+              }
+              const arr = [...prev]
+              arr.splice(offset, 0, newBundle)
+              return arr
             }
-            const arr = [...prev]
-            arr.splice(offset, 0, newBundle)
-            return arr
-          }
-          return prev.map((w) =>
-            w.weekNum === captureWeek
-              ? {
-                  ...w,
-                  days: buildDays(offset).map((d) =>
-                    !d.isAdd && getDateString(d.date) === iso
-                      ? { ...d, hasMedia: true, thumbnail: asset.uri }
-                      : d
-                  )
-                }
-              : w
-          )
+            return prev.map((w) =>
+              w.weekNum === captureWeek
+                ? {
+                    ...w,
+                    days: buildDays(offset).map((d) =>
+                      !d.isAdd && getDateString(d.date) === iso ? { ...d, hasMedia: true, thumbnail: asset.uri } : d
+                    )
+                  }
+                : w
+            )
+          })
         })
-      })
-      .catch((err) => {
-        console.error('Error uploading photo', err)
-        console.log(err.response.data)
-        Alert.alert('Error uploading photo', 'Please try again.')
-      })
+        .catch((err) => {
+          console.error('Error uploading photo', err)
+          console.log(err.response.data)
+          Alert.alert('Error uploading photo', 'Please try again.')
+        })
     },
     [mediaByDate]
   )
@@ -734,7 +734,13 @@ const styles = StyleSheet.create({
     borderRadius: 12
   },
   // picker modal
-  pickerHeader: { marginTop: 60,flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  pickerHeader: {
+    marginTop: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16
+  },
   assetTile: { width: assetSize, height: assetSize, margin: 1 },
   assetImg: { width: '100%', height: '100%' }
   //})
