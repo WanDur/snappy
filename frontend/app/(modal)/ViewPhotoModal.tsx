@@ -46,7 +46,7 @@ export default function ViewPhotoModal() {
 
   const photoIds = photoIdsString.split(',')
   const { getPhoto, toggleLike, addComment, deleteComment } = usePhotoStore()
-  const { getFriend } = useFriendStore()
+  const { getFriend, friends } = useFriendStore()
 
   const [currentIndex, setCurrentIndex] = useState(parseInt(index))
   const photo = getPhoto(photoIds[currentIndex])
@@ -93,6 +93,13 @@ export default function ViewPhotoModal() {
     }
     return d.toLocaleDateString('en-US', opts)
   }, [photo.timestamp])
+
+  /* tagged friends line */
+  const taggedUserIds: string[] = photo.taggedUserIds ?? []
+  const firstTagged = friends.find((f) => f.id === taggedUserIds[0])
+  let tagLine = ''
+  if (taggedUserIds.length === 1 && firstTagged) tagLine = `with ${firstTagged.name}`
+  else if (taggedUserIds.length > 1) tagLine = `with ${taggedUserIds.length} friends`
 
   const [liked, setLiked] = useState(photo.likes.includes(currentUser.id))
 
@@ -242,7 +249,10 @@ export default function ViewPhotoModal() {
       <View style={[styles.infoRow, { paddingBottom: 6 }]}>
         <View>
           {photo.location && <Text style={styles.location}>{photo.location}</Text>}
-          <Text style={styles.date}>{captureDateStr}</Text>
+          <Text style={styles.date}>
+            {captureDateStr}
+            {tagLine && <Text style={styles.tagTxt}> · {tagLine}</Text>}
+          </Text>
         </View>
         <TouchableOpacity onPress={handleToggleLike} hitSlop={10}>
           {liked ? (
@@ -422,15 +432,20 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   date: {
-    color: grey,
+    color: '#fff',
     fontSize: 14,
     fontWeight: '500',
     marginTop: 2
   },
+  tagTxt: {
+    color: grey,
+    fontSize: 14,
+    fontWeight: '500'
+  },
   /* caption bar */
   captionBar: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -30,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#333',

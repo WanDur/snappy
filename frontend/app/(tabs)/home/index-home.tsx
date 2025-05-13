@@ -171,19 +171,45 @@ const DayCell = ({ day, onAdd, onOpenPhoto }: { day: DayTile; onAdd: () => void;
   )
 }
 
-const FeedCard = ({ item, onPress }: { item: FeedItem; onPress: () => void }) => (
-  <TouchableOpacity activeOpacity={0.9} style={[styles.feedCard, { width: SCREEN_WIDTH * 0.75 }]} onPress={onPress}>
+interface FeedItem {
+  id: string
+  userId: string
+  photoId: string
+  user: string
+  avatar: string
+  mediaUri: string
+  seen: boolean
+}
+
+interface FeedCardProps {
+  item: FeedItem
+  onPressPhoto: () => void
+  onPressUser: () => void
+}
+
+const FeedCard = ({ item, onPressPhoto, onPressUser }: FeedCardProps) => (
+  <View style={[styles.feedCard, { width: SCREEN_WIDTH * 0.75 }]}>
+    {/* header: avatar + username, tappable */}
     <View style={styles.feedHeader}>
-      <Image source={{ uri: item.avatar }} style={styles.avatar} />
-      <Themed.Text style={styles.feedUser}>{item.user}</Themed.Text>
+      <TouchableOpacity
+        style={{ flexDirection: 'row', alignItems: 'center' }}
+        activeOpacity={0.7}
+        onPress={onPressUser}
+      >
+        <Image source={{ uri: item.avatar }} style={styles.avatar} />
+        <Themed.Text style={styles.feedUser}>{item.user}</Themed.Text>
+      </TouchableOpacity>
     </View>
-    <Image source={{ uri: item.mediaUri }} style={styles.feedImage} contentFit="cover" />
-    {item.seen && (
-      <View style={styles.seenTag}>
-        <Text style={styles.seenText}>Seen</Text>
-      </View>
-    )}
-  </TouchableOpacity>
+    {/* photo: opens carousel */}
+    <TouchableOpacity activeOpacity={0.9} onPress={onPressPhoto}>
+      <Image source={{ uri: item.mediaUri }} style={styles.feedImage} contentFit="cover" />
+      {item.seen && (
+        <View style={styles.seenTag}>
+          <Text style={styles.seenText}>Seen</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  </View>
 )
 
 /**************** Image‑grid picker (filtered by week) ****************/
@@ -198,13 +224,15 @@ const WeekPage = ({
   markSeen,
   addMedia,
   openPhotoModal,
-  openFeedPhoto
+  openFeedPhoto,
+  openFriendProfile
 }: {
   bundle: WeekBundle
   markSeen: (id: string) => void
   addMedia: () => void
   openPhotoModal: (week: WeekBundle, day: DayTile) => void
   openFeedPhoto: (week: WeekBundle, feed: FeedItem) => void
+  openFriendProfile: (feed: FeedItem) => void
 }) => {
   const headerHeight = useHeaderHeight()
   const tabHeight = useBottomTabBarHeight()
@@ -217,7 +245,11 @@ const WeekPage = ({
     <DayCell day={item} onAdd={addMedia} onOpenPhoto={() => openPhotoModal(bundle, item)} />
   )
   const renderFeed: ListRenderItem<FeedItem> = ({ item }) => (
-    <FeedCard item={item} onPress={() => openFeedPhoto(bundle, item)} />
+    <FeedCard
+      item={item}
+      onPressPhoto={() => openFeedPhoto(bundle, item)}
+      onPressUser={() => openFriendProfile(item)}
+    />
   )
   return (
     <View
@@ -354,6 +386,17 @@ const HomeScreen = () => {
       })
     },
     [myPhotos, router]
+  )
+
+  /** Navigate to a friend’s profile sheet */
+  const openFriendProfile = useCallback(
+    (feed: FeedItem) => {
+      router.push({
+        pathname: '/(modal)/FriendProfileModal',
+        params: { friendID: feed.userId }
+      })
+    },
+    [router]
   )
 
   const openFeedPhoto = useCallback(
@@ -580,6 +623,7 @@ const HomeScreen = () => {
             addMedia={() => openPicker(item)}
             openPhotoModal={openPhotoModal}
             openFeedPhoto={openFeedPhoto}
+            openFriendProfile={openFriendProfile}
           />
         )}
         getItemLayout={getItemLayout}
