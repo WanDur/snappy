@@ -12,7 +12,8 @@ import {
   Alert,
   ListRenderItem,
   NativeSyntheticEvent,
-  NativeScrollEvent
+  NativeScrollEvent,
+  RefreshControl
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -127,6 +128,7 @@ const ProfileScreen = () => {
   const [bio, setBio] = useState(user.bio)
   const [photoCount, setPhotoCount] = useState(0)
   const [photoWeeks, setPhotoWeeks] = useState<PhotoWeek[]>([])
+  const [refreshing, setRefreshing] = useState(false)
 
   const iconUrlExist = user.iconUrl ? user.iconUrl.trim() !== '' && !user.iconUrl.includes('null') : false
 
@@ -153,13 +155,7 @@ const ProfileScreen = () => {
     }
   }
 
-  useEffect(() => {
-    if (!isAuthenticated(session)) {
-      router.replace('/(auth)/LoginScreen')
-      return
-    }
-
-    fetchProfileData()
+  const fetchSelfPhotos = async () => {
     syncPhotos(session, user.id).then(() => {
       const photos = getUserPhotos(user.id)
       const weeks: PhotoWeek[] = []
@@ -180,7 +176,24 @@ const ProfileScreen = () => {
       })
       setPhotoWeeks(weeks)
     })
+  }
+
+  useEffect(() => {
+    if (!isAuthenticated(session)) {
+      router.replace('/(auth)/LoginScreen')
+      return
+    }
+
+    fetchProfileData()
+    fetchSelfPhotos()
   }, [])
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await fetchProfileData()
+    await fetchSelfPhotos()
+    setRefreshing(false)
+  }
 
   // Handle tab change from tab press
   const handleTabPress = (index: number) => {
@@ -271,7 +284,7 @@ const ProfileScreen = () => {
           <AlbumCover
             coverImage={item.coverImage}
             isShared={item.shared}
-            contributors={item.contributors}
+            contributors={item.participants?.length}
             style={{ width: '100%', height: '100%' }}
             placeholderStyle={{ width: '100%', height: '100%' }}
           />
@@ -346,7 +359,12 @@ const ProfileScreen = () => {
           )
         }}
       />
-      <Themed.ScrollView showsVerticalScrollIndicator={false}>
+      <Themed.ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={styles.profileHeader}>
           <View style={{ paddingHorizontal: 20 }}>
             <View style={styles.profileImageSection}>

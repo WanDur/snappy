@@ -478,6 +478,7 @@ export const useSync = () => {
     syncFriends,
     syncChats,
     syncPhotos,
+    syncAlbums,
     syncFriendPhotos,
     fetchAllChatInfo,
     fetchChatInfo,

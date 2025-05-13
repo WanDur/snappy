@@ -1,14 +1,15 @@
 import { useState, memo, useMemo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, ViewStyle, StyleProp } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ViewStyle, StyleProp, RefreshControl } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import { useRouter } from 'expo-router'
 
-import { useAlbumStore, useTheme, useUserStore } from '@/hooks'
+import { useAlbumStore, useTheme, useUserStore, useSync } from '@/hooks'
 import { Themed, SectionHeader } from '@/components'
 import { IconSymbolName } from '@/components/ui/IconSymbolFallback'
 import { Form, Stack, ContentUnavailable } from '@/components/router-form'
 import { Album } from '@/types'
+import { useSession } from '@/contexts/auth'
 
 export const AlbumCover = memo(
   ({
@@ -73,12 +74,17 @@ const EmptyContent = ({
 )
 
 const AlbumScreen = () => {
+  const session = useSession()
+  const { syncAlbums } = useSync()
   const router = useRouter()
   const { colors } = useTheme()
 
   const { user } = useUserStore()
   const { albumList } = useAlbumStore()
+
   const [viewMode, setViewMode] = useState('grid')
+  const [refreshing, setRefreshing] = useState(false)
+
   const personalAlbums = useMemo(() => albumList.filter((album) => album.createdBy === user.id), [albumList])
   const sharedAlbums = useMemo(
     () => albumList.filter((album) => album.shared && album.createdBy !== user.id),
@@ -141,6 +147,12 @@ const AlbumScreen = () => {
     router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: shared.toString() } })
   }
 
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await syncAlbums(session)
+    setRefreshing(false)
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen
@@ -152,7 +164,13 @@ const AlbumScreen = () => {
           )
         }}
       />
-      <Themed.ScrollView style={{ padding: 16 }} contentContainerStyle={{ paddingBottom: 100 }}>
+      <Themed.ScrollView
+        style={{ padding: 16 }}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={{ paddingBottom: 12 }}>
           <TouchableOpacity
             style={[styles.createAlbumButton, { borderColor: colors.borderColor, backgroundColor: colors.secondaryBg }]}

@@ -22,7 +22,7 @@ import { Ionicons, Feather } from '@expo/vector-icons'
 /* ---------- hooks & stores ---------------------------- */
 import { useUserStore, usePhotoStore, useFriendStore, useTheme } from '@/hooks'
 import { IconSymbol } from '@/components/ui/IconSymbol'
-import { Photo } from '@/types'
+import { User } from '@/types'
 import { useSession, bypassLogin, isAuthenticated } from '@/contexts/auth'
 import { PhotoComment } from '@/types/photo.types'
 import { SwipeableRow, Themed } from '@/components'
@@ -45,13 +45,14 @@ export default function ViewPhotoModal() {
   const { photoIds: photoIdsString, index = '0' } = useLocalSearchParams<{ photoIds: string; index?: string }>()
 
   const photoIds = photoIdsString.split(',')
-  const { getPhoto, toggleLike, addComment, deleteComment } = usePhotoStore()
+  const { getPhoto, toggleLike, addComment, deleteComment, removePhoto } = usePhotoStore()
   const { getFriend, friends } = useFriendStore()
 
   const [currentIndex, setCurrentIndex] = useState(parseInt(index))
-  const photo = getPhoto(photoIds[currentIndex])
+  const photo = getPhoto(photoIds[currentIndex])!
   const currentUser = useUserStore((s) => s.user)
-  const owner = useFriendStore((s) => s.friends.find((f) => f.id === (photo?.userId ?? currentUser.id)))
+  const owner = photo.userId === currentUser.id ? currentUser : getFriend(photo.userId)
+  const avatar = ('iconUrl' in owner!) ? owner.iconUrl : ('avatar' in owner!) ? owner.avatar : undefined
   const [comment, setComment] = useState('')
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
@@ -213,12 +214,27 @@ export default function ViewPhotoModal() {
     return <CommentRow item={item} />
   }
 
+  const handleDeletePhoto = () => {
+    Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', onPress: () => {
+        session.apiWithToken.delete(`/photo/${photoIds[currentIndex]}/delete`).then(() => {
+          removePhoto(owner!.id, photoIds[currentIndex])
+          router.back()
+        }).catch((err) => {
+          Alert.alert('Error', 'Failed to delete photo')
+          console.error(err)
+        })
+      }, style: 'destructive' }
+    ])
+  }
+
   return (
     <View style={styles.container}>
       {/* ---------- HEADER ---------- */}
       <BlurView intensity={40} tint="dark" style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerLeft}>
-          <Image source={{ uri: owner?.avatar ?? currentUser.iconUrl }} style={styles.avatar} />
+          <Image source={{ uri: avatar }} style={styles.avatar} />
           <View>
             <Text style={styles.username}>{owner?.username ?? currentUser.username}</Text>
             <Text style={styles.weekLabel}>{weekLabel}</Text>
@@ -322,7 +338,7 @@ export default function ViewPhotoModal() {
                             params: { photoId: photoIds[currentIndex] }
                           })
                       },
-                      { text: 'Delete Photo', onPress: () => console.log('Delete photo tapped'), style: 'destructive' },
+                      { text: 'Delete Photo', onPress: handleDeletePhoto, style: 'destructive' },
                       { text: 'Cancel', style: 'cancel' }
                     ])
                   }}

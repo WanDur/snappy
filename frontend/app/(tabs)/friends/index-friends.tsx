@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Text, View, TouchableOpacity, TouchableHighlight, ActivityIndicator, StyleSheet, Alert } from 'react-native'
+import { Text, View, TouchableOpacity, TouchableHighlight, ActivityIndicator, StyleSheet, Alert, RefreshControl } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
 import * as Crypto from 'expo-crypto'
@@ -64,6 +64,7 @@ const FriendsScreen = () => {
   const [isSearching, setIsSearching] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [searchResults, setSearchResults] = useState<Friend[]>([])
+  const [refreshing, setRefreshing] = useState(false)
   
 
   const myFriend = friends.filter((f) => f.type === FriendStatus.FRIEND)
@@ -228,6 +229,12 @@ const FriendsScreen = () => {
       setSearchResults([])
     }
   }, [query])
+
+  const onRefresh = async () => {
+    setRefreshing(true)
+    await syncFriends(session)
+    setRefreshing(false)
+  }
 
   const sendFriendRequest = (id: string) => {
     session.apiWithToken.post(`/user/friends/invite/${id}`)
@@ -570,7 +577,10 @@ const FriendsScreen = () => {
         }}
       />
 
-      <Themed.ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <Themed.ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
         {isFocused ? (
           <View style={{ flex: 1 }}>
             {searchResults.length > 0 ? (

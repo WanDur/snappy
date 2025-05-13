@@ -25,7 +25,7 @@ export const Avatar = ({ iconUrl, username, size, style }: AvatarProps) => {
         />
       ) : (
         username ? (
-          <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.secondaryBg, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.secondaryBg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.borderColor }}>
             <Themed.Text style={{ fontSize: size * 0.3, color: colors.text }}>{username?.slice(0, 2)}</Themed.Text>
           </View>
         ) : (

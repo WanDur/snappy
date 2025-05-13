@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useTheme, useFriendStore, usePhotoStore } from '@/hooks'
 import { Friend, FriendStatus } from '@/types/friend.types'
 import { Photo } from '@/types/photo.types'
+import { Avatar } from '@/components/Avatar'
 
 /**
  * TaggedUserModal
@@ -84,7 +85,7 @@ const TaggedUserModal = () => {
         options={{
           headerTitle: 'Tag Friends',
           headerTintColor: '#1e90ff',
-          headerStyle: { backgroundColor: '#0e0e0e' },
+          headerStyle: { backgroundColor: colors.background },
           headerTitleStyle: { color: '#fff', fontWeight: '600' },
           headerShadowVisible: false,
           headerRight: () => (
@@ -119,14 +120,19 @@ const TaggedUserModal = () => {
             const tagged = taggedIds.includes(item.id)
             return (
               <TouchableOpacity
-                style={[styles.row, tagged && styles.rowActive]}
+                style={[styles.row, { backgroundColor: colors.secondaryBg }, tagged && { backgroundColor: colors.green }]}
                 activeOpacity={0.8}
                 onPress={() => toggleTag(item.id)}
               >
-                <Image source={{ uri: item.avatar ?? 'https://placehold.co/64x64' }} style={styles.avatar} />
+                <Avatar
+                  size={44}
+                  iconUrl={item.avatar}
+                  username={item.username}
+                  style={styles.avatar}
+                />
                 <View style={styles.info}>
-                  <Text style={styles.name}>{item.name}</Text>
-                  <Text style={styles.username}>@{item.username}</Text>
+                  <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
+                  <Text style={[styles.username, { color: colors.text }]}>@{item.username}</Text>
                 </View>
                 <View style={[styles.tagBtn, tagged ? styles.tagBtnActive : styles.tagBtnInactive]}>
                   <Ionicons name={tagged ? 'checkmark' : 'add'} size={16} color={tagged ? '#fff' : '#eee'} />
@@ -182,7 +188,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#181818',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 14
