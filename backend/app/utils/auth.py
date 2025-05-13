@@ -78,9 +78,7 @@ async def get_user(
     return await engine.find_one(User, User.id == ObjectId(credentials.subject["id"]))
 
 
-async def get_user_from_token(
-    token: str, engine: AIOEngine = Depends(get_prod_database)
-) -> User | None:
+async def get_user_from_token(engine: AIOEngine, token: str) -> User | None:
     payload = access_auth.jwt_backend.decode(
         token,
         access_auth.secret_key,

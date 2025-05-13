@@ -79,7 +79,7 @@ const AlbumScreen = () => {
   const router = useRouter()
   const { colors } = useTheme()
 
-  const { user } = useUserStore()
+  const { user, isPremium } = useUserStore()
   const { albumList } = useAlbumStore()
 
   const [viewMode, setViewMode] = useState('grid')
@@ -140,8 +140,8 @@ const AlbumScreen = () => {
   )
 
   const createAlbum = (shared = false) => {
-    if (albumList.length >= 5) {
-      router.push('/(modal)/PremiumInfoModal')
+    if (personalAlbums.length >= 5 && !isPremium()) {
+      router.push({ pathname: '/(modal)/PremiumInfoModal', params: { message: 'Freemium users can only create up to 5 albums' } })
       return
     }
     router.push({ pathname: '/(modal)/CreateAlbumModal', params: { isShared: shared.toString() } })

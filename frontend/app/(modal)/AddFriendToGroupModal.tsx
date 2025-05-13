@@ -9,7 +9,7 @@ import { Stack, Form, ContentUnavailable } from '@/components/router-form'
 import { HeaderText } from '@/components/ui'
 import BouncyCheckbox from '@/components/react-native-bouncy-checkbox'
 import { Constants } from '@/constants'
-import { useFriendStore, useTheme } from '@/hooks'
+import { useFriendStore, useTheme, useUserStore } from '@/hooks'
 import { Friend } from '@/types'
 import { useSettings } from '@/contexts'
 import { Avatar } from '@/components/Avatar'
@@ -27,7 +27,8 @@ const AddFriendToGroupScreen = () => {
   const { colors } = useTheme()
   const HEADER_HEIGHT = useHeaderHeight()
   const { getAcceptedFriends } = useFriendStore()
-  const { setSetting } = useSettings()
+  const { isPremium } = useUserStore()
+  const { settings, setSetting } = useSettings()
 
   const [selectedFriends, setSelectedFriends] = useState<TFriend[]>([])
   const animValue = useRef(new Animated.Value(0)).current
@@ -51,6 +52,14 @@ const AddFriendToGroupScreen = () => {
       useNativeDriver: false
     }).start()
   }, [selectedFriends])
+
+  useEffect(() => {
+    if (type == 'album') {
+      setSelectedFriends(settings.friendsToAlbum.map((id) => friends.find((f) => f.id === id)!))
+    } else if (type == 'chat') {
+      setSelectedFriends(settings.friendsToChat.map((id) => friends.find((f) => f.id === id)!))
+    }
+  }, [type])
 
   const headerHeight = animValue.interpolate({
     inputRange: [0, 1],
@@ -91,13 +100,15 @@ const AddFriendToGroupScreen = () => {
 
   const handleDone = () => {
     if (type == 'album') {
-      console.log(`Selected friends for album: ${selectedFriends.map((f) => f.name)}`)
       setSetting(
         'friendsToAlbum',
         selectedFriends.map((f) => f.id)
       )
     } else if (type == 'chat') {
-      console.log(`Selected friends for chat: ${selectedFriends.map((f) => f.name)}`)
+      if (selectedFriends.length > 5 && !isPremium()) {
+        router.push({ pathname: '/(modal)/PremiumInfoModal', params: { message: 'Freemium users can add up to 5 friends to a chat' } })
+        return
+      }
       setSetting(
         'friendsToChat',
         selectedFriends.map((f) => f.id)

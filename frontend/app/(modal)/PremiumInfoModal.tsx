@@ -2,7 +2,7 @@ import { useState, ReactNode } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native'
 import { AntDesign, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { LinearGradient } from 'expo-linear-gradient'
 
 import { TouchableBounce } from '@/components'
@@ -22,11 +22,14 @@ const FeatureItem = ({ icon, title, description }: { icon: ReactNode; title: str
 
 const PremiumInfoModal = () => {
   const router = useRouter()
+  const { message } = useLocalSearchParams<{ message: string }>()
   const { reverseTheme } = useTheme()
 
   const [isMonthly, setIsMonthly] = useState(false)
 
-  const handleUpgradePress = () => {}
+  const handleUpgradePress = () => {
+    router.push('/(modal)/RedeemCodeModal')
+  }
 
   const togglePlan = () => {
     setIsMonthly((prev) => !prev)
@@ -48,6 +51,7 @@ const PremiumInfoModal = () => {
             <MaterialCommunityIcons name="crown" size={40} color="#FFD700" />
             <Text style={styles.title}>Upgrade to Premium</Text>
             <Text style={styles.subtitle}>Unlock the full experience</Text>
+            {message && <Text style={styles.subtitle}>{message}</Text>}
           </View>
 
           <View style={{ paddingBottom: 10 }}>
@@ -70,30 +74,6 @@ const PremiumInfoModal = () => {
             />
           </View>
 
-          <View style={{ paddingBottom: 30 }}>
-            <Text style={styles.pricingTitle}>Choose Your Plan</Text>
-
-            <View style={styles.planContainer}>
-              <TouchableOpacity
-                style={[styles.planOption, !isMonthly && styles.planSelected]}
-                onPress={togglePlan}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.planDuration}>Annual</Text>
-                <Text style={styles.planPrice}>$49.99</Text>
-                <Text style={styles.planSaving}>Save 30%</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.planOption, isMonthly && styles.planSelected]}
-                onPress={togglePlan}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.planDuration}>Monthly</Text>
-                <Text style={styles.planPrice}>$5.99</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
           <TouchableBounce style={styles.upgradeButton} onPress={handleUpgradePress}>
             <LinearGradient
@@ -102,15 +82,9 @@ const PremiumInfoModal = () => {
               end={{ x: 1, y: 0 }}
               style={styles.gradientButton}
             >
-              <Text style={styles.upgradeButtonText}>Upgrade Now</Text>
+              <Text style={styles.upgradeButtonText}>Redeem Code</Text>
             </LinearGradient>
           </TouchableBounce>
-
-          <TouchableOpacity onPress={() => router.push('/(modal)/RedeemCodeModal')} activeOpacity={0.7}>
-            <Text style={{ textAlign: 'center', marginBottom: 14, color: 'white' }}>
-              Restore purchase / Redeem code
-            </Text>
-          </TouchableOpacity>
 
           <Text style={styles.termsText}>By continuing, you agree to our Terms of Service and Privacy Policy</Text>
         </ScrollView>
@@ -150,7 +124,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 5
+    marginTop: 5,
+    textAlign: 'center'
   },
   featureItem: {
     flexDirection: 'row',

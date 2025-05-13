@@ -67,7 +67,7 @@ const RedeemCodeModal = () => {
       session.apiWithToken.post('/license/redeem', {
         keys: keys
       }).then((res) => {
-        updatePremiumExpireTime(new Date(res.data.premiumExpireTime))
+        updatePremiumExpireTime(new Date(res.data.expireTime))
         updateTier(UserTier.PREMIUM)
         Alert.alert('Success', `Your code has been redeemed successfully! ${res.data.addedDays} days have been added to your premium membership.`, [
           { text: 'OK', onPress: () => router.back() }

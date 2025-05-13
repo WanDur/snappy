@@ -8,6 +8,7 @@ import { useTheme, useUserStore } from '@/hooks'
 import { Themed } from '@/components'
 import { Form } from '@/components/router-form'
 import { useSession } from '@/contexts/auth'
+import { UserTier } from '@/types'
 //import { useSession } from '@/contexts/auth'
 //import { useSync } from '@/hooks/useSync'
 
@@ -16,7 +17,7 @@ export default function SettingScreen() {
   //const sync = useSync()
   const router = useRouter()
   const { colors } = useTheme()
-  const { user } = useUserStore()
+  const { getUser } = useUserStore()
 
   const [loading, setLoading] = useState(false)
 
@@ -57,25 +58,45 @@ export default function SettingScreen() {
       />
       <Form.List>
         <Form.Section title="general">
-          <Form.Link href="/settingscreen/PermissionScreen" systemImage="hand.raised">
-            Permissions
-          </Form.Link>
-          <Form.Text systemImage="phone" hint={user.phone}>
+          <Form.Text systemImage="phone" hint={getUser().phone}>
             Phone
           </Form.Text>
-          <Form.Text systemImage="mail" hint={user.email}>
+          <Form.Text systemImage="mail" hint={getUser().email}>
             Email
           </Form.Text>
-          <Form.Text
-            systemImage={{ name: 'trash', color: AC.systemRed }}
-            style={{ color: AC.systemRed }}
-            onPress={() => console.log('Delete Account')}
-          >
-            Delete Account
-          </Form.Text>
+          {getUser().tier === UserTier.FREEMIUM && (
+            <Form.Text systemImage="crown" hint="Freemium">
+              Membership
+            </Form.Text>
+          )}
+          {getUser().tier === UserTier.PREMIUM && (
+            <Form.Text systemImage="crown.fill" hint="Premium">
+              Membership
+            </Form.Text>
+          )}
+          {getUser().tier === UserTier.PREMIUM && (
+            <Form.Text systemImage="calendar" hint={getUser().premiumExpireTime!.toLocaleDateString()}>
+              Expiry Date
+            </Form.Text>
+          )}
+          {getUser().tier === UserTier.ADMIN && (
+            <Form.Text systemImage="person.badge.shield.checkmark.fill" hint="Admin">
+              Membership
+            </Form.Text>
+          )}
+          {getUser().tier === UserTier.ADMIN && (
+            <Form.Link systemImage="key.fill" href="/(modal)/GenerateCodeModal">Generate Code</Form.Link>
+          )}
+          {getUser().tier != UserTier.ADMIN && (
+             <Form.Link systemImage="key.fill" href="/(modal)/RedeemCodeModal">Redeem Code</Form.Link>
+          )}
+         
         </Form.Section>
 
         <Form.Section title="About Snappy">
+          <Form.Link href="/settingscreen/PermissionScreen" systemImage="hand.raised">
+            Permissions
+          </Form.Link>
           <Form.Text systemImage="star" onPress={() => {}}>
             Rate Snappy
           </Form.Text>
@@ -109,7 +130,6 @@ export default function SettingScreen() {
           <Form.Link href="/settingscreen/DevScreen" systemImage="wrench.and.screwdriver">
             Dev data
           </Form.Link>
-          <Form.Link href="/(modal)/PremiumInfoModal">Premium modal</Form.Link>
         </Form.Section>
       </Form.List>
     </Themed.ScrollView>

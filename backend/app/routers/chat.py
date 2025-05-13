@@ -198,7 +198,7 @@ async def websocket_endpoint(websocket: WebSocket):
     token = auth_header.split(" ")[1]
     if not token:
         raise WebSocketException(code=1008, reason="Unauthorized")
-    user = await get_user_from_token(token)
+    user = await get_user_from_token(engine, token)
 
     if user is None:
         raise WebSocketException(code=1008, reason="Unauthorized")

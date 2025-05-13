@@ -14,6 +14,8 @@ interface UserStore {
    * set when user is logged in
    */
   setUser: (user: User) => void;
+  getUser: () => User;
+  isPremium: () => boolean;
 
   updateUsername: (username: string) => void;
   updateName: (name: string) => void;
@@ -44,6 +46,25 @@ export const useUserStore = create<UserStore>()(
         set((state) => {
           state.user = user;
         });
+      },
+
+      getUser() {
+        return get().user;
+      },
+
+      isPremium() {
+        if (get().user.tier === UserTier.PREMIUM) {
+          if (get().user.premiumExpireTime! < new Date()) {
+            set((state) => {
+              state.user.tier = UserTier.FREEMIUM;
+            });
+            return false;
+          }
+          return true;
+        } else if (get().user.tier === UserTier.ADMIN) {
+          return true;
+        }
+        return false;
       },
 
       updateUsername(username) {

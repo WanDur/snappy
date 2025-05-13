@@ -204,7 +204,7 @@ export const useSync = () => {
         }
       };
     } else {
-      console.error("Failed to connect to chat web socket");
+      console.log("Failed to connect to chat web socket");
     }
   };
 

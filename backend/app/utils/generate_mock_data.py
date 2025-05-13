@@ -18,6 +18,7 @@ import random
 from faker import Faker
 import bcrypt
 from internal.models import Friendship, Photo, User, UserTier
+from routers.license import generate_license_keys
 from utils.minio_server import upload_file
 from utils.mongo import get_prod_database
 
@@ -56,11 +57,11 @@ async def main():
         name="John Doe",
         email="johndoe123@example.com",
         phone=f"(+852) 999",
-        tier=UserTier.PREMIUM,
+        tier=UserTier.ADMIN,
         premiumExpireTime=datetime.now(timezone.utc) + timedelta(days=365),
     )
     await engine.save(login_user)
-    print(f"========== SAMPLE PREMIUM USER #1 ==========")
+    print(f"========== SAMPLE ADMIN USER #1 ==========")
     print(f"Email: johndoe123@example.com")
     print(f"Username: root")
     print(f"Password: root")
@@ -124,6 +125,13 @@ async def main():
         print(f"Username: {user.username}")
         print(f"Password: {password}")
         print(f"Photos: {len(upload_photos)}")
+
+    keys = await generate_license_keys(engine, 30, 10)
+    print(f"========== SAMPLE LICENSE KEYS (30 DAYS) ==========")
+    print("\n".join(keys))
+    print(
+        "You may create a key file by putting keys in a file 'sample_keys.key' seperated by newlines."
+    )
 
 
 if __name__ == "__main__":
