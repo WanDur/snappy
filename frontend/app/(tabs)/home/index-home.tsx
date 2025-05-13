@@ -9,7 +9,8 @@ import {
   Dimensions,
   ListRenderItem,
   Alert,
-  Modal
+  Modal,
+  RefreshControl
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { Image } from 'expo-image'
@@ -288,7 +289,7 @@ const HomeScreen = () => {
   const session = useSession()
   const router = useRouter()
   const { user } = useUserStore()
-  const { initialSync } = useSync()
+  const { initialSync, syncPhotos, syncFriendPhotos } = useSync()
 
   const { colors } = useTheme()
   const { getAcceptedFriends } = useFriendStore()
@@ -296,6 +297,7 @@ const HomeScreen = () => {
 
   const [weeks, setWeeks] = useState<WeekBundle[]>(buildWeeks())
   const [weekListIndex, setWeekListIndex] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
   const listRef = useRef<FlatList>(null)
 
   //type PhotoInfo = { uri: string }
@@ -342,6 +344,14 @@ const HomeScreen = () => {
     } else {
       console.log('Session is null')
     }
+  }, [])
+
+  const onResfresh = useCallback(async () => {
+    setRefreshing(true)
+    await syncPhotos(session, user.id)
+    await syncFriendPhotos(session)
+    setWeeks(buildWeeks())
+    setRefreshing(false)
   }, [])
 
   const markSeen = useCallback((id: string) => {
@@ -621,6 +631,7 @@ const HomeScreen = () => {
             openFriendProfile={openFriendProfile}
           />
         )}
+        refreshControl={<RefreshControl progressViewOffset={200} refreshing={refreshing} onRefresh={onResfresh} />}
         getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}
         onMomentumScrollEnd={(e) => {
