@@ -263,13 +263,12 @@ async def invite_friend(
     user: User | None = Depends(get_user),
 ):
     if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="User not found")
     target_user = await engine.find_one(User, User.id == ObjectId(target_user_id))
     if not target_user:
         raise HTTPException(status_code=400, detail="Target user not found")
     if target_user.id == user.id:
         raise HTTPException(status_code=400, detail="Cannot invite yourself")
-    log_debug(target_user.id)
     existing_friendship = await Friendship.get_friendship(engine, user, target_user)
     if existing_friendship:
         if existing_friendship.accepted:
@@ -280,9 +279,7 @@ async def invite_friend(
         user1=user, user2=target_user, inviteTimestamp=datetime.now(timezone.utc)
     )
     await engine.save(friendship)
-    return ORJSONResponse(
-        {"status": "success", "friendship": serialize_mongo_object(friendship)}
-    )
+    return ORJSONResponse({"status": "success"})
 
 
 @user_router.post("/friends/accept/{target_user_id}")

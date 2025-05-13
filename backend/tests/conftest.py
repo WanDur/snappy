@@ -26,12 +26,13 @@ def get_test_database():
     client = AsyncIOMotorClient(
         f"mongodb://{get_settings().MONGODB_USERNAME}:{get_settings().MONGODB_PASSWORD}@localhost:27017/"
     )
+    client.drop_database("snappy_test")
     engine = AIOEngine(client=client, database="snappy_test")
     return client, engine
 
 
-async def get_user_token(client, username, password):
-    res = await client.post(
+async def get_user_token(aclient, username, password):
+    res = await aclient.post(
         "/auth/login",
         json={"emailUsernamePhone": username, "password": password},
     )
@@ -39,7 +40,7 @@ async def get_user_token(client, username, password):
 
 
 async def add_random_user(
-    mongodb,
+    amongodb,
     username: str = None,
     tier: UserTier = UserTier.FREEMIUM,
     friend_with: User | None = None,
@@ -48,7 +49,7 @@ async def add_random_user(
     users, passwords = zip(*[generate_user_data(username, tier) for _ in range(count)])
     users, passwords = list(users), list(passwords)
 
-    await mongodb.save_all(users)
+    await amongodb.save_all(users)
     if friend_with:
         for user in users:
             friendship = Friendship(
@@ -57,7 +58,7 @@ async def add_random_user(
                 accepted=True,
                 inviteTimestamp=datetime.now(timezone.utc),
             )
-            await mongodb.save(friendship)
+            await amongodb.save(friendship)
     if count == 1:
         return users[0], passwords[0]
     return users, passwords
@@ -66,10 +67,10 @@ async def add_random_user(
 @pytest_asyncio.fixture(scope="function")
 async def mongodb():
     """Fixture to set up a mock MongoDB instance."""
-    client, engine = get_test_database()
+    aioclient, engine = get_test_database()
     app.dependency_overrides[get_prod_database] = lambda: engine
     yield engine
-    await client.drop_database("snappy_test")
+    await aioclient.drop_database("snappy_test")
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -79,6 +80,20 @@ async def client(mongodb):
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         yield client
+
+
+@pytest_asyncio.fixture(scope="function")
+async def client_mongodb():
+    """Fixture to set up the FastAPI test client."""
+    aioclient, engine = get_test_database()
+    app.dependency_overrides[get_prod_database] = lambda: engine
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        yield client, engine
+
+    await aioclient.drop_database("snappy_test")
 
 
 def generate_user_data(
@@ -103,23 +118,21 @@ def generate_user_data(
 
 @pytest_asyncio.fixture(scope="function")
 async def sample_freemium_user(mongodb):
-    user, _ = generate_user_data("freemium")
+    user, _ = generate_user_data(tier=UserTier.FREEMIUM)
     await mongodb.save(user)
     token = access_auth.create_access_token(
         {"id": str(user.id), "username": user.username}
     )
-    app.dependency_overrides[get_user] = lambda: user
     yield user, token
     await mongodb.delete(user)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def sample_premium_user(mongodb):
-    user, _ = generate_user_data("premium")
+    user, _ = generate_user_data(tier=UserTier.PREMIUM)
     await mongodb.save(user)
     token = access_auth.create_access_token(
         {"id": str(user.id), "username": user.username}
     )
-    app.dependency_overrides[get_user] = lambda: user
     yield user, token
     await mongodb.delete(user)

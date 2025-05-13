@@ -1,14 +1,16 @@
 import time
 from bson import ObjectId
 from fastapi import Security
+from fastapi.params import Depends
 from fastapi.responses import ORJSONResponse
+from odmantic import AIOEngine
 from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import timedelta
 from fastapi_jwt import JwtAccessBearer, JwtAuthorizationCredentials, JwtRefreshBearer
 
 from internal.models import User
 from utils.settings import get_settings
-from utils.mongo import engine
+from utils.mongo import engine, get_prod_database
 from utils.debug import log_debug
 
 
@@ -43,7 +45,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         try:
             auth_header = request.headers.get("Authorization", "")
-
             if not auth_header.startswith("Bearer "):
                 return ORJSONResponse(
                     status_code=401, content={"detail": "Unauthorized"}
@@ -72,11 +73,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 async def get_user(
     credentials: JwtAuthorizationCredentials = Security(access_auth),
+    engine: AIOEngine = Depends(get_prod_database),
 ) -> User | None:
     return await engine.find_one(User, User.id == ObjectId(credentials.subject["id"]))
 
 
-async def get_user_from_token(token: str) -> User | None:
+async def get_user_from_token(
+    token: str, engine: AIOEngine = Depends(get_prod_database)
+) -> User | None:
     payload = access_auth.jwt_backend.decode(
         token,
         access_auth.secret_key,
