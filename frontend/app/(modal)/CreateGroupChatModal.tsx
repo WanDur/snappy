@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Switch,
   Alert
 } from 'react-native'
 
@@ -55,11 +54,6 @@ const CreateGroupChatModal = () => {
       return
     }
 
-    if (chatName.trim() === '') {
-      Alert.alert('Please enter a name for the chat')
-      return
-    }
-
     if (settings.friendsToChat.length === 0) {
       Alert.alert('Please add at least one friend to the chat')
       return
@@ -85,8 +79,8 @@ const CreateGroupChatModal = () => {
               const friend = getFriend(id)!
               return {
                 _id: friend.id,
-              name: friend.name,
-              avatar: friend.avatar
+                name: friend.name,
+                avatar: friend.avatar
               }
             })
           ],
@@ -141,7 +135,9 @@ const CreateGroupChatModal = () => {
           onPress={() => router.push({ pathname: '/(modal)/AddFriendToGroupModal', params: { type: 'chat' } })}
           activeOpacity={0.7}
         >
-          <Themed.Text style={styles.addFriendText} type="link">Add friend</Themed.Text>
+          <Themed.Text style={styles.addFriendText} type="link">
+            Add friend
+          </Themed.Text>
         </TouchableOpacity>
 
         {settings.friendsToChat.length > 0 && (
@@ -149,18 +145,19 @@ const CreateGroupChatModal = () => {
             <ScrollView style={{ width: '100%' }} horizontal>
               {settings.friendsToChat.map((item) => (
                 <Themed.View key={item} style={styles.friendAvatar} shadow>
-                  <Avatar
-                    iconUrl={getFriend(item)!.avatar!}
-                    username={getFriend(item)!.username}
-                    size={50}
-                  />
+                  <Avatar iconUrl={getFriend(item)!.avatar!} username={getFriend(item)!.username} size={50} />
                 </Themed.View>
               ))}
             </ScrollView>
           </Themed.View>
         )}
 
-        <TouchableOpacity style={[styles.createButton]} onPress={handleCreateChat}>
+        <TouchableOpacity
+          style={[styles.createButton, chatName.trim() === '' && styles.createButtonDisabled]}
+          onPress={handleCreateChat}
+          disabled={chatName.trim() === ''}
+          activeOpacity={0.7}
+        >
           <Text style={styles.createButtonText}>Create Group Chat</Text>
         </TouchableOpacity>
       </Themed.ScrollView>
@@ -232,6 +229,9 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     marginTop: 20
+  },
+  createButtonDisabled: {
+    backgroundColor: 'grey'
   },
   createButtonText: {
     color: '#ffffff',

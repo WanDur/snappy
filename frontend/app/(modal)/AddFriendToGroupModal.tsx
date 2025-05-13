@@ -15,8 +15,7 @@ import { useSettings } from '@/contexts'
 import { Avatar } from '@/components/Avatar'
 
 // remove from Omit if more fields are needed
-interface TFriend
-  extends Omit<Friend, 'albumList' | 'type' | 'lastActive' | 'mutualFriends' | 'photoList'> {}
+interface TFriend extends Omit<Friend, 'albumList' | 'type' | 'lastActive' | 'mutualFriends' | 'photoList'> {}
 
 interface FriendListGroup {
   title: string
@@ -114,7 +113,7 @@ const AddFriendToGroupScreen = () => {
           title: 'Add friend',
           headerTransparent: false,
           headerLargeTitleShadowVisible: true,
-          headerLeft: () => <HeaderText text="Cancel" textProps={{ state: true }} />,
+          headerLeft: () => <HeaderText text="Close" textProps={{ state: true }} />,
           headerRight: () => (
             <HeaderText text="Done" textProps={{ state: selectedFriends.length > 0 }} onPress={handleDone} />
           )

@@ -65,6 +65,7 @@ export default function RootLayout() {
 
                 <Stack.Screen name="(modal)/CreateAlbumModal" sheet />
                 <Stack.Screen name="(modal)/AlbumDetailModal" options={{ headerShown: false }} sheet />
+                <Stack.Screen name="(modal)/CreateGroupChatModal" sheet />
                 <Stack.Screen name="(modal)/ChatSettingModal" sheet />
                 <Stack.Screen
                   name="(modal)/ViewImageModal"

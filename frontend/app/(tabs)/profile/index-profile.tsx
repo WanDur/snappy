@@ -405,6 +405,7 @@ const ProfileScreen = () => {
                   styles.shareButton,
                   { borderColor: colors.borderColor, backgroundColor: colors.background, shadowColor: colors.text }
                 ]}
+                onPress={() => Alert.alert('Share', 'This would share user profile.')}
               >
                 <Feather name="share" size={16} color={colors.text} />
                 <Themed.Text style={styles.shareButtonText}>Share</Themed.Text>

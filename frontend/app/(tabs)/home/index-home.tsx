@@ -601,11 +601,6 @@ const HomeScreen = () => {
       <Stack.Screen
         options={{
           headerTitle: `Week ${enrichedWeeks[weekListIndex]?.weekNum ?? ''}`,
-          headerRight: () => (
-            <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/settingscreen/SettingScreen')}>
-              <IconSymbol name="bell" color={colors.text} size={26} />
-            </TouchableOpacity>
-          ),
           headerTransparent: true,
           ...(!Constants.isIOS && { headerStyle: { backgroundColor: colors.background } })
         }}

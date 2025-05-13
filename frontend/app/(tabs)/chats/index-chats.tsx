@@ -7,6 +7,7 @@ import { Stack, useRouter } from 'expo-router'
 
 import { Themed } from '@/components'
 import { ChatRow } from '@/components/chat'
+import { HeaderText } from '@/components/ui'
 import { useBottomTabOverflow } from '@/components/ui/TabBarBackground'
 import { useChatStore, useUserStore, useStorage, useTheme, useFriendStore } from '@/hooks'
 import { ChatItem, User } from '@/types'
@@ -90,11 +91,7 @@ export const ChatScreen = () => {
   const { friends } = useFriendStore()
 
   const { deleteItemFromStorage } = useStorage()
-  const {
-    chats,
-    deleteChat,
-    addUnreadCount
-  } = useChatStore()
+  const { chats, deleteChat, addUnreadCount } = useChatStore()
   const { user } = useUserStore()
 
   const [isEdit, setIsEdit] = useState(false)
@@ -163,7 +160,6 @@ export const ChatScreen = () => {
               onPress={() => {
                 router.push('/(modal)/CreateGroupChatModal')
               }}
-              style={{ marginRight: -6 }}
             >
               <Ionicons name="add-circle-outline" size={24} color={colors.gray} />
             </TouchableOpacity>
@@ -171,9 +167,11 @@ export const ChatScreen = () => {
         }}
       />
       <Animated.FlatList
-        data={Object.entries(chats).map(([chatID, chatItem]) => ({
-          ...chatItem!
-        })).sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime())}
+        data={Object.entries(chats)
+          .map(([chatID, chatItem]) => ({
+            ...chatItem!
+          }))
+          .sort((a, b) => new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime())}
         contentInsetAdjustmentBehavior="automatic"
         renderItem={({ item, index }) => (
           <Animated.View>
