@@ -22,6 +22,10 @@ interface State {
   /** uploaderId → photos they posted */
   photoMap: Record<string, Photo[]>;
 
+  lastUpdate: number;
+
+  setLastUpdate: (lastUpdate: number) => void;
+
   /* CRUD */
   addPhoto: (
     userId: string,
@@ -78,6 +82,12 @@ export const usePhotoStore = create<State>()(
   persist(
     immer<State>((set, get) => ({
       photoMap: {},
+
+      lastUpdate: 0,
+
+      setLastUpdate(lastUpdate: number) {
+        set({ lastUpdate });
+      },
 
       /* ==== ADD PHOTO ===================================================== */
       addPhoto(

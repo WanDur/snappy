@@ -8,6 +8,7 @@ import { FriendStatus } from "@/types/friend.types";
 
 interface FriendStore {
   friends: Friend[];
+  getFriends: () => Friend[];
   hasFriend: (id: string) => boolean;
   addFriend: (friend: Friend) => void;
   getFriend: (id: string) => Friend | undefined;
@@ -22,6 +23,10 @@ export const useFriendStore = create<FriendStore>()(
   persist(
     immer<FriendStore>((set, get) => ({
       friends: [],
+
+      getFriends: () => {
+        return get().friends;
+      },
 
       hasFriend: (id: string) => {
         return get().friends.some((friend) => friend.id === id);

@@ -38,7 +38,7 @@ const getLocalTime = (timestamp: Date) => {
 
 export const useSync = () => {
   const { user, setUser, updateAvatar } = useUserStore();
-  const { friends, addFriend, removeFriend, hasFriend, updateFriend } =
+  const { getFriends, addFriend, removeFriend, hasFriend, updateFriend } =
     useFriendStore();
   const {
     allChatID,
@@ -52,7 +52,8 @@ export const useSync = () => {
     updateChatInfo,
     addUnreadCount,
   } = useChatStore();
-  const { addPhoto, hasPhoto, updatePhotoDetails } = usePhotoStore();
+  const { addPhoto, hasPhoto, updatePhotoDetails, setLastUpdate } =
+    usePhotoStore();
   const { addAlbum, getAlbum, hasAlbum, editAlbum } = useAlbumStore();
 
   const syncUserData = async (session: AuthContextProps) => {
@@ -84,7 +85,8 @@ export const useSync = () => {
     try {
       const res = await session.apiWithToken.get("/user/friends/list");
       const data = res.data;
-      data.friends.forEach((user: FriendResponse) => {
+      for (let i = 0; i < data.friends.length; i++) {
+        const user = data.friends[i];
         if (hasFriend(user.id)) {
           updateFriend(user.id, {
             ...user,
@@ -102,8 +104,9 @@ export const useSync = () => {
             photoList: [],
           });
         }
-      });
-      data.incomingInvitations.forEach((user: FriendResponse) => {
+      }
+      for (let i = 0; i < data.incomingInvitations.length; i++) {
+        const user = data.incomingInvitations[i];
         addFriend({
           ...user,
           avatar: user.iconUrl ? parsePublicUrl(user.iconUrl) : undefined,
@@ -111,8 +114,8 @@ export const useSync = () => {
           albumList: [],
           photoList: [],
         });
-      });
-      const removedFriends = friends.filter(
+      }
+      const removedFriends = getFriends().filter(
         (friend) => !data.friends.some((user: Friend) => user.id === friend.id)
       );
       removedFriends.forEach((friend) => {
@@ -392,13 +395,14 @@ export const useSync = () => {
           });
         }
       });
+      setLastUpdate(now.getTime());
     } catch (error) {
       console.error("Error fetching photos:", error);
     }
   };
 
   const syncFriendPhotos = async (session: AuthContextProps) => {
-    friends
+    getFriends()
       .filter((friend) => friend.type === FriendStatus.FRIEND)
       .forEach((friend) => {
         syncPhotos(session, friend.id);
@@ -462,11 +466,11 @@ export const useSync = () => {
 
   const initialSync = async (session: AuthContextProps) => {
     await syncUserData(session);
-    await syncPhotos(session, user.id);
     await syncFriends(session);
+    await syncPhotos(session, user.id);
     await syncFriendPhotos(session);
-    await syncChats(session);
     await syncAlbums(session);
+    await syncChats(session);
   };
 
   return {

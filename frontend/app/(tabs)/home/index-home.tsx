@@ -293,7 +293,7 @@ const HomeScreen = () => {
 
   const { colors } = useTheme()
   const { getAcceptedFriends } = useFriendStore()
-  const { hasPhoto, addPhoto, getUserPhotos } = usePhotoStore()
+  const { addPhoto, getUserPhotos, lastUpdate } = usePhotoStore()
 
   const [weeks, setWeeks] = useState<WeekBundle[]>(buildWeeks())
   const [weekListIndex, setWeekListIndex] = useState(0)
@@ -346,13 +346,12 @@ const HomeScreen = () => {
     }
   }, [])
 
-  const onResfresh = useCallback(async () => {
+  const onResfresh = async () => {
     setRefreshing(true)
     await syncPhotos(session, user.id)
     await syncFriendPhotos(session)
-    setWeeks(buildWeeks())
     setRefreshing(false)
-  }, [])
+  }
 
   const markSeen = useCallback((id: string) => {
     setWeeks((prev) =>
@@ -483,7 +482,7 @@ const HomeScreen = () => {
         feed: localFeed // replace demo feed
       }
     })
-  }, [weeks, getAcceptedFriends(), mediaByDate])
+  }, [weeks, getAcceptedFriends(), mediaByDate, lastUpdate])
 
   const openPicker = useCallback(async (week: WeekBundle) => {
     const { status } = await MediaLibrary.requestPermissionsAsync()
