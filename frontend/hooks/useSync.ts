@@ -21,6 +21,7 @@ import { PhotoPreview, FetchUserPhotosResponse } from "@/types/photo.types";
 import * as FileSystem from "expo-file-system";
 import { getDateString } from "@/utils/utils";
 import { AlbumListResponse } from "@/types/album.types";
+import { AxiosError } from "axios";
 
 const isoWeek = (d: Date) => {
   const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -37,7 +38,7 @@ const getLocalTime = (timestamp: Date) => {
 };
 
 export const useSync = () => {
-  const { user, setUser, updateAvatar } = useUserStore();
+  const { getUser, setUser, updateAvatar } = useUserStore();
   const { getFriends, addFriend, removeFriend, hasFriend, updateFriend } =
     useFriendStore();
   const {
@@ -51,6 +52,7 @@ export const useSync = () => {
     updateLastMessageTime,
     updateChatInfo,
     addUnreadCount,
+    deleteChat,
   } = useChatStore();
   const { addPhoto, hasPhoto, updatePhotoDetails, setLastUpdate } =
     usePhotoStore();
@@ -130,27 +132,34 @@ export const useSync = () => {
     session: AuthContextProps,
     conversationId: string
   ) => {
-    const res = await session.apiWithToken.get(
-      `/chat/conversation/${conversationId}/info`
-    );
-    return {
-      id: res.data.conversationId,
-      type: res.data.conversationType,
-      participants: res.data.participants.map(
-        (participant: ConversationParticipantInfo) => ({
-          _id: participant.userId,
-          name: participant.name,
-          avatar: participant.iconUrl
-            ? parsePublicUrl(participant.iconUrl)
-            : undefined,
-        })
-      ),
-      lastMessageTime: getLocalTime(res.data.lastMessageTime),
-      initialDate: getLocalTime(res.data.initialDate),
-      unreadCount: 0,
-      messages: [],
-      title: res.data.name,
-    } as ChatItem;
+    try {
+      const res = await session.apiWithToken.get(
+        `/chat/conversation/${conversationId}/info`
+      );
+      return {
+        id: res.data.conversationId,
+        type: res.data.conversationType,
+        participants: res.data.participants.map(
+          (participant: ConversationParticipantInfo) => ({
+            _id: participant.userId,
+            name: participant.name,
+            avatar: participant.iconUrl
+              ? parsePublicUrl(participant.iconUrl)
+              : undefined,
+          })
+        ),
+        lastMessageTime: getLocalTime(res.data.lastMessageTime),
+        initialDate: getLocalTime(res.data.initialDate),
+        unreadCount: 0,
+        messages: [],
+        title: res.data.name,
+      } as ChatItem;
+    } catch (error) {
+      if (error instanceof AxiosError && error.response?.status == 401) {
+        deleteChat(conversationId);
+      }
+      throw error;
+    }
   };
 
   const connectChatWebSocket = async (session: AuthContextProps) => {
@@ -162,39 +171,46 @@ export const useSync = () => {
       ws.onmessage = async (e) => {
         const messageData = JSON.parse(e.data) as MessageResponse & {
           conversationId: string;
+          type: string;
         };
-        let chat = getChat(messageData.conversationId);
-        if (!chat) {
-          chat = await fetchChatInfo(session, messageData.conversationId);
-          addChat(chat);
-        } else if (chat.messages.some((m) => m._id == messageData.messageId)) {
-          // Already have this message
-          return;
-        }
+        if (messageData.type == "new_message") {
+          let chat = getChat(messageData.conversationId);
+          if (!chat) {
+            chat = await fetchChatInfo(session, messageData.conversationId);
+            addChat(chat);
+          } else if (
+            chat.messages.some((m) => m._id == messageData.messageId)
+          ) {
+            // Already have this message
+            return;
+          }
 
-        // Parse the timestamp to a Date object since it is parsed as a string with JSON
-        messageData.timestamp = new Date(messageData.timestamp);
-        addMessage(messageData.conversationId, [
-          {
-            _id: messageData.messageId,
-            attachments: messageData.attachments.map((attachment) => ({
-              type: attachment.type,
-              url: parsePublicUrl(attachment.url),
-              name: attachment.name,
-            })),
-            createdAt: messageData.timestamp,
-            text: messageData.message,
-            user: chat.participants.find(
-              (participant) => participant._id === messageData.senderId
-            )!,
-          },
-        ]);
-        addUnreadCount(messageData.conversationId, 1);
-        updateLastMessageTime(
-          messageData.conversationId,
-          messageData.timestamp
-        );
-        updateLastFetchTime();
+          // Parse the timestamp to a Date object since it is parsed as a string with JSON
+          messageData.timestamp = new Date(messageData.timestamp);
+          addMessage(messageData.conversationId, [
+            {
+              _id: messageData.messageId,
+              attachments: messageData.attachments.map((attachment) => ({
+                type: attachment.type,
+                url: parsePublicUrl(attachment.url),
+                name: attachment.name,
+              })),
+              createdAt: messageData.timestamp,
+              text: messageData.message,
+              user: chat.participants.find(
+                (participant) => participant._id === messageData.senderId
+              )!,
+            },
+          ]);
+          addUnreadCount(messageData.conversationId, 1);
+          updateLastMessageTime(
+            messageData.conversationId,
+            messageData.timestamp
+          );
+          updateLastFetchTime();
+        } else if (messageData.type == "removed_from_conversation") {
+          deleteChat(messageData.conversationId);
+        }
       };
       ws.onclose = (e) => {
         if (e.code !== 1000) {
@@ -209,9 +225,15 @@ export const useSync = () => {
   };
 
   const fetchAllChatInfo = async (session: AuthContextProps) => {
-    allChatID.forEach(async (chatId) => {
+    const res = await session.apiWithToken.get("/chat/list");
+    const chatIds: string[] = res.data.conversationIds;
+    chatIds.forEach(async (chatId) => {
       const chatInfo = await fetchChatInfo(session, chatId);
-      updateChatInfo(chatId, chatInfo);
+      if (hasChat(chatId)) {
+        updateChatInfo(chatId, chatInfo);
+      } else {
+        addChat(chatInfo);
+      }
     });
   };
 
@@ -247,7 +269,7 @@ export const useSync = () => {
                 })
               );
               participants.forEach((participant) => {
-                if (participant.id !== user.id) {
+                if (participant.id !== getUser().id) {
                   addFriend(participant);
                 }
               });
@@ -467,7 +489,7 @@ export const useSync = () => {
   const initialSync = async (session: AuthContextProps) => {
     await syncUserData(session);
     await syncFriends(session);
-    await syncPhotos(session, user.id);
+    await syncPhotos(session, getUser().id);
     await syncFriendPhotos(session);
     await syncAlbums(session);
     await syncChats(session);

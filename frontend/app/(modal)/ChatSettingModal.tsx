@@ -41,7 +41,7 @@ const ChatProfileScreen = () => {
       username: friend.username,
       avatar: friend.avatar
     }
-  })
+  }).sort((a, b) => a.username!.localeCompare(b.username!))
   const inputRef = useRef<TextInput>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(chatTitle)
@@ -131,8 +131,17 @@ const ChatProfileScreen = () => {
 
           <Form.Section>
             {chat.type === 'group' && (
-              <Form.Text systemImage="person.badge.plus" onPress={() => {}}>
-                Add members
+              <Form.Text systemImage="person.badge.plus" onPress={() => {
+                router.push({
+                  pathname: '/(modal)/AddFriendToGroupModal',
+                  params: {
+                    'type': 'chat',
+                    'chatID': chatID,
+                    'modifying': 'true'
+                  }
+                })
+              }}>
+                Edit members
               </Form.Text>
             )}
             <Form.Text systemImage="trash" style={{ color: 'red' }} onPress={handleClearChat}>

@@ -9,10 +9,11 @@ import { Stack, Form, ContentUnavailable } from '@/components/router-form'
 import { HeaderText } from '@/components/ui'
 import BouncyCheckbox from '@/components/react-native-bouncy-checkbox'
 import { Constants } from '@/constants'
-import { useFriendStore, useTheme, useUserStore } from '@/hooks'
+import { useChatStore, useFriendStore, useSync, useTheme, useUserStore } from '@/hooks'
 import { Friend } from '@/types'
 import { useSettings } from '@/contexts'
 import { Avatar } from '@/components/Avatar'
+import { useSession } from '@/contexts/auth'
 
 // remove from Omit if more fields are needed
 interface TFriend extends Omit<Friend, 'albumList' | 'type' | 'lastActive' | 'mutualFriends' | 'photoList'> {}
@@ -23,11 +24,15 @@ interface FriendListGroup {
 }
 
 const AddFriendToGroupScreen = () => {
-  const { type } = useLocalSearchParams<{ type: string }>()
+  const session = useSession()
+  const { fetchChatInfo } = useSync()
+  const { getChat, updateChatInfo } = useChatStore()
+
+  const { type, chatID, modifying } = useLocalSearchParams<{ type: string, chatID?: string, modifying?: string }>()
   const { colors } = useTheme()
   const HEADER_HEIGHT = useHeaderHeight()
   const { getAcceptedFriends } = useFriendStore()
-  const { isPremium } = useUserStore()
+  const { getUser, isPremium } = useUserStore()
   const { settings, setSetting } = useSettings()
 
   const [selectedFriends, setSelectedFriends] = useState<TFriend[]>([])
@@ -57,7 +62,13 @@ const AddFriendToGroupScreen = () => {
     if (type == 'album') {
       setSelectedFriends(settings.friendsToAlbum.map((id) => friends.find((f) => f.id === id)!))
     } else if (type == 'chat') {
-      setSelectedFriends(settings.friendsToChat.map((id) => friends.find((f) => f.id === id)!))
+      if (modifying == 'true') {
+        const participants = getChat(chatID!).participants
+        const participantIds = participants.map((friend) => friend._id as string).filter((id) => id !== getUser().id)
+        setSelectedFriends(participantIds.map((id) => friends.find((f) => f.id === id)!))
+      } else {
+        setSelectedFriends(settings.friendsToChat.map((id) => friends.find((f) => f.id === id)!))
+      }
     }
   }, [type])
 
@@ -105,14 +116,23 @@ const AddFriendToGroupScreen = () => {
         selectedFriends.map((f) => f.id)
       )
     } else if (type == 'chat') {
-      if (selectedFriends.length > 5 && !isPremium()) {
-        router.push({ pathname: '/(modal)/PremiumInfoModal', params: { message: 'Freemium users can add up to 5 friends to a chat' } })
-        return
+      if (modifying == 'true') {
+        session.apiWithToken.put(`/chat/conversation/${chatID!}/edit`, {
+          participants: [getUser().id, ...selectedFriends.map((f) => f.id)]
+        }).then(async (res) => {
+          updateChatInfo(chatID!, await fetchChatInfo(session, chatID!))
+        })
+      } else {
+        if (selectedFriends.length > 4 && !isPremium()) {
+          router.push({ pathname: '/(modal)/PremiumInfoModal', params: { message: 'Freemium users can add up to 5 friends to a chat' } })
+          return
+        }
+        setSetting(
+          'friendsToChat',
+          selectedFriends.map((f) => f.id)
+        )
       }
-      setSetting(
-        'friendsToChat',
-        selectedFriends.map((f) => f.id)
-      )
+      
     }
     router.back()
   }

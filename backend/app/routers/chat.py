@@ -139,7 +139,7 @@ class EditChatInfoBody(BaseModel):
     participants: Optional[list[ObjectId]] = None
 
 
-@chat_router.put("/{conversation_id}/edit")
+@chat_router.put("/conversation/{conversation_id}/edit")
 async def edit_chat_info(
     conversation_id: ObjectId,
     body: EditChatInfoBody,
@@ -179,7 +179,21 @@ async def edit_chat_info(
                     status_code=400,
                     detail="You have reached the maximum number of participants for your plan",
                 )
+        removed_participants = [
+            p for p in conversation.participants if p not in body.participants
+        ]
         conversation.participants = body.participants
+        for participant in removed_participants:
+            if participant in active_connections:
+                for connection in active_connections[participant]:
+                    await connection.send_json(
+                        serialize_mongo_object(
+                            {
+                                "type": "removed_from_conversation",
+                                "conversationId": str(conversation.id),
+                            }
+                        )
+                    )
     await engine.save(conversation)
     return ORJSONResponse({"status": "success"})
 
@@ -356,6 +370,7 @@ async def send_message(
                 await connection.send_json(
                     serialize_mongo_object(
                         {
+                            "type": "new_message",
                             "conversationId": str(conversation.id),
                             "messageId": str(msg.id),
                             "senderId": str(user.id),
@@ -487,3 +502,16 @@ async def fetch_history(
         )
 
     return ORJSONResponse({"chats": serialize_mongo_object(response)})
+
+
+@chat_router.get("/list")
+async def get_conversation_list(
+    engine: AIOEngine = Depends(get_prod_database),
+    user: User | None = Depends(get_user),
+) -> list[ObjectId]:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    conversation_ids = await Conversation.find_conversation_ids(engine, user)
+
+    return ORJSONResponse(serialize_mongo_object({"conversationIds": conversation_ids}))
