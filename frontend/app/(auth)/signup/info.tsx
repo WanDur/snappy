@@ -14,7 +14,7 @@ const SignUpInfo = () => {
   const { colors, isDark } = useTheme()
   const { signUpWithCredential } = useSession()
   const router = useRouter()
-  
+
   const [displayName, setDisplayName] = useState('')
   const [countryCode, setCountryCode] = useState<CountryCode>('HK')
   const [callingCode, setCallingCode] = useState<string>('+852')
@@ -25,17 +25,15 @@ const SignUpInfo = () => {
   const onSignUp = async () => {
     if (!canNext) return
     console.log('Signing up with', username, email, password, displayName)
-    
+
     try {
-      await signUpWithCredential(
-        {
-          username,
-          email,
-          password,
-          name: displayName,
-          phone: `(${callingCode}) ${phoneNumber}`
-        },
-      )
+      await signUpWithCredential({
+        username,
+        email,
+        password,
+        name: displayName,
+        phone: `(${callingCode}) ${phoneNumber}`
+      })
       router.dismissTo('/(auth)/LoginScreen')
       Alert.alert('Success', 'You may login to your account now')
     } catch (err) {
@@ -68,10 +66,10 @@ const SignUpInfo = () => {
             minHeight: 50,
             padding: 8,
             borderRadius: 12,
-            marginBottom: 16,
+            marginBottom: 16
           }}
         >
-          <View style={{ justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <CountryPicker
               countryCode={countryCode}
               onSelect={(country) => {
@@ -80,24 +78,25 @@ const SignUpInfo = () => {
                 console.log(country.callingCode)
               }}
               containerButtonStyle={{
-                marginHorizontal: 16,
+                marginHorizontal: 16
               }}
               theme={isDark ? DARK_THEME : DEFAULT_THEME}
               withCallingCode
               withCallingCodeButton
               withFlagButton
-              preferredCountries={["HK", "MO", "CN", "TW"]}
+              preferredCountries={['HK', 'MO', 'CN', 'TW']}
+            />
+
+            <Themed.TextInput
+              placeholder="Phone Number"
+              onChangeText={setPhoneNumber}
+              value={phoneNumber}
+              keyboardType="phone-pad"
+              containerStyle={{ flex: 1, top: 8 }}
             />
           </View>
-          <Themed.TextInput
-            placeholder="Phone Number"
-            onChangeText={setPhoneNumber}
-            value={phoneNumber}
-            keyboardType="phone-pad"
-            containerStyle={{ flexGrow: 1}}
-          />
         </View>
-        
+
         <Bounceable
           style={{
             backgroundColor: canNext ? '#007AFF' : colors.secondaryBg,
