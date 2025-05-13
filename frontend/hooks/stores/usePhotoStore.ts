@@ -144,7 +144,6 @@ export const usePhotoStore = create<State>()(
           /* find week before deleting */
           const idx = list.findIndex((p) => p.id === photoId);
           if (idx === -1) return;
-          const removedWeek = weekKey(list[idx].timestamp);
 
           list.splice(idx, 1);
           if (!list.length) {
@@ -153,16 +152,6 @@ export const usePhotoStore = create<State>()(
           } else {
             list.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
           }
-
-          /* re-index the week that changed */
-          // const weekBlock = list
-          //   .filter((x) => weekKey(x.timestamp) === removedWeek)
-          //   .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-          // weekBlock.forEach((x, i) => {
-          //   x.orderInWeek = i + 1;
-          //   x.weekTotal = weekBlock.length;
-          // });
         });
       },
 
@@ -219,7 +208,6 @@ export const usePhotoStore = create<State>()(
           const photo = Object.values(draft.photoMap)
             .flat()
             .find((p) => p.id === photoId);
-          console.log(photo);
           if (!photo) return;
           photo.comments.push({
             id: id,
