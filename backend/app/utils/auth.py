@@ -75,7 +75,6 @@ async def get_user(
     credentials: JwtAuthorizationCredentials = Security(access_auth),
     engine: AIOEngine = Depends(get_prod_database),
 ) -> User | None:
-    print("user@get_user", credentials.subject["id"])
     return await engine.find_one(User, User.id == ObjectId(credentials.subject["id"]))
 
 
