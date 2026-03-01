@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } fr
 import { router } from 'expo-router'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import * as DocumentPicker from 'expo-document-picker'
-import * as FileSystem from 'expo-file-system'
+import * as FileSystem from 'expo-file-system/legacy'
 
 import { Themed } from '@/components'
 import { Stack } from '@/components/router-form'

@@ -18,7 +18,7 @@ import {
 import { Message } from "react-native-gifted-chat";
 import { getMessageUserFromFriendId } from "../utils/chatAdapter";
 import { PhotoPreview, FetchUserPhotosResponse } from "@/types/photo.types";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { getDateString } from "@/utils/utils";
 import { AlbumListResponse } from "@/types/album.types";
 import { AxiosError } from "axios";
